@@ -161,7 +161,7 @@ Use the Read tool to read these files completely before starting work.
 5. Implement the solution
 6. Test and verify your changes
 7. Commit and push changes with descriptive messages
-8. Record lessons learned in the .agent/MEMORY.txt file
+8. Record lessons learned in the .agent/MEMORY.md file
 
 ## Available Tools
 
