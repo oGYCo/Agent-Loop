@@ -34,8 +34,8 @@
       "name": "WebSocket实时推送支持",
       "description": "实现WebSocket端点 /ws 用于实时推送Agent运行状态、任务进度、日志。需要先了解FastAPI的WebSocket实现方式，以及如何在现有agent_core.py中集成状态推送。",
       "priority": 3,
-      "status": "pending",
-      "passes": false,
+      "status": "completed",
+      "passes": true,
       "context_files": [
         "agent/agent_core.py",
         "NEW_FEATURES_ANALYSIS.md"
@@ -49,11 +49,12 @@
       "name": "基础Web Dashboard界面",
       "description": "创建简单的Web Dashboard展示：1) Agent当前状态 2) 任务列表和进度 3) 实时日志输出。可以使用HTML+JavaScript实现，需要先了解API端点设计。",
       "priority": 4,
-      "status": "pending",
-      "passes": false,
+      "status": "completed",
+      "passes": true,
       "context_files": [
         "NEW_FEATURES_ANALYSIS.md",
-        "assets/logo.svg"
+        "assets/logo.svg",
+        "api.py"
       ],
       "verify_command": "访问 http://localhost:8000/",
       "created_at": "2026-03-07",

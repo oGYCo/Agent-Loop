@@ -13,7 +13,9 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
+from pathlib import Path
 
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent))
@@ -377,6 +379,13 @@ def get_sessions() -> SessionResponse:
 def health_check() -> Dict[str, str]:
     """Health check endpoint"""
     return {"status": "healthy", "service": "agent-loop-api"}
+
+
+@app.get("/")
+def serve_dashboard():
+    """Serve the web dashboard"""
+    static_path = Path(__file__).parent / "static" / "index.html"
+    return FileResponse(static_path)
 
 
 @app.websocket("/ws")

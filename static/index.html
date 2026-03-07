@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agent-Loop Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: #1a1a2e;
+            color: #eee;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 20px 0;
+            border-bottom: 1px solid #333;
+            margin-bottom: 20px;
+        }
+
+        header h1 {
+            font-size: 24px;
+            color: #4fc3f7;
+        }
+
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+        }
+
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #666;
+        }
+
+        .status-dot.connected {
+            background: #4caf50;
+        }
+
+        .status-dot.disconnected {
+            background: #f44336;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .panel {
+            background: #16213e;
+            border-radius: 8px;
+            padding: 20px;
+        }
+
+        .panel h2 {
+            font-size: 16px;
+            color: #4fc3f7;
+            margin-bottom: 16px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #333;
+        }
+
+        .status-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+        }
+
+        .status-item {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .status-label {
+            font-size: 12px;
+            color: #888;
+        }
+
+        .status-value {
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .progress-bar {
+            height: 8px;
+            background: #333;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 16px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #4fc3f7, #4caf50);
+            transition: width 0.3s ease;
+        }
+
+        .task-list {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .task-item {
+            display: flex;
+            align-items: center;
+            padding: 12px;
+            background: #1a1a2e;
+            border-radius: 6px;
+            margin-bottom: 8px;
+        }
+
+        .task-priority {
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #333;
+            border-radius: 50%;
+            font-size: 12px;
+            font-weight: 600;
+            margin-right: 12px;
+        }
+
+        .task-priority.high {
+            background: #f44336;
+        }
+
+        .task-priority.medium {
+            background: #ff9800;
+        }
+
+        .task-priority.low {
+            background: #4caf50;
+        }
+
+        .task-info {
+            flex: 1;
+        }
+
+        .task-name {
+            font-size: 14px;
+            font-weight: 500;
+            margin-bottom: 4px;
+        }
+
+        .task-desc {
+            font-size: 12px;
+            color: #888;
+        }
+
+        .task-status {
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 500;
+        }
+
+        .task-status.pending {
+            background: #333;
+            color: #888;
+        }
+
+        .task-status.in_progress {
+            background: #ff9800;
+            color: #000;
+        }
+
+        .task-status.completed {
+            background: #4caf50;
+            color: #000;
+        }
+
+        .task-status.failed {
+            background: #f44336;
+            color: #fff;
+        }
+
+        .log-container {
+            grid-column: 1 / -1;
+        }
+
+        .log-output {
+            background: #0d1117;
+            border-radius: 6px;
+            padding: 16px;
+            height: 300px;
+            overflow-y: auto;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 12px;
+            line-height: 1.6;
+        }
+
+        .log-entry {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 4px;
+        }
+
+        .log-time {
+            color: #666;
+            flex-shrink: 0;
+        }
+
+        .log-level {
+            flex-shrink: 0;
+            width: 50px;
+        }
+
+        .log-level.info {
+            color: #4fc3f7;
+        }
+
+        .log-level.warning {
+            color: #ff9800;
+        }
+
+        .log-level.error {
+            color: #f44336;
+        }
+
+        .log-level.debug {
+            color: #888;
+        }
+
+        .log-message {
+            color: #ddd;
+            word-break: break-all;
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.2s;
+        }
+
+        .btn-primary {
+            background: #4fc3f7;
+            color: #000;
+        }
+
+        .btn-primary:hover {
+            background: #29b6f6;
+        }
+
+        .full-width {
+            grid-column: 1 / -1;
+        }
+
+        .actions {
+            display: flex;
+            gap: 12px;
+        }
+
+        @media (max-width: 768px) {
+            .grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Agent-Loop Dashboard</h1>
+            <div class="status-indicator">
+                <div class="status-dot" id="ws-status"></div>
+                <span id="ws-text">Connecting...</span>
+            </div>
+        </header>
+
+        <div class="grid">
+            <!-- Status Panel -->
+            <div class="panel">
+                <h2>Agent Status</h2>
+                <div class="status-grid">
+                    <div class="status-item">
+                        <span class="status-label">Project</span>
+                        <span class="status-value" id="project-name">Loading...</span>
+                    </div>
+                    <div class="status-item">
+                        <span class="status-label">Project Type</span>
+                        <span class="status-value" id="project-type">Loading...</span>
+                    </div>
+                    <div class="status-item">
+                        <span class="status-label">Git Branch</span>
+                        <span class="status-value" id="git-branch">Loading...</span>
+                    </div>
+                    <div class="status-item">
+                        <span class="status-label">Has Changes</span>
+                        <span class="status-value" id="has-changes">Loading...</span>
+                    </div>
+                    <div class="status-item">
+                        <span class="status-label">Tasks Completed</span>
+                        <span class="status-value" id="tasks-completed">-</span>
+                    </div>
+                    <div class="status-item">
+                        <span class="status-label">Tasks Pending</span>
+                        <span class="status-value" id="tasks-pending">-</span>
+                    </div>
+                    <div class="status-item">
+                        <span class="status-label">Error Count</span>
+                        <span class="status-value" id="error-count">-</span>
+                    </div>
+                    <div class="status-item">
+                        <span class="status-label">Test Command</span>
+                        <span class="status-value" id="test-command" style="font-size: 11px;">Loading...</span>
+                    </div>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progress-fill" style="width: 0%"></div>
+                </div>
+            </div>
+
+            <!-- Task List Panel -->
+            <div class="panel">
+                <h2>Task List</h2>
+                <div class="actions" style="margin-bottom: 16px;">
+                    <button class="btn btn-primary" onclick="loadTasks()">Refresh</button>
+                </div>
+                <div class="task-list" id="task-list">
+                    <div style="text-align: center; padding: 40px; color: #666;">
+                        Loading tasks...
+                    </div>
+                </div>
+            </div>
+
+            <!-- Log Panel -->
+            <div class="panel log-container">
+                <h2>Real-time Logs</h2>
+                <div class="log-output" id="log-output">
+                    <div style="color: #666; text-align: center; padding: 20px;">
+                        Waiting for logs...
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let ws = null;
+        let reconnectTimer = null;
+
+        // Connect to WebSocket
+        function connectWebSocket() {
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsUrl = `${protocol}//${window.location.host}/ws`;
+
+            ws = new WebSocket(wsUrl);
+
+            ws.onopen = () => {
+                document.getElementById('ws-status').classList.add('connected');
+                document.getElementById('ws-status').classList.remove('disconnected');
+                document.getElementById('ws-text').textContent = 'Connected';
+                addLog('info', 'WebSocket connected');
+            };
+
+            ws.onclose = () => {
+                document.getElementById('ws-status').classList.remove('connected');
+                document.getElementById('ws-status').classList.add('disconnected');
+                document.getElementById('ws-text').textContent = 'Disconnected';
+                addLog('warning', 'WebSocket disconnected, reconnecting...');
+
+                // Reconnect after 3 seconds
+                if (!reconnectTimer) {
+                    reconnectTimer = setTimeout(() => {
+                        reconnectTimer = null;
+                        connectWebSocket();
+                    }, 3000);
+                }
+            };
+
+            ws.onerror = (error) => {
+                console.error('WebSocket error:', error);
+                addLog('error', 'WebSocket error occurred');
+            };
+
+            ws.onmessage = (event) => {
+                try {
+                    const message = JSON.parse(event.data);
+                    handleWebSocketMessage(message);
+                } catch (e) {
+                    console.error('Failed to parse message:', e);
+                }
+            };
+        }
+
+        function handleWebSocketMessage(message) {
+            const type = message.type;
+            const data = message.data;
+
+            switch (type) {
+                case 'connected':
+                    addLog('info', data.message);
+                    break;
+                case 'status':
+                    updateStatusDisplay(data);
+                    break;
+                case 'log':
+                    addLog(data.level, data.message, data.source);
+                    break;
+                case 'task_progress':
+                    addLog('info', `Task progress: ${data.task_id} - ${data.progress}`);
+                    break;
+                case 'iteration':
+                    addLog('info', `Iteration ${data.current}/${data.total}${data.task ? ` - ${data.task}` : ''}`);
+                    break;
+                default:
+                    console.log('Unknown message type:', type);
+            }
+        }
+
+        // Add log entry
+        function addLog(level, message, source = null) {
+            const logOutput = document.getElementById('log-output');
+            const now = new Date();
+            const time = now.toLocaleTimeString();
+
+            // Clear "waiting" message on first log
+            if (logOutput.querySelector('.log-entry') === null) {
+                logOutput.innerHTML = '';
+            }
+
+            const entry = document.createElement('div');
+            entry.className = 'log-entry';
+
+            let sourceInfo = source ? `[${source}] ` : '';
+
+            entry.innerHTML = `
+                <span class="log-time">${time}</span>
+                <span class="log-level ${level}">${level.toUpperCase()}</span>
+                <span class="log-message">${sourceInfo}${escapeHtml(message)}</span>
+            `;
+
+            logOutput.appendChild(entry);
+            logOutput.scrollTop = logOutput.scrollHeight;
+
+            // Keep only last 500 entries
+            while (logOutput.children.length > 500) {
+                logOutput.removeChild(logOutput.firstChild);
+            }
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Load status
+        async function loadStatus() {
+            try {
+                const response = await fetch('/status');
+                const data = await response.json();
+
+                document.getElementById('project-name').textContent = data.project_name;
+                document.getElementById('project-type').textContent = data.project_type;
+                document.getElementById('git-branch').textContent = data.git_branch;
+                document.getElementById('has-changes').textContent = data.has_changes ? 'Yes' : 'No';
+                document.getElementById('tasks-completed').textContent = `${data.tasks_completed} / ${data.tasks_total}`;
+                document.getElementById('tasks-pending').textContent = data.tasks_pending;
+                document.getElementById('error-count').textContent = data.error_count;
+                document.getElementById('test-command').textContent = data.test_command;
+
+                // Update progress bar
+                const progress = data.tasks_total > 0
+                    ? (data.tasks_completed / data.tasks_total) * 100
+                    : 0;
+                document.getElementById('progress-fill').style.width = `${progress}%`;
+
+                addLog('info', 'Status loaded');
+            } catch (e) {
+                addLog('error', `Failed to load status: ${e.message}`);
+            }
+        }
+
+        // Load tasks
+        async function loadTasks() {
+            try {
+                const response = await fetch('/tasks');
+                const tasks = await response.json();
+
+                const taskList = document.getElementById('task-list');
+
+                if (tasks.length === 0) {
+                    taskList.innerHTML = `
+                        <div style="text-align: center; padding: 40px; color: #666;">
+                            No tasks found
+                        </div>
+                    `;
+                    return;
+                }
+
+                taskList.innerHTML = tasks.map(task => {
+                    const priorityClass = task.priority <= 3 ? 'high' : (task.priority <= 6 ? 'medium' : 'low');
+
+                    return `
+                        <div class="task-item">
+                            <div class="task-priority ${priorityClass}">${task.priority}</div>
+                            <div class="task-info">
+                                <div class="task-name">${escapeHtml(task.name)}</div>
+                                <div class="task-desc">${escapeHtml(task.description || '')}</div>
+                            </div>
+                            <div class="task-status ${task.status}">${task.status}</div>
+                        </div>
+                    `;
+                }).join('');
+
+                addLog('info', `Loaded ${tasks.length} tasks`);
+            } catch (e) {
+                addLog('error', `Failed to load tasks: ${e.message}`);
+            }
+        }
+
+        // Update status display from WebSocket
+        function updateStatusDisplay(data) {
+            if (data.status) {
+                document.getElementById('agent-status-text').textContent = data.status;
+            }
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            loadStatus();
+            loadTasks();
+            connectWebSocket();
+
+            // Auto-refresh status every 30 seconds
+            setInterval(loadStatus, 30000);
+            // Auto-refresh tasks every 10 seconds
+            setInterval(loadTasks, 10000);
+        });
+    </script>
+</body>
+</html>

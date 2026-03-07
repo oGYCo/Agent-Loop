@@ -4,6 +4,49 @@ Accumulated experience and lessons learned from task execution.
 
 ---
 
+## 2026-03-08 - Basic Web Dashboard Interface (feature-004)
+
+**Task Description**: 创建简单的Web Dashboard展示：1) Agent当前状态 2) 任务列表和进度 3) 实时日志输出。可以使用HTML+JavaScript实现，需要先了解API端点设计。
+
+**Lessons Learned:**
+
+1. **API Endpoints Already Exist**:
+   - The api.py already had all the endpoints needed for the dashboard
+   - GET /status - Returns agent status (project info, git, tasks, current session)
+   - GET /tasks - Returns task list with optional status filter
+   - WebSocket /ws - Already implemented for real-time event streaming
+   - GET /health - Health check endpoint
+
+2. **Implementation Approach**:
+   - Created static/ directory for web dashboard files
+   - Created index.html with vanilla HTML/CSS/JavaScript (no frameworks needed)
+   - Added FileResponse route at "/" to serve the dashboard
+
+3. **Dashboard Features**:
+   - **Status Panel**: Shows project name, type, git branch, changes, task progress
+   - **Task List**: Shows all tasks with priority badges and status badges
+   - **Real-time Logs**: Connects to WebSocket for live log streaming
+   - **Auto-refresh**: Status every 30s, tasks every 10s
+
+4. **WebSocket Integration**:
+   - Dashboard connects to /ws endpoint for real-time updates
+   - Handles event types: status, log, task_progress, iteration
+   - Auto-reconnect on disconnect with 3-second delay
+
+5. **FastAPI Static File Serving**:
+   - Added import for `FileResponse` and `Path` from fastapi.responses
+   - Added route `@app.get("/")` to serve static/index.html
+
+6. **Verification**:
+   - Tested: http://localhost:8000/ - Dashboard loads correctly
+   - Tested: http://localhost:8000/status - Returns JSON with project info
+   - Tested: http://localhost:8000/tasks - Returns task list
+   - Tested: http://localhost:8000/health - Returns health status
+
+7. **Commit**: Pushed as `feat: add basic web dashboard interface`
+
+---
+
 ## 2026-03-08 - WebSocket Real-time Push Integration (feature-003)
 
 **Task Description**: 实现WebSocket端点 /ws 用于实时推送Agent运行状态、任务进度、日志
@@ -637,6 +680,8 @@ Accumulated experience and lessons learned from task execution.
 
 
 
+
+
 2026-03-07 - Clean up MEMORY.md duplicate entries (fix-015)
 
 **任务描述**: MEMORY.md 文件中存在重复的条目（例如 fix-008 出现了两次）。需要清理重复内容，保留最新和最完整的版本。
@@ -837,7 +882,10 @@ python main.py server --port 8000
 
 ---
 
-### 2026-03-08 - WebSearch and WebFetch abilities (feature-015)
+
+---
+
+2026-03-08 - WebSearch and WebFetch abilities (feature-015)
 
 **任务描述**: 确认系统是否具有能够成功进行WebSearch和WebFetch的功能，同时，要在默认的提示词中加入这两个能力应该是在执行任务之前用来查阅任务相关的各种必要的文档信息
 
@@ -846,7 +894,10 @@ python main.py server --port 8000
 
 我已完成 feature-015 任务：**WebSearch and WebFetch abilities**
 
-### 完成的工作：
+
+---
+
+完成的工作：
 
 1. **确认了系统已具备 WebSearch/WebFetch 功能**：
    - `agent_core.py` 中已有默认工具列表包含 WebSearch 和 WebFetch
@@ -860,3 +911,23 @@ python main.py server --port 8000
    - 在 "Before Starting Any Task" 部分添加了明确的 Web 工具使用说明
    - 在工作流程中添加了 "Research task-related information using WebSearch/WebFetch" 作为第二步
    - 更新了
+
+---
+
+### 2026-03-08 - WebSocket实时推送支持 (feature-003)
+
+**任务描述**: 实现WebSocket端点 /ws 用于实时推送Agent运行状态、任务进度、日志。需要先了解FastAPI的WebSocket实现方式，以及如何在现有agent_core.py中集成状态推送。
+
+**执行结果**: completed
+**执行消息**: ## Summary
+
+I've successfully completed the WebSocket real-time push support feature (feature-003). Here's what was done:
+
+### Implementation
+
+1. **Integrated EventPusher into agent_core.py**:
+   - Added lazy import function `_get_event_pusher()` to avoid circular dependency (api.py imports agent_core.py for the /run endpoint)
+   - Added async `_push_log_async()` for use in async hooks
+   - Added sync `_push_log_sync()` wrapper for sync code paths with event loop handling
+
+2. **WebSocket Event P
