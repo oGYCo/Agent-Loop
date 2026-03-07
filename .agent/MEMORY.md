@@ -4,6 +4,39 @@ Accumulated experience and lessons learned from task execution.
 
 ---
 
+## 2026-03-08 - 更新README.zh-CN.md中文文档 (feature-020)
+
+**任务描述**: 更新README.zh-CN.md以包含所有已实现的功能，与README.md保持同步。确保所有新功能的描述准确且翻译正确。
+
+**Lessons Learned:**
+
+1. **Features Added to Chinese README**:
+   - 邮件通知 - 任务完成、失败或干预时发送邮件提醒
+   - Webhook 通知 - 向外部服务发送 HTTP POST 通知
+   - 任务看板 UI - 可视化 Kanban 风格任务看板，支持拖拽
+   - API 密钥认证 - 安全 API 访问，支持可配置 API 密钥
+   - Grafana 监控面板 - 预置 Grafana 监控面板模板
+   - 增强的错误处理 - 改进的错误恢复和优雅降级
+
+2. **Configuration Section Updates**:
+   - 添加邮件配置 (Email Configuration) 部分，包含示例配置
+   - 添加 Webhook 配置 (Webhook Configuration) 部分，包含示例配置
+   - 添加 API 密钥配置 (API Key Configuration) 部分，包含示例配置
+
+3. **Project Structure Updates**:
+   - 添加 `email_notifier.py` - 邮件通知服务
+   - 添加 `webhook.py` - Webhook 通知服务
+   - 添加 `metrics.py` - 指标收集
+   - 添加 `console.py` - 控制台 UI
+   - 添加 `dashboards/` 目录 - Grafana 监控面板模板
+   - 添加 `static/` 目录 - Web 看板静态文件
+   - 添加 `api.py` - REST API 服务
+   - 添加 `test_email_notifier.py`, `test_webhook.py` 测试文件
+
+4. **Commit**: Pushed as `docs: sync README.zh-CN.md with English README`
+
+---
+
 ## 2026-03-08 - 更新README.md文档 (feature-019)
 
 **任务描述**: 更新README.md以包含所有已实现的功能：1) 邮件通知服务 (feature-007) 2) 任务看板功能 (feature-011) 3) API密钥认证 (feature-013) 4) Webhook通知 (feature-005) 5) Grafana仪表板模板 (feature-012) 6) 错误处理改进 (feature-018)。确保文档与代码功能保持同步。
@@ -661,6 +694,8 @@ Accumulated experience and lessons learned from task execution.
 
 
 
+
+
 2026-03-08 - API密钥认证 (feature-013)
 
 **任务描述**: 为API服务添加API Key认证机制，支持配置多个密钥，实现基本的访问控制。
@@ -907,7 +942,10 @@ Code Review Findings (Production-Grade Perspective)
 
 ---
 
-### 2026-03-08 - 改进代码错误处理和日志记录 (feature-018)
+
+---
+
+2026-03-08 - 改进代码错误处理和日志记录 (feature-018)
 
 **任务描述**: 审查并改进代码中的错误处理：1) 将 silent except:pass 改为适当的错误日志记录 2) 添加更详细的异常信息到日志 3) 确保关键错误被正确传播而非静默忽略。需要审查 agent_core.py, human_intervention.py, session_manager.py, webhook.py, email_notifier.py 等模块。
 
@@ -916,7 +954,10 @@ Code Review Findings (Production-Grade Perspective)
 
 我已成功完成代码错误处理和日志记录的改进任务 (feature-018)。
 
-### 审查结果
+
+---
+
+审查结果
 
 审查了以下模块的错误处理：
 - `agent/agent_core.py` 
@@ -928,9 +969,32 @@ Code Review Findings (Production-Grade Perspective)
 - `agent/test_runner.py`
 - `agent/config_reloader.py`
 
-### 发现的问题
+
+---
+
+发现的问题
 
 在 `agent_core.py` 中发现 **4 处静默异常处理** (`except Exception: pass`):
 1. `_send_webhook_notification_async()` - 静默忽略 webhook 错误
 2. `_send_webhook_notification()` - 静默忽略 webhook 错误
 3. `_push_log_async()` - 静默
+
+---
+
+### 2026-03-08 - 更新README.md文档 (feature-019)
+
+**任务描述**: 更新README.md以包含所有已实现的功能：1) 邮件通知服务 (feature-007) 2) 任务看板功能 (feature-011) 3) API密钥认证 (feature-013) 4) Webhook通知 (feature-005) 5) Grafana仪表板模板 (feature-012) 6) 错误处理改进 (feature-018)。确保文档与代码功能保持同步。
+
+**执行结果**: completed
+**执行消息**: ## 任务完成 ✓
+
+我已成功更新 README.md 文档，包含所有已实现的功能：
+
+### 新增功能文档 (Features)
+
+1. **邮件通知服务 (feature-007)** - Send email alerts on task completion, failure, or intervention
+2. **Webhook通知 (feature-005)** - HTTP POST notifications to external services  
+3. **任务看板功能 (feature-011)** - Visual Kanban-style task board with drag-and-drop support
+4. **API密钥认证 (feature-013)** - Secure API access with configurable API keys
+5. **Grafana仪表板模板 (feature-012)** - Pre-built Grafana dashboard template for monitoring
+6. **错误处

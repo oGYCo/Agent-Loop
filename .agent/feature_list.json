@@ -260,10 +260,10 @@
     {
       "id": "feature-019",
       "name": "更新README.md文档",
-      "description": "更新README.md以包含所有已实现的功能：1) 邮件通知服务 (feature-007) 2) 任务看板功能 (feature-011) 3) API密钥认证 (feature-013) 4) Webhook通知 (feature-005) 5) Grafana仪表板模板 (feature-012)。确保文档与代码功能保持同步。",
-      "priority": 3,
-      "status": "pending",
-      "passes": false,
+      "description": "更新README.md以包含所有已实现的功能：1) 邮件通知服务 (feature-007) 2) 任务看板功能 (feature-011) 3) API密钥认证 (feature-013) 4) Webhook通知 (feature-005) 5) Grafana仪表板模板 (feature-012) 6) 错误处理改进 (feature-018)。确保文档与代码功能保持同步。",
+      "priority": 2,
+      "status": "completed",
+      "passes": true,
       "context_files": [
         "README.md",
         "agent/email_notifier.py",
@@ -278,8 +278,8 @@
       "name": "更新README.zh-CN.md中文文档",
       "description": "更新README.zh-CN.md以包含所有已实现的功能，与README.md保持同步。确保所有新功能的描述准确且翻译正确。",
       "priority": 3,
-      "status": "pending",
-      "passes": false,
+      "status": "completed",
+      "passes": true,
       "context_files": [
         "README.zh-CN.md",
         "README.md"
@@ -351,7 +351,7 @@
     {
       "id": "feature-025",
       "name": "增强MEMORY.md和CLAUDE.md文档",
-      "description": "更新MEMORY.md和CLAUDE.md：1) 添加从当前任务中提取的关键经验 2) 更新架构图和模块说明 3) 添加新发现的最佳实践。确保文档反映项目的最新状态。",
+      "description": "更新MEMORY.md和CLAUDE.md：1) 添加从当前任务中提取的关键经验 2) 更新架构图和模块说明 3) 添加新发现的最佳实践 (如错误处理改进)。确保文档反映项目的最新状态。",
       "priority": 7,
       "status": "pending",
       "passes": false,
