@@ -1,17 +1,18 @@
 <p align="center">
-  <img src="assets/logo.svg" alt="Agent-Loop" width="140" />
+  <img src="assets/logo.svg" alt="Agent-Loop" width="180" />
 </p>
 
 <h1 align="center">Agent-Loop</h1>
 
 <p align="center">
-  <em>基于 Claude Agent SDK 构建的生产级自主 AI Agent 系统，支持 MiniMax API 后端</em>
+  <em>基于 Claude Agent SDK 构建的生产级自主 AI Agent 系统</em>
 </p>
 
 <p align="center">
   <a href="https://www.python.org/"><img src="https://img.shields.io/badge/python-3.11+-blue.svg" alt="Python 3.11+" /></a>
   <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-green.svg" alt="License: MIT" /></a>
   <a href="https://github.com/oGYCo/agent-loop/stargazers"><img src="https://img.shields.io/github/stars/oGYCo/agent-loop" alt="Stars" /></a>
+  <a href="https://github.com/oGYCo/agent-loop/releases"><img src="https://img.shields.io/github/v/release/oGYCo/agent-loop?display_name=tag" alt="Version" /></a>
 </p>
 
 <p align="center">
@@ -151,6 +152,10 @@ python main.py add "新功能"
 │  └──────────────────────────────────────────────────────────┘  │
 └─────────────────────────────────────────────────────────────────┘
 ```
+
+<p align="center">
+  <img src="assets/logo.svg" alt="Agent-Loop" width="48" />
+</p>
 
 ### 核心模块
 
@@ -351,6 +356,18 @@ agent-loop/
 - [会话管理](https://platform.claude.com/docs/en/agent-sdk/sessions)
 - [MCP 协议](https://modelcontextprotocol.io/introduction)
 
-## 许可证
+---
 
-MIT License - 详见 [LICENSE](LICENSE)。
+<p align="center">
+  <img src="assets/logo.svg" alt="Agent-Loop" width="64" />
+</p>
+
+<p align="center">
+  <strong>Agent-Loop</strong> · 基于 Claude Agent SDK 构建
+</p>
+
+<p align="center">
+  <a href="https://github.com/oGYCo/agent-loop">GitHub</a> ·
+  <a href="https://github.com/oGYCo/agent-loop/issues">问题反馈</a> ·
+  <a href="https://github.com/oGYCo/agent-loop/blob/main/LICENSE">许可证</a>
+</p>

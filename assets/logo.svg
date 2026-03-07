@@ -1,59 +1,73 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240" width="100%" height="100%">
   <defs>
-    <!-- Premium Gradients -->
+    <!-- Primary gradient - dark slate to deep navy -->
     <linearGradient id="gradPrimary" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#2D3748" />
-      <stop offset="100%" stop-color="#1A202C" />
-    </linearGradient>
-    
-    <linearGradient id="gradAccent" x1="0%" y1="100%" x2="100%" y2="0%">
-      <stop offset="0%" stop-color="#D69E2E" />
-      <stop offset="50%" stop-color="#ECC94B" />
-      <stop offset="100%" stop-color="#F6E05E" />
+      <stop offset="0%" stop-color="#1E293B" />
+      <stop offset="100%" stop-color="#0F172A" />
     </linearGradient>
 
-    <!-- Subtle Drop Shadow -->
+    <!-- Accent gradient - warm gold -->
+    <linearGradient id="gradGold" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#F59E0B" />
+      <stop offset="50%" stop-color="#FBBF24" />
+      <stop offset="100%" stop-color="#FCD34D" />
+    </linearGradient>
+
+    <!-- Loop gradient - cyan accent -->
+    <linearGradient id="gradLoop" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#06B6D4" />
+      <stop offset="100%" stop-color="#22D3EE" />
+    </linearGradient>
+
+    <!-- Glow effect -->
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+
+    <!-- Drop shadow -->
     <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
-      <feDropShadow dx="0" dy="10" stdDeviation="12" flood-color="#000000" flood-opacity="0.15" />
+      <feDropShadow dx="0" dy="4" stdDeviation="8" flood-color="#000000" flood-opacity="0.25" />
     </filter>
   </defs>
 
-  <rect width="240" height="240" fill="transparent" />
+  <!-- Background circle -->
+  <circle cx="120" cy="120" r="110" fill="url(#gradPrimary)" />
 
-  <g transform="translate(120, 110)">
-    <g filter="url(#shadow)">
-      
-      <!-- Back/Left Pillar -->
-      <path d="M -70 20 L -20 -10 L -20 -80 L -70 -50 Z" fill="#718096" />
-      
-      <!-- Back/Right Pillar -->
-      <path d="M 70 20 L 20 -10 L 20 -80 L 70 -50 Z" fill="#A0AEC0" />
+  <!-- Outer ring - representing the cycle/loop -->
+  <circle cx="120" cy="120" r="85" fill="none" stroke="url(#gradLoop)" stroke-width="6" opacity="0.3" />
 
-      <!-- Top Bridge -->
-      <path d="M -20 -80 L 0 -95 L 70 -50 L 50 -35 Z" fill="#CBD5E0" />
-      <path d="M -70 -50 L -50 -35 L 20 -80 Z" fill="#E2E8F0" />
+  <!-- Inner ring segments -->
+  <path d="M 120 45 A 75 75 0 0 1 195 120" fill="none" stroke="#334155" stroke-width="8" stroke-linecap="round" />
+  <path d="M 195 120 A 75 75 0 0 1 120 195" fill="none" stroke="#475569" stroke-width="8" stroke-linecap="round" />
+  <path d="M 120 195 A 75 75 0 0 1 45 120" fill="none" stroke="#334155" stroke-width="8" stroke-linecap="round" />
+  <path d="M 45 120 A 75 75 0 0 1 120 45" fill="none" stroke="#475569" stroke-width="8" stroke-linecap="round" />
 
-      <!-- Left Lower Bridge -->
-      <path d="M -70 -50 L -90 -35 L -40 0 L -20 -15 Z" fill="#4A5568" />
-      <path d="M -70 20 L -90 5 L -40 -30 L -20 -15 Z" fill="#2D3748" />
+  <!-- Central loop - the "agent loop" core -->
+  <g filter="url(#glow)">
+    <!-- Loop arrow - top right -->
+    <path d="M 130 95 L 155 85 L 150 105 L 175 95" fill="none" stroke="url(#gradGold)" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" />
 
-      <!-- Right Lower Bridge -->
-      <path d="M 70 -50 L 90 -35 L 40 0 L 20 -15 Z" fill="#E2E8F0" />
-      <path d="M 70 20 L 90 5 L 40 -30 L 20 -15 Z" fill="#EDF2F7" />
+    <!-- Loop arrow - bottom right -->
+    <path d="M 175 125 L 150 115 L 155 135 L 130 125" fill="none" stroke="url(#gradGold)" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" />
 
-      <!-- Front Crossing Pillar (The Accent/Agent Loop) -->
-      <path d="M -40 0 L 0 25 L 40 0 L 0 -25 Z" fill="url(#gradAccent)" />
-      <path d="M -40 0 L 0 25 L 0 85 L -40 60 Z" fill="#B7791F" />
-      <path d="M 40 0 L 0 25 L 0 85 L 40 60 Z" fill="#D69E2E" />
+    <!-- Loop arrow - bottom left -->
+    <path d="M 110 145 L 85 155 L 90 135 L 65 145" fill="none" stroke="url(#gradGold)" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" />
 
-      <!-- Front Left Connection -->
-      <path d="M -70 20 L -40 40 L -40 100 L -70 80 Z" fill="url(#gradPrimary)" />
-      <path d="M -40 40 L 0 65 L 0 125 L -40 100 Z" fill="#1A202C" />
-
-      <!-- Front Right Connection -->
-      <path d="M 70 20 L 40 40 L 40 100 L 70 80 Z" fill="#A0AEC0" />
-      <path d="M 40 40 L 0 65 L 0 125 L 40 100 Z" fill="#718096" />
-
-    </g>
+    <!-- Loop arrow - top left -->
+    <path d="M 65 115 L 90 125 L 85 105 L 110 115" fill="none" stroke="url(#gradGold)" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" />
   </g>
+
+  <!-- Center node - the "agent" core -->
+  <circle cx="120" cy="120" r="20" fill="url(#gradGold)" filter="url(#shadow)" />
+  <circle cx="120" cy="120" r="12" fill="#0F172A" />
+
+  <!-- Connection dots -->
+  <circle cx="120" cy="45" r="5" fill="#22D3EE" opacity="0.8" />
+  <circle cx="195" cy="120" r="5" fill="#22D3EE" opacity="0.8" />
+  <circle cx="120" cy="195" r="5" fill="#22D3EE" opacity="0.8" />
+  <circle cx="45" cy="120" r="5" fill="#22D3EE" opacity="0.8" />
 </svg>

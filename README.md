@@ -1,11 +1,11 @@
 <p align="center">
-  <img src="assets/logo.svg" alt="Agent-Loop" width="140" />
+  <img src="assets/logo.svg" alt="Agent-Loop" width="180" />
 </p>
 
 <h1 align="center">Agent-Loop</h1>
 
 <p align="center">
-  <em>A production-ready autonomous AI agent system powered by Claude Agent SDK with MiniMax API backend</em>
+  <em>Production-ready autonomous AI agent system powered by Claude Agent SDK</em>
 </p>
 
 <p align="center">
@@ -151,6 +151,10 @@ python main.py add "New Feature"
 │  └──────────────────────────────────────────────────────────┘   │
 └─────────────────────────────────────────────────────────────────┘
 ```
+
+<p align="center">
+  <img src="assets/logo.svg" alt="Agent-Loop" width="48" />
+</p>
 
 ### Core Modules
 
@@ -351,6 +355,18 @@ agent-loop/
 - [Session Management](https://platform.claude.com/docs/en/agent-sdk/sessions)
 - [MCP Protocol](https://modelcontextprotocol.io/introduction)
 
-## License
+---
 
-MIT License - see [LICENSE](LICENSE) for details.
+<p align="center">
+  <img src="assets/logo.svg" alt="Agent-Loop" width="64" />
+</p>
+
+<p align="center">
+  <strong>Agent-Loop</strong> · Built with Claude Agent SDK
+</p>
+
+<p align="center">
+  <a href="https://github.com/oGYCo/agent-loop">GitHub</a> ·
+  <a href="https://github.com/oGYCo/agent-loop/issues">Issues</a> ·
+  <a href="https://github.com/oGYCo/agent-loop/blob/main/LICENSE">License</a>
+</p>
