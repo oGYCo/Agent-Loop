@@ -154,7 +154,7 @@ class HumanIntervention:
             print("Agent stopped. Please resolve the issue and restart.")
             exit(1)
 
-    def notify_completion(self, summary: Dict[str, Any]) -> None:  # type: ignore[no-untyped-def]
+    def notify_completion(self, summary: Dict[str, Any]) -> None:
         """通知任务完成"""
         completion_file = self.state_manager.agent_dir / "session_summary.txt"
 
