@@ -11,7 +11,7 @@
         "NEW_FEATURES_ANALYSIS.md"
       ],
       "created_at": "2026-03-07",
-      "updated_at": "2026-03-07"
+      "updated_at": "2026-03-08"
     },
     {
       "id": "feature-002",
@@ -124,15 +124,15 @@
       "name": "交互式CLI (Rich库)",
       "description": "使用rich库改进CLI输出：彩色日志、进度条、表格显示任务列表、状态面板。需要阅读main.py了解当前CLI结构。",
       "priority": 9,
-      "status": "pending",
-      "passes": false,
+      "status": "completed",
+      "passes": true,
       "context_files": [
         "main.py",
-        "agent/agent_core.py"
+        "agent/console.py"
       ],
       "verify_command": "python main.py status",
       "created_at": "2026-03-07",
-      "updated_at": "2026-03-07"
+      "updated_at": "2026-03-08"
     },
     {
       "id": "feature-010",
@@ -153,29 +153,30 @@
       "name": "任务看板Web界面",
       "description": "在Web Dashboard中添加任务看板功能：可视化任务列表，支持拖拽调整优先级，任务详情展示。需要先完成基础Dashboard和API。",
       "priority": 8,
-      "status": "pending",
-      "passes": false,
+      "status": "completed",
+      "passes": true,
       "context_files": [
         "agent/task_selector.py",
         "agent/state_manager.py"
       ],
       "verify_command": "访问看板页面",
       "created_at": "2026-03-07",
-      "updated_at": "2026-03-07"
+      "updated_at": "2026-03-08"
     },
     {
       "id": "feature-012",
       "name": "Grafana仪表板模板",
       "description": "创建Grafana仪表板JSON模板，包含预置面板：任务统计、性能指标、会话历史、错误分析。配合Prometheus指标使用。",
       "priority": 9,
-      "status": "pending",
-      "passes": false,
+      "status": "completed",
+      "passes": true,
       "context_files": [
-        "NEW_FEATURES_ANALYSIS.md"
+        "agent/metrics.py",
+        "agent/performance_monitor.py"
       ],
       "verify_command": "导入Grafana验证",
       "created_at": "2026-03-07",
-      "updated_at": "2026-03-07"
+      "updated_at": "2026-03-08"
     },
     {
       "id": "feature-013",
