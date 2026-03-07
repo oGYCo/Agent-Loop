@@ -49,78 +49,6 @@ Before implementing new features, always check these docs first:
 5. **Session Management**: https://platform.claude.com/docs/en/agent-sdk/sessions
 6. **File Checkpointing**: https://platform.claude.com/docs/en/agent-sdk/file-checkpointing
 
-## agent_core.py 结构分析 (self-002)
-
-### 文件概览
-- **行数**: 770 行
-- **主要功能**: 核心 Agent 逻辑，使用 Claude Agent SDK 执行任务
-
-### 核心组件
-
-#### 1. Hooks 回调 (第 27-87 行)
-- `pre_tool_hook`: 工具执行前调用，记录工具调用信息
-- `post_tool_hook`: 工具执行后调用，流式输出结果
-- `notification_hook`: 处理通知消息
-- `stop_hook`: 处理停止事件
-
-#### 2. AgentCore 类 (第 95-771 行)
-
-**初始化方法**:
-- `__init__`: 初始化 StateManager, TaskSelector, GitHelper, HumanIntervention
-
-**提示词生成**:
-- `get_system_prompt()`: 返回 Agent 系统提示词 (第 110-168 行)
-- `get_task_prompt()`: 构建任务特定提示词 (第 170-241 行)
-- `_get_verify_command()`: 获取验证命令 (第 243-247 行)
-
-**任务执行**:
-- `execute_task_with_sdk()`: 使用 Claude Agent SDK 异步执行任务 (核心方法，第 249-543 行)
-- `execute_task()`: 同步包装器 (第 545-555 行)
-- `verify_task()`: 验证任务完成度 (第 557-572 行)
-- `handle_error()`: 错误处理与人干预 (第 574-588 行)
-
-**会话管理**:
-- `initialize_session()`: 创建新会话 (第 590-620 行)
-- `gather_context()`: 收集当前任务和状态 (第 622-637 行)
-- `complete_session()`: 完成会话并提交 (第 639-657 行)
-- `extract_and_save_experience()`: 记录经验到 MEMORY.md (第 670-707 行)
-
-**主循环**:
-- `run_agent_loop()`: Agent 主循环 (第 709-770 行)
-
-### SDK 集成方式
-
-使用 `ClaudeAgentOptions` 配置:
-
-1. **模型配置**: `model`, `system_prompt`, `env` (API 密钥和基础 URL)
-2. **工具权限**: `allowed_tools` 列出所有允许的工具
-3. **流式输出**: `include_partial_messages=True`
-4. **文件检查点**: `enable_file_checkpointing=True`
-5. **权限模式**: `permission_mode="acceptEdits"`
-6. **MCP 服务器**: `mcp_servers` 配置 Playwright 和 Context7
-7. **Hooks 注册**: 通过 `hooks` 字典注册 PreToolUse, PostToolUse, Notification, Stop
-
-### 任务执行流程
-
-1. **选择任务**: TaskSelector.select_next_task()
-2. **构建提示词**: get_task_prompt() 包含项目结构、Git 状态
-3. **执行任务**: 使用 ClaudeSDKClient 异步执行
-4. **流式处理**: 遍历 receive_response() 处理消息
-   - `StreamEvent`: 实时事件 (工具调用、文本增量)
-   - `AssistantMessage`: AI 响应 (工具调用、工具结果)
-   - `UserMessage`: 工具执行结果
-   - `ResultMessage`: 最终结果
-5. **验证任务**: verify_task() 检查 Git 变更
-6. **记录经验**: extract_and_save_experience() 保存到 MEMORY.md
-
-### 关键设计模式
-
-- **异步迭代器**: 使用 `async for` 处理流式响应
-- **上下文管理器**: `async with ClaudeSDKClient()` 管理连接
-- **状态管理**: StateManager 持久化到 JSON
-- **Git 集成**: 每次会话自动提交
-7. **MCP Protocol**: https://modelcontextprotocol.io/introduction
-
 ## Key Patterns
 
 ### Agent Loop
@@ -149,7 +77,7 @@ options = ClaudeAgentOptions(
         "ANTHROPIC_BASE_URL": "https://api.minimaxi.com/anthropic",
     },
     allowed_tools=["Read", "Write", "Bash", ...],
-    include_partial_messages=True,  # Enable streaming
+    include_partial_messages=True,
     permission_mode="acceptEdits",
     hooks={...},
     mcp_servers={...},
@@ -219,7 +147,6 @@ from claude_agent_sdk import (
 
 ## API Configuration
 
-Set via environment variables:
 ```bash
 export ANTHROPIC_AUTH_TOKEN="your-token"
 export ANTHROPIC_BASE_URL="https://api.minimaxi.com/anthropic"
@@ -260,47 +187,51 @@ Or via `env` parameter in ClaudeAgentOptions.
 - Supports file modification tracking and recovery
 - Default value is `False`
 
-## 2026-03-07 - refactor-006: File Checkpointing
+---
 
-**Task**: Implement file checkpointing with `enable_file_checkpointing=True`
+## Task Experience Records
 
-**Implementation**:
-- Added `enable_file_checkpointing=True` parameter to ClaudeAgentOptions in agent_core.py (line 241)
-- This enables SDK's built-in file modification tracking and recovery capabilities
+### 2026-03-07 - Add type annotations to state_manager.py (self-004)
 
-**Verification**:
-- All 106 tests passed
-- Command: `python -m pytest tests/ -v`
-
-**Key Insight**:
-- Use `python -c "import inspect; print(inspect.signature(ClaudeAgentOptions))"` to discover available SDK parameters
-- File checkpointing helps track file changes during agent execution for recovery purposes
-
-### 2026-03-07 - Implement file checkpointing (refactor-006)
-
-**任务描述**: 实现文件检查点功能：enable_file_checkpointing=True，支持文件修改追踪和恢复
+**任务描述**: 使用 mypy 检查 agent/state_manager.py 的类型错误，然后添加完整的类型注解。
 
 **执行结果**: completed
-**执行消息**: ## 任务完成总结
-
-已成功实现文件检查点功能（refactor-006）。
-
-### 修改内容
-
-**文件**: `agent/agent_core.py`
-- 在 `ClaudeAgentOptions` 中添加了 `enable_file_checkpointing=True` 参数（第241行）
-
-### 验证结果
-- 所有 106 个测试通过 ✅
-
-### 任务状态更新
-- `featu
 
 **学到的经验**:
-- [待填写]
+- `json.load()` 返回 `Any` 类型，需要使用 `typing.cast()` 显式转换为目标类型
+- 这是处理 JSON 反序列化类型注解的标准 Python 模式
 
-**改进建议**:
-- [待填写]
+**改进建议**: 无
+
+---
+
+### 2026-03-07 - Add type annotations to task_selector.py (self-005)
+
+**任务描述**: 使用 mypy 检查 agent/task_selector.py 的类型错误，然后添加完整的类型注解。
+
+**执行结果**: completed
+
+**学到的经验**:
+- 从 `dict[str, Any]` 访问的列表元素默认为 `Any` 类型，需要使用 `cast()` 显式转换
+- 可以在类级别定义类型别名（如 `FeatureType = dict[str, Any]`）来提高代码可读性
+
+**改进建议**: 无
+
+---
+
+### 2026-03-07 - Add type annotations to git_helper.py (self-006)
+
+**任务描述**: 使用 mypy 检查 agent/git_helper.py 的类型错误，然后添加完整的类型注解。
+
+**执行结果**: completed
+
+**学到的经验**:
+- git_helper.py 已有完整类型注解，只需清理冗余导入
+- 使用现代 Python 类型提示（list 而非 List）提高代码简洁性
+
+**改进建议**: 无
+
+---
 
 ### 2026-03-07 - Run full test suite (self-014)
 
@@ -319,109 +250,19 @@ Or via `env` parameter in ClaudeAgentOptions.
 - 将 `from task_selector import` 改为 `from agent.task_selector import`
 - 将期望的中文字符串改为英文字符串
 
-**验证结果**:
-- 所有 106 个测试通过 ✅
-
 **学到的经验**:
 - 测试文件中的模块路径必须与实际模块路径一致，agent 目录下的模块需要使用完整的 `agent.xxx` 路径
 - 当代码更改时（如系统提示词从中文改为英文），对应的测试也需要同步更新
 
-**改进建议**:
-- 无
+**改进建议**: 无
 
-### 2026-03-07 - Fix MCP tool authorization (refactor-007)
-
-**任务描述**: 修复 MCP 工具授权：正确配置 allowed_tools 包含所有 MCP 工具
-
-**执行结果**: completed
-**执行消息**: ## 任务完成
-
-我已成功修复 MCP 工具授权问题。主要修改如下：
-
-### 修改内容
-
-1. **更新 `allowed_tools` 配置** (`agent/agent_core.py`):
-   - 添加了完整的 Playwright MCP 工具列表（包括 browser_console_messages, browser_resize, browser_select_option, 
-
-**学到的经验**:
-- [待填写]
-
-**改进建议**:
-- [待填写]
-
-### 2026-03-07 - Read and understand CLAUDE.md (self-001)
-
-**任务描述**: 读取 CLAUDE.md 文件，理解项目开发原则和架构，然后读取 README.md 了解项目概览。确保完全理解项目的开发规范。
-
-**执行结果**: completed
-**执行消息**: I have read both CLAUDE.md and README.md. Let me summarize what I've understood:
-
-## Project Summary
-
-**Agent-Loop** is a production-ready autonomous AI agent system built on Claude Agent SDK with Min
-
-**学到的经验**:
-- [待填写]
-
-**改进建议**:
-- [待填写]
-
-### 2026-03-07 - Analyze agent_core.py structure (self-002)
-
-**任务描述**: 读取 agent/agent_core.py 文件，理解核心 Agent 逻辑、SDK 集成方式和任务执行流程。
-
-**执行结果**: completed
-**执行消息**: Task completed successfully. Here's the analysis summary:
-
-## agent_core.py 结构分析总结
-
-### 文件信息
-- **路径**: `agent/agent_core.py`
-- **行数**: 770 行
-
-### 核心组件
-
-| 组件 | 行号 | 功能 |
-|------|------|------|
-| **Hook
-
-**学到的经验**:
-- [待填写]
-
-**改进建议**:
-- [待填写]
-
-### 2026-03-07 - Run full test suite (self-014)
-
-**任务描述**: 运行完整的测试套件，确保所有测试通过。分析失败的测试并尝试修复。
-
-**执行结果**: completed
-**执行消息**: ## Summary
-
-Successfully ran the full test suite and fixed all failing tests.
-
-### Test Results
-- **Before fix**: 1 failed, 93 passed, 12 errors
-- **After fix**: **106 passed**, 2 warnings
-
-### Issues
-
-**学到的经验**:
-- [待填写]
-
-**改进建议**:
-- [待填写]
+---
 
 ### 2026-03-07 - Verify project runs correctly (self-015)
 
 **任务描述**: 实际运行项目，验证 Agent 可以正常启动和执行任务。测试 init 和 list 命令。
 
 **执行结果**: completed
-
-**验证结果**:
-- `python main.py list` - 成功列出所有任务 ✅
-- `python main.py init` - 成功初始化项目 ✅
-- `python main.py status` - 成功显示状态信息 ✅
 
 **学到的经验**:
 - 项目 CLI 结构完整，支持子命令：init, run, list, add, status
@@ -429,52 +270,15 @@ Successfully ran the full test suite and fixed all failing tests.
 - 任务列表使用 feature_list.json 存储，格式包含 id, name, description, priority, status, passes 等字段
 - 命令验证比运行完整测试更快用于基本验证
 
-**改进建议**:
-- 无
+**改进建议**: 无
 
-### 2026-03-07 - Verify project runs correctly (self-015)
-
-**任务描述**: 实际运行项目，验证 Agent 可以正常启动和执行任务。测试 init 和 list 命令。
-
-**执行结果**: completed
-**执行消息**: ## Task Complete
-
-I successfully verified that the project runs correctly by testing the `init` and `list` commands.
-
-### Verification Results
-
-| Command | Status |
-|---------|--------|
-| `python main
-
-**学到的经验**:
-- [待填写]
-
-**改进建议**:
-- [待填写]
+---
 
 ### 2026-03-07 - Add logging instead of print statements (self-003)
 
 **任务描述**: 将 agent_core.py 中的 print 语句替换为 Python logging 模块，创建统一的日志配置。
 
 **执行结果**: completed
-
-**修改内容**:
-1. 添加 `import logging` 到文件头部
-2. 创建 `setup_logging()` 函数配置日志记录器
-3. 创建模块级 `logger` 实例
-4. 将大部分 print 语句替换为 logging 调用：
-   - `logger.info()`: 任务开始/完成、会话状态
-   - `logger.debug()`: 详细调试信息
-   - `logger.error()`: 错误信息
-
-**保留的 print 语句**:
-- 流式输出（hooks 和 SDK 响应处理中的实时用户反馈）
-- 这些需要直接输出到 stdout 以提供实时反馈
-
-**验证结果**:
-- `grep -c 'import logging' agent/agent_core.py` 返回 1
-- Python 导入测试通过
 
 **学到的经验**:
 - 日志模块应该保留流式输出使用 print，因为这些是面向用户的实时反馈
@@ -485,176 +289,13 @@ I successfully verified that the project runs correctly by testing the `init` an
 - 可以考虑将日志配置移到单独的配置模块中，实现更统一的日志管理
 - 可以添加日志文件输出而非仅控制台输出
 
-### 2026-03-07 - Add logging instead of print statements (self-003)
-
-**任务描述**: 将 agent_core.py 中的 print 语句替换为 Python logging 模块。创建统一的日志配置。
-
-**执行结果**: completed
-**执行消息**: Task completed successfully. Here's a summary:
-
-## Summary
-
-### Changes Made
-1. **Added logging import** at the top of `agent/agent_core.py`
-2. **Created logging configuration**:
-   - Added `setup_log
-
-**学到的经验**:
-- [待填写]
-
-**改进建议**:
-- [待填写]
-
-### 2026-03-07 - Add type annotations to task_selector.py (self-005)
-
-**任务描述**: 使用 mypy 检查 agent/task_selector.py 的类型错误，然后添加完整的类型注解。
-
-**执行结果**: completed
-
-**问题分析**:
-- mypy 报错：`Returning Any from function declared to return "dict[str, Any] | None"`
-- 原因：`data.get("features", [])` 返回 `list[Any]` 类型，需要使用 `cast()` 转换为 `list[dict[str, Any]]`
-
-**修复内容**:
-- 添加 `from typing import cast` 导入
-- 为所有方法中的 `data` 和 `features` 变量添加显式类型注解
-- 对 `data.get("features", [])` 使用 `cast(list[dict[str, Any]], ...)` 包装
-
-**验证结果**:
-- `python -m mypy agent/task_selector.py` - task_selector.py 错误已修复 ✅
-- `pytest tests/test_task_selector.py -v` - 所有 11 个测试通过 ✅
-
-**学到的经验**:
-- 从 `dict[str, Any]` 访问的列表元素默认为 `Any` 类型，需要使用 `cast()` 显式转换
-- 可以在类级别定义类型别名（如 `FeatureType = dict[str, Any]`）来提高代码可读性
-
-**改进建议**:
-- 无
-
-### 2026-03-07 - Add type annotations to state_manager.py (self-004)
-
-**任务描述**: 使用 mypy 检查 agent/state_manager.py 的类型错误，然后添加完整的类型注解。
-
-**执行结果**: completed
-
-**问题分析**:
-- mypy 报错：`Returning Any from function declared to return "dict[str, Any]"`
-- 原因：`json.load()` 返回 `Any` 类型，但函数声明返回 `dict[str, Any]`
-
-**修复内容**:
-- 添加 `from typing import cast` 导入
-- 对所有 `json.load()` 调用使用 `cast(dict[str, Any], json.load(f))` 包装
-- 共修复 5 处类型错误
-
-**验证结果**:
-- `python -m mypy agent/state_manager.py` - state_manager.py 错误已修复 ✅
-- `pytest tests/test_state_manager.py -v` - 所有 19 个测试通过 ✅
-
-**学到的经验**:
-- `json.load()` 返回 `Any` 类型，需要使用 `typing.cast()` 显式转换为目标类型
-- 这是处理 JSON 反序列化类型注解的标准 Python 模式
-
-**改进建议**:
-- 无
-
-### 2026-03-07 - Add type annotations to state_manager.py (self-004)
-
-**任务描述**: 使用 mypy 检查 agent/state_manager.py 的类型错误，然后添加完整的类型注解。
-
-**执行结果**: completed
-**执行消息**: ## Task Complete
-
-Successfully added type annotations to `agent/state_manager.py`.
-
-### Summary
-
-**Problem**: mypy reported `Returning Any from function declared to return "dict[str, Any]"` errors bec
-
-**学到的经验**:
-- [待填写]
-
-**改进建议**:
-- [待填写]
-
-### 2026-03-07 - Add type annotations to task_selector.py (self-005)
-
-**任务描述**: 使用 mypy 检查 agent/task_selector.py 的类型错误，然后添加完整的类型注解。
-
-**执行结果**: completed
-**执行消息**: ## Task Complete
-
-Successfully added type annotations to `agent/task_selector.py`.
-
-### Summary
-
-**Problem**: mypy reported `Returning Any from function declared to return "dict[str, Any] | None"` at
-
-**学到的经验**:
-- [待填写]
-
-**改进建议**:
-- [待填写]
-
-### 2026-03-07 - Add type annotations to git_helper.py (self-006)
-
-**任务描述**: 使用 mypy 检查 agent/git_helper.py 的类型错误，然后添加完整的类型注解。
-
-**执行结果**: completed
-
-**问题分析**:
-- git_helper.py 已有基本类型注解，但有不必要的导入和旧式类型提示
-- 移除了未使用的 `datetime` 导入
-- 将 `List[str]` 更新为现代的 `list[str]` (Python 3.9+)
-
-**验证结果**:
-- `python -m mypy agent/git_helper.py --strict` - 无错误 ✅
-- `pytest tests/test_git_helper.py -v` - 所有 21 个测试通过 ✅
-
-**学到的经验**:
-- git_helper.py 已有完整类型注解，只需清理冗余导入
-- 使用现代 Python 类型提示（list 而非 List）提高代码简洁性
-
-**改进建议**:
-- 无
-
-### 2026-03-07 - Add type annotations to git_helper.py (self-006)
-
-**任务描述**: 使用 mypy 检查 agent/git_helper.py 的类型错误，然后添加完整的类型注解。
-
-**执行结果**: completed
-**执行消息**: ## Summary
-
-Task **self-006** (Add type annotations to git_helper.py) completed successfully.
-
-### Changes Made
-
-**File**: `agent/git_helper.py`
-- Removed unused `datetime` import
-- Updated `List[str]
-
-**学到的经验**:
-- [待填写]
-
-**改进建议**:
-- [待填写]
+---
 
 ### 2026-03-07 - Create config validation (self-011)
 
 **任务描述**: 为 .agent/config.json 添加验证逻辑，确保必填字段存在且格式正确。
 
 **执行结果**: completed
-
-**修改内容**:
-1. 在 `agent/state_manager.py` 添加了 `ConfigValidationError` 异常类
-2. 添加了 `validate_config()` 方法，验证:
-   - 必填字段存在：project_name, project_type, model, session_type, test_command, test_pattern, max_errors_before_intervention, context_window_limit, documentation_urls
-   - 类型正确：字符串、整数、字典
-   - 数值范围：max_errors_before_intervention > 0, context_window_limit > 0
-   - documentation_urls 不为空
-
-**验证结果**:
-- 现有 106 个测试全部通过 ✅
-- `python -m mypy agent/state_manager.py` - 无新错误 ✅
 
 **学到的经验**:
 - 验证配置时先检查字段存在和类型，再检查值的范围，避免类型错误导致的运行时异常
@@ -663,70 +304,13 @@ Task **self-006** (Add type annotations to git_helper.py) completed successfully
 **改进建议**:
 - 可以在 main.py 启动时自动调用 validate_config() 确保配置有效
 
-### 2026-03-07 - Create config validation (self-011)
-
-**任务描述**: 为 .agent/config.json 添加验证逻辑，确保必填字段存在且格式正确。
-
-**执行结果**: completed
-**执行消息**: ## Summary
-
-I've completed the config validation task (self-011). Here's what was done:
-
-### Changes Made
-
-1. **Added `ConfigValidationError` exception class** in `agent/state_manager.py`
-
-2. **Added 
-
-**学到的经验**:
-- [待填写]
-
-**改进建议**:
-- [待填写]
-
-### 2026-03-07 - Review and add docstrings (self-007)
-
-**任务描述**: 检查所有核心模块的文档字符串，确保每个公共方法都有清晰的 docstring 说明其功能、参数和返回值。
-
-**执行结果**: completed
-
-**修改内容**:
-1. **git_helper.py**: 添加 Args/Returns 到 10 个方法
-2. **test_runner.py**: 添加 Args/Returns 到 4 个方法
-3. **state_manager.py**: 添加 Args/Returns 到 15 个方法
-
-**验证结果**:
-- Python 导入测试通过 ✅
-- 所有模块可以正常加载 ✅
-
-**学到的经验**:
-- 使用英文 Args/Returns 格式与项目现有的英文 docstring 风格保持一致
-- 每个方法的 docstring 应该包含：功能描述、Args 参数说明、Returns 返回值说明
-
-**改进建议**:
-- 继续为 session_manager.py, task_selector.py, human_intervention.py, agent_core.py 添加完整 docstrings
+---
 
 ### 2026-03-07 - Add task validation (self-012)
 
 **任务描述**: 为 feature_list.json 添加验证逻辑，确保任务定义的完整性和正确性。
 
 **执行结果**: completed
-
-**修改内容**:
-1. 在 `agent/state_manager.py` 添加了 `FeatureListValidationError` 异常类
-2. 添加了 `validate_feature_list()` 方法，验证:
-   - 顶层结构：存在 "features" 键且为列表
-   - 必填字段：id, name, description, priority, status, passes, created_at, updated_at
-   - 类型正确：id/name/description/status/created_at/updated_at 为 str，priority 为 int，passes 为 bool
-   - 数值范围：priority 必须为正整数
-   - status 有效值：pending, completed, failed, in_progress
-   - 可选字段类型：context_files 必须为列表，verify_command 必须为字符串
-   - 重复 ID 检测
-
-**验证结果**:
-- 现有测试全部通过 ✅
-- 验证当前 feature_list.json 成功 ✅
-- 测试各种错误情况（缺少字段、重复ID、无效status、负数priority）全部正确捕获 ✅
 
 **学到的经验**:
 - 验证功能列表时参考了 config 验证的实现模式，保持代码风格一致
@@ -737,23 +321,17 @@ I've completed the config validation task (self-011). Here's what was done:
 **改进建议**:
 - 可以在 main.py 启动时自动调用 validate_feature_list() 确保任务列表有效
 
-### 2026-03-07 - Add task validation (self-012)
+---
 
-**任务描述**: 为 feature_list.json 添加验证逻辑，确保任务定义的完整性和正确性。
+### 2026-03-07 - Review and add docstrings (self-007)
+
+**任务描述**: 检查所有核心模块的文档字符串，确保每个公共方法都有清晰的 docstring 说明其功能、参数和返回值。
 
 **执行结果**: completed
-**执行消息**: ## Task Completed: Add task validation (self-012)
-
-### Summary
-
-I have added validation logic for `feature_list.json` to ensure task definitions are complete and correct.
-
-### Changes Made
-
-1. **Added
 
 **学到的经验**:
-- [待填写]
+- 使用英文 Args/Returns 格式与项目现有的英文 docstring 风格保持一致
+- 每个方法的 docstring 应该包含：功能描述、Args 参数说明、Returns 返回值说明
 
 **改进建议**:
-- [待填写]
+- 继续为 session_manager.py, task_selector.py, human_intervention.py, agent_core.py 添加完整 docstrings

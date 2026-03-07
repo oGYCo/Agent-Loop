@@ -146,6 +146,59 @@ class AgentCore:
         self.config = self.state_manager.load_config()
         self.project_root = project_root or str(Path(__file__).parent.parent)
 
+        # 缓存 CLAUDE.md 内容
+        self._claude_md_cache: Optional[str] = None
+
+    def read_claude_md(self) -> str:
+        """读取 CLAUDE.md 文件内容"""
+        if self._claude_md_cache:
+            return self._claude_md_cache
+
+        claude_md_path = Path(self.project_root) / "CLAUDE.md"
+        if claude_md_path.exists():
+            with open(claude_md_path, "r", encoding="utf-8") as f:
+                self._claude_md_cache = f.read()
+                return self._claude_md_cache
+        return ""
+
+    def gather_project_context(self) -> Dict[str, Any]:
+        """收集项目上下文信息，用于制定计划前的分析"""
+        context = {
+            "config": self.state_manager.load_config(),
+            "feature_list": self.state_manager.load_feature_list(),
+            "state": self.state_manager.load_state(),
+            "session_stats": self._get_session_stats(),
+            "git_branch": self.git_helper.get_current_branch(),
+            "git_status": self.git_helper.get_status(),
+            "recent_commits": self.git_helper.get_recent_commits(5),
+            "pending_tasks": [],
+            "completed_tasks": [],
+            "failed_tasks": [],
+        }
+
+        # 分类任务
+        data = context["feature_list"]
+        for task in data.get("features", []):
+            status = task.get("status", "pending")
+            if status == "completed":
+                context["completed_tasks"].append(task)
+            elif status == "failed":
+                context["failed_tasks"].append(task)
+            else:
+                context["pending_tasks"].append(task)
+
+        return context
+
+    def _get_session_stats(self) -> Dict[str, Any]:
+        """获取会话统计信息"""
+        history = self.state_manager.load_session_history()
+        sessions = history.get("sessions", [])
+        return {
+            "total": len(sessions),
+            "completed": sum(1 for s in sessions if s.get("status") == "completed"),
+            "failed": sum(1 for s in sessions if s.get("status") == "failed"),
+        }
+
     def get_system_prompt(self) -> str:
         """获取系统提示词"""
         return """You are an autonomous AI agent for the Agent-Loop project.
@@ -212,6 +265,11 @@ You are responsible for the continuous improvement of this Agent-Loop project. Y
         current_branch = self.git_helper.get_current_branch()
         project_root = self.project_root
 
+        # 读取 CLAUDE.md 关键内容
+        claude_md = self.read_claude_md()
+        # 提取关键部分（项目概述、技术栈、开发原则）
+        key_sections = self._extract_key_claude_sections(claude_md)
+
         prompt = f"""# Task: {task.get('name')}
 
 ## Task ID
@@ -252,6 +310,9 @@ Branch: {current_branch}
 {git_status}
 ```
 
+## Project Guidelines (from CLAUDE.md)
+{key_sections}
+
 ## Your Task Context
 
 This is an atomic task in a self-improving agent system. Before starting:
@@ -285,6 +346,225 @@ Start by reading CLAUDE.md and the relevant source files for this task."""
         if task.get('verify_command'):
             return f"Run: `{task.get('verify_command')}`"
         return "Run: `pytest tests/ -x -q`"
+
+    def _extract_key_claude_sections(self, claude_md: str) -> str:
+        """从 CLAUDE.md 提取关键部分"""
+        if not claude_md:
+            return "No CLAUDE.md found."
+
+        import re
+
+        # 提取项目概述、技术栈、开发原则等关键部分
+        key_patterns = [
+            r'##\s*(?:Project\s*Overview|Technical\s*Stack|Key\s*Files|Development\s*Principles|Common\s*Commands)',
+            r'###\s*(?:Project\s*Overview|Technical\s*Stack|Key\s*Files|Development\s*Principles|Common\s*Commands)',
+        ]
+
+        lines = claude_md.split('\n')
+        selected_lines = []
+        in_key_section = False
+
+        for line in lines:
+            # 检查是否是关键部分的标题
+            if re.match(r'^##\s+', line):
+                # 检查是否是关键部分
+                for pattern in key_patterns:
+                    if re.search(pattern, line, re.IGNORECASE):
+                        in_key_section = True
+                        break
+                else:
+                    in_key_section = False
+
+            if in_key_section or selected_lines:
+                selected_lines.append(line)
+                # 限制长度
+                if len('\n'.join(selected_lines)) > 2000:
+                    break
+
+        if selected_lines:
+            return '\n'.join(selected_lines)
+
+        # 如果没有匹配到关键部分，返回前500字符
+        return claude_md[:500] + "..."
+
+    def update_claude_md(self, task: Dict[str, Any], result: Dict[str, Any]) -> None:
+        """根据任务执行结果更新 CLAUDE.md"""
+        claude_md_path = Path(self.project_root) / "CLAUDE.md"
+
+        if not claude_md_path.exists():
+            logger.warning("CLAUDE.md not found, skipping update")
+            return
+
+        with open(claude_md_path, "r", encoding="utf-8") as f:
+            current_content = f.read()
+
+        # 从执行结果中提取有价值的经验
+        new_insight = self._extract_insight_from_result(task, result)
+        if not new_insight:
+            return
+
+        # 更新内容
+        updated_content = self._merge_claude_insight(current_content, new_insight, task)
+
+        with open(claude_md_path, "w", encoding="utf-8") as f:
+            f.write(updated_content)
+
+        # 清除缓存
+        self._claude_md_cache = None
+        logger.info(f"CLAUDE.md updated with insights from task {task.get('id')}")
+
+    def _extract_insight_from_result(self, task: Dict[str, Any], result: Dict[str, Any]) -> Optional[str]:
+        """从执行结果中提取有价值的见解"""
+        import re
+
+        message = result.get('message', '')
+        status = result.get('status', 'unknown')
+
+        if status != 'completed' or not message:
+            return None
+
+        insights = []
+
+        # 提取修改内容
+        modify_match = re.search(r'修改内容[:：]\s*\n?(.+?)(?=\n###|\n##|\n\n\n|\Z)', message, re.DOTALL)
+        if modify_match:
+            content = modify_match.group(1).strip()
+            # 清理每行
+            lines = [l.strip() for l in content.split('\n') if l.strip()]
+            for line in lines[:3]:  # 最多3条
+                if line.startswith('-'):
+                    insights.append(line[:200])
+                else:
+                    insights.append(f"- {line[:200]}")
+
+        # 提取问题分析
+        problem_match = re.search(r'问题分析[:：]\s*\n?(.+?)(?=\n###|\n##|\n\n\n|\Z)', message, re.DOTALL)
+        if problem_match:
+            insights.append(f"- 问题: {problem_match.group(1).strip()[:150]}")
+
+        # 提取验证结果
+        verify_match = re.search(r'验证结果[:：]\s*\n?(.+?)(?=\n###|\n##|\n\n\n|\Z)', message, re.DOTALL)
+        if verify_match:
+            content = verify_match.group(1).strip()
+            # 只取第一行
+            first_line = content.split('\n')[0].strip()[:150]
+            if first_line:
+                insights.append(f"- 验证: {first_line}")
+
+        if insights:
+            # 去重
+            seen = set()
+            unique_insights = []
+            for i in insights:
+                if i not in seen:
+                    seen.add(i)
+                    unique_insights.append(i)
+            return "\n".join(unique_insights)
+
+        return None
+
+    def _merge_claude_insight(self, content: str, insight: str, task: Dict[str, Any]) -> str:
+        """将新见解合并到 CLAUDE.md"""
+        import re
+
+        task_id = task.get('id', 'unknown')
+        task_name = task.get('name', 'unknown')
+
+        # 查找或创建 "Lessons Learned" 部分
+        lessons_pattern = r'(##\s*Lessons\s*Learned\n)'
+        match = re.search(lessons_pattern, content, re.IGNORECASE)
+
+        new_entry = f"\n### {datetime.now().strftime('%Y-%m-%d')} - {task_name} ({task_id})\n{insight}"
+
+        if match:
+            # 插入到 Lessons Learned 部分
+            insert_pos = match.end()
+            # 避免重复添加
+            if insight not in content:
+                content = content[:insert_pos] + new_entry + content[insert_pos:]
+        else:
+            # 在文件末尾添加
+            content += f"\n\n## Lessons Learned\n{new_entry}\n"
+
+        return content
+
+    def plan_next_steps(self) -> List[Dict[str, Any]]:
+        """基于项目上下文自主制定后续计划
+
+        在制定计划前，系统会先收集足够的上下文信息：
+        1. 当前任务状态（pending/completed/failed）
+        2. 配置和会话统计
+        3. Git 状态和最近的提交
+        4. 失败任务的原因分析
+        """
+        context = self.gather_project_context()
+        new_tasks: List[Dict[str, Any]] = []
+        today = datetime.now().strftime('%Y-%m-%d')
+
+        # 分析失败任务，生成修复任务
+        for failed_task in context.get("failed_tasks", []):
+            task_id = failed_task.get("id")
+            # 检查是否已有对应的修复任务
+            existing = any(t.get("id", "").startswith(f"fix-{task_id}") for t in context["pending_tasks"])
+            if not existing:
+                new_tasks.append({
+                    "id": f"fix-{task_id}",
+                    "name": f"Fix {task_id}",
+                    "description": f"修复失败任务 {task_id}：{failed_task.get('description', '')}",
+                    "priority": 10,  # 高优先级
+                    "status": "pending",
+                    "passes": False,
+                    "context_files": failed_task.get("context_files", []),
+                    "created_at": today,
+                    "updated_at": today,
+                })
+
+        # 分析待完成任务，生成优化建议
+        for pending_task in context.get("pending_tasks", []):
+            priority = pending_task.get("priority", 99)
+            # 如果待办任务太多，生成一些低优先级的整理任务
+            if len(context["pending_tasks"]) > 10 and priority > 50:
+                # 可以考虑添加一些优化任务
+                pass
+
+        # 根据会话统计添加相应任务
+        stats = context.get("session_stats", {})
+        if stats.get("failed", 0) > stats.get("completed", 0) * 0.3:
+            # 失败率过高，添加自检任务
+            new_tasks.append({
+                "id": "self-check",
+                "name": "System self-check",
+                "description": "系统失败率过高，执行自检并优化",
+                "priority": 5,
+                "status": "pending",
+                "passes": False,
+                "created_at": today,
+                "updated_at": today,
+            })
+
+        return new_tasks
+
+    def _auto_plan_next_steps(self) -> None:
+        """自动制定后续计划并将新任务添加到列表中"""
+        new_tasks = self.plan_next_steps()
+
+        if not new_tasks:
+            return
+
+        # 获取当前任务列表
+        data = self.state_manager.load_feature_list()
+        existing_ids = {task.get("id") for task in data.get("features", [])}
+
+        # 添加不重复的新任务
+        added_count = 0
+        for task in new_tasks:
+            if task.get("id") not in existing_ids:
+                self.state_manager.add_feature(task)
+                added_count += 1
+                logger.info(f"Auto-added task: {task['id']} - {task['name']}")
+
+        if added_count > 0:
+            logger.info(f"Auto-planned {added_count} new tasks based on project context")
 
     async def execute_task_with_sdk(self, task: Dict[str, Any]) -> Dict[str, Any]:
         """使用 Claude Agent SDK 执行任务"""
@@ -708,7 +988,7 @@ Start by reading CLAUDE.md and the relevant source files for this task."""
         self.state_manager.append_progress(entry)
 
     def extract_and_save_experience(self, task: Dict[str, Any], result: Dict[str, Any]) -> None:
-        """提取并保存经验教训"""
+        """提取并保存经验教训，自动去重和整合"""
         memory_file = self.state_manager.agent_dir / "MEMORY.md"
 
         # 读取当前记忆
@@ -717,34 +997,130 @@ Start by reading CLAUDE.md and the relevant source files for this task."""
             with open(memory_file, "r", encoding="utf-8") as f:
                 current_content = f.read()
 
-        # 生成新的经验条目
-        task_id = task.get("id")
-        task_name = task.get("name")
-        task_description = task.get("description")
-
-        # 提取关键信息
-        new_entry = f"""
-### {datetime.now().strftime('%Y-%m-%d')} - {task_name} ({task_id})
-
-**任务描述**: {task_description}
-
-**执行结果**: {result.get('status', 'unknown')}
-**执行消息**: {result.get('message', '')[:200]}
-
-**学到的经验**:
-- [待填写]
-
-**改进建议**:
-- [待填写]
-"""
-
-        # 添加到记忆文件
-        updated_content = current_content + new_entry
+        # 解析并去重
+        updated_content = self._merge_experience(current_content, task, result)
 
         with open(memory_file, "w", encoding="utf-8") as f:
             f.write(updated_content)
 
-        logger.info(f"经验已记录到 {memory_file}")
+        logger.info(f"经验已更新到 {memory_file}")
+
+    def _merge_experience(self, content: str, task: Dict[str, Any], result: Dict[str, Any]) -> str:
+        """解析现有内容，合并新经验，去除重复"""
+        import re
+
+        task_id = task.get("id")
+        task_name = task.get("name")
+        task_description = task.get("description")
+        status = result.get('status', 'unknown')
+        message = result.get('message', '')[:500] if result.get('message') else ''
+
+        # 定义分隔符：静态内容和任务记录
+        static_sections = []
+        task_records = []
+
+        # 分离静态部分（项目概述、技术栈、模式等）和任务记录
+        if "## Task Experience Records" in content:
+            parts = content.split("## Task Experience Records")
+            static_sections.append(parts[0].strip())
+            task_section = parts[1] if len(parts) > 1 else ""
+        else:
+            # 没有任务记录部分，全部作为静态内容
+            static_sections.append(content.strip())
+            task_section = ""
+
+        # 解析现有任务记录
+        if task_section:
+            # 按 ### 分割任务记录
+            entries = re.split(r'\n### ', task_section)
+            for entry in entries:
+                if not entry.strip():
+                    continue
+                # 检查是否是重复任务
+                entry_match = re.match(r'(\d{4}-\d{2}-\d{2}) - (.+?) \((\w+)\)', entry)
+                if entry_match:
+                    existing_id = entry_match.group(3)
+                    # 只保留非重复的，或内容更完整的
+                    if existing_id != task_id:
+                        task_records.append(entry)
+                    else:
+                        # 检查现有条目是否有实际经验内容
+                        if "**学到的经验**:" in entry and "[待填写]" not in entry:
+                            task_records.append(entry)
+                        # 如果新结果有实际内容，则用新的替换
+                        elif status == 'completed' and message:
+                            pass  # 跳过旧条目，用新的
+                        else:
+                            task_records.append(entry)
+                else:
+                    task_records.append(entry)
+
+        # 生成新条目
+        new_entry_lines = [
+            f"### {datetime.now().strftime('%Y-%m-%d')} - {task_name} ({task_id})",
+            "",
+            f"**任务描述**: {task_description}",
+            "",
+            f"**执行结果**: {status}",
+        ]
+
+        if message:
+            new_entry_lines.append(f"**执行消息**: {message}")
+
+        # 从执行结果中提取经验（如果任务完成）
+        if status == 'completed' and message:
+            # 尝试从消息中提取关键学习点
+            learned = self._extract_learned_from_message(message)
+            if learned:
+                new_entry_lines.extend(["", f"**学到的经验**:", learned])
+
+        new_entry = "\n".join(new_entry_lines)
+
+        # 添加新条目
+        task_records.append(new_entry)
+
+        # 限制保留最近的任务记录（最多50条）
+        if len(task_records) > 50:
+            task_records = task_records[-50:]
+
+        # 重组内容
+        static_content = "\n\n".join(static_sections)
+        task_content = "\n\n---\n\n".join(task_records)
+
+        return f"{static_content}\n\n## Task Experience Records\n\n{task_content}"
+
+    def _extract_learned_from_message(self, message: str) -> str:
+        """从执行消息中提取关键经验"""
+        import re
+
+        lines = []
+        current_section = None
+        current_content = []
+
+        # 提取修改内容
+        modify_match = re.search(r'修改内容[:：]\s*(.+?)(?=\n\n|\n##|\Z)', message, re.DOTALL)
+        if modify_match:
+            lines.append(f"- {modify_match.group(1).strip()[:200]}")
+
+        # 提取验证结果
+        verify_match = re.search(r'验证结果[:：]\s*(.+?)(?=\n\n|\n##|\Z)', message, re.DOTALL)
+        if verify_match:
+            lines.append(f"- {verify_match.group(1).strip()[:200]}")
+
+        # 提取问题分析
+        problem_match = re.search(r'问题分析[:：]\s*(.+?)(?=\n\n|\n##|\Z)', message, re.DOTALL)
+        if problem_match:
+            lines.append(f"- 问题: {problem_match.group(1).strip()[:150]}")
+
+        if lines:
+            return "\n".join(lines)
+
+        # 如果没有匹配到结构化内容，尝试提取关键句子
+        key_sentences = re.findall(r'[^。]+(?:修复|添加|更新|修复了|添加了)[^。]+。', message)
+        if key_sentences:
+            return "- " + key_sentences[0].strip()[:200]
+
+        return ""
 
     def run_agent_loop(self, max_iterations: int = 10, resume_session_id: Optional[str] = None) -> Dict[str, Any]:
         """运行Agent循环
@@ -798,6 +1174,12 @@ Start by reading CLAUDE.md and the relevant source files for this task."""
 
                 # 提取并保存经验
                 self.extract_and_save_experience(task, result)
+
+                # 更新 CLAUDE.md
+                self.update_claude_md(task, result)
+
+                # 自主制定后续计划
+                self._auto_plan_next_steps()
 
             except Exception as e:
                 logger.error(f"Error executing task: {e}")
