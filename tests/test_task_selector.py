@@ -222,7 +222,7 @@ class TestTaskSelector:
         assert count == 2
 
     def test_missing_priority_field(self, task_selector, state_manager):
-        """Test that missing priority defaults to 999"""
+        """Test that missing priority defaults to DEFAULT_PRIORITY (1000)"""
         data = {
             "features": [
                 {"id": "no-priority", "status": "pending", "passes": False},

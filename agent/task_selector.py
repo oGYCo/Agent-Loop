@@ -7,6 +7,9 @@ from typing import Any, Optional, cast
 
 from .state_manager import StateManager
 
+# 默认优先级 - 当任务未指定优先级时使用
+DEFAULT_PRIORITY = 1000
+
 
 class TaskSelector:
     """任务选择器"""
@@ -39,7 +42,7 @@ class TaskSelector:
             return None
 
         # 按优先级排序
-        pending_tasks.sort(key=lambda x: x.get("priority", 999))
+        pending_tasks.sort(key=lambda x: x.get("priority", DEFAULT_PRIORITY))
 
         return pending_tasks[0]
 
