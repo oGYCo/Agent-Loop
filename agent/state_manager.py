@@ -15,7 +15,8 @@ class StateManager:
 
     def __init__(self, agent_dir: Optional[str] = None) -> None:
         if agent_dir is None:
-            agent_dir = str(Path(__file__).parent / ".agent")
+            # __file__ is agent/state_manager.py, go up two levels to project root
+            agent_dir = str(Path(__file__).parent.parent / ".agent")
         self.agent_dir: Path = Path(agent_dir)
         self.feature_list_path = self.agent_dir / "feature_list.json"
         self.progress_path = self.agent_dir / "progress.txt"
