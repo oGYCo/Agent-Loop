@@ -140,7 +140,7 @@ def add_feature(args: argparse.Namespace) -> None:
     print(f"Added feature: {feature['id']} - {feature['name']}")
 
 
-def show_status(args):
+def show_status(args: argparse.Namespace) -> None:
     """显示状态"""
     state_manager = StateManager(args.project_dir if args.project_dir else None)
     git_helper = GitHelper(args.project_dir if args.project_dir else None)
@@ -171,7 +171,7 @@ def show_status(args):
     print("=" * 50)
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(
         description="Long-running AI Agent System",
         formatter_class=argparse.RawDescriptionHelpFormatter
