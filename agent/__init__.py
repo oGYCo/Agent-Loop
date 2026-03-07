@@ -12,6 +12,9 @@ from .session_manager import SessionManager
 from .human_intervention import HumanIntervention
 from .git_helper import GitHelper
 from .test_runner import AgentTestRunner
+from .prompt_manager import PromptManager
+from .performance_monitor import PerformanceMonitor
+from .config_reloader import ConfigReloader
 
 __all__ = [
     "AgentCore",
@@ -21,4 +24,7 @@ __all__ = [
     "HumanIntervention",
     "GitHelper",
     "AgentTestRunner",
+    "PromptManager",
+    "PerformanceMonitor",
+    "ConfigReloader",
 ]
