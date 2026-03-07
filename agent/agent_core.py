@@ -37,6 +37,45 @@ from claude_agent_sdk.types import (
 )
 
 
+# ========== WebSocket Event Pusher (Lazy Import) ==========
+
+def _get_event_pusher():
+    """Lazy import to avoid circular dependency with api.py"""
+    try:
+        from api import EventPusher
+        return EventPusher.get_instance()
+    except ImportError:
+        return None
+
+
+async def _push_log_async(level: str, message: str, source: str = "agent_core"):
+    """Push log to WebSocket clients (async)"""
+    pusher = _get_event_pusher()
+    if pusher:
+        try:
+            await pusher.push_log(level, message, source)
+        except Exception:
+            pass  # Silently ignore WebSocket errors
+
+
+def _push_log_sync(level: str, message: str, source: str = "agent_core"):
+    """Push log to WebSocket clients (sync wrapper)"""
+    try:
+        pusher = _get_event_pusher()
+        if pusher:
+            # Try to get existing event loop, otherwise skip
+            try:
+                loop = asyncio.get_event_loop()
+                if loop.is_running():
+                    asyncio.create_task(_push_log_async(level, message, source))
+                else:
+                    loop.run_until_complete(pusher.push_log(level, message, source))
+            except RuntimeError:
+                pass  # No event loop available
+    except Exception:
+        pass  # Silently ignore WebSocket errors
+
+
 # ========== Hooks 实现 ==========
 
 async def pre_tool_hook(input_data: Any, tool_use_id: str | None, context: Any) -> AsyncHookJSONOutput:
@@ -52,6 +91,9 @@ async def pre_tool_hook(input_data: Any, tool_use_id: str | None, context: Any) 
     # Keep print for user feedback
     print(f"\n[PreToolUse] {tool_name}", flush=True)
     print(f"  Input: {input_preview}", flush=True)
+
+    # Push to WebSocket
+    await _push_log_async("info", f"[PreToolUse] {tool_name}: {input_preview}", "tool")
 
     return {"async_": True}  # 允许执行
 
@@ -84,6 +126,9 @@ async def post_tool_hook(input_data: Any, tool_use_id: str | None, context: Any)
             print(f"  Result: {result_preview[:300]}...")
         sys.stdout.flush()
 
+    # Push to WebSocket
+    await _push_log_async("info", f"[PostToolUse] {tool_name}: completed", "tool")
+
     return {"async_": True}
 
 
@@ -95,6 +140,9 @@ async def notification_hook(input_data: Any, tool_use_id: str | None, context: A
     logger.info(f"Notification: {notification_type}: {message[:200]}")
     print(f"\n[Notification] {notification_type}: {message[:200]}", flush=True)
 
+    # Push to WebSocket
+    await _push_log_async("info", f"[Notification] {notification_type}: {message[:200]}", "notification")
+
     return {"async_": True}
 
 
@@ -103,6 +151,9 @@ async def stop_hook(input_data: Any, tool_use_id: str | None, context: Any) -> A
     session_id = input_data.get("session_id", "")
     logger.info(f"Session {session_id} ended")
     print(f"\n[Stop] Session {session_id} ended", flush=True)
+
+    # Push to WebSocket
+    await _push_log_async("info", f"Session {session_id} ended", "session")
 
     return {"async_": True}
 
@@ -1538,6 +1589,9 @@ class AgentCore:
             logger.info(f"Resuming from session: {resume_session_id}")
         logger.info(f"Pending tasks: {init_info['pending_tasks']}")
 
+        # Push session start status to WebSocket
+        _push_log_sync("info", f"Session initialized: {init_info['session_id']}", "session")
+
         # 保存会话ID用于可能的恢复
         current_sdk_session_id = resume_session_id
 
@@ -1552,17 +1606,26 @@ class AgentCore:
             # 检查是否请求了优雅关闭
             if shutdown_flag and shutdown_flag():
                 logger.info("Shutdown requested, finishing current iteration...")
+                _push_log_sync("info", "Shutdown requested, finishing current iteration...", "agent")
                 break
 
             logger.info(f"--- Iteration {i + 1} ---")
+            _push_log_sync("info", f"--- Iteration {i + 1} ---", "iteration")
 
             context = self.gather_context()
 
             if not context["current_task"]:
                 logger.info("No pending tasks. Exiting.")
+                _push_log_sync("info", "No pending tasks. Exiting.", "agent")
                 break
 
             task = context["current_task"]
+            task_id = task.get("id", "unknown")
+            task_name = task.get("name", "unknown")
+
+            # Push task start
+            _push_log_sync("info", f"Starting task: {task_name} ({task_id})", "task")
+
             try:
                 # 传递 session_id 以支持会话恢复
                 result = self.execute_task(task)
@@ -1577,8 +1640,10 @@ class AgentCore:
 
                 if verified:
                     summary["completed"] += 1
+                    _push_log_sync("info", f"Task completed: {task_name} ({task_id})", "task")
                 else:
                     summary["errors"] += 1
+                    _push_log_sync("warning", f"Task verification failed: {task_name} ({task_id})", "task")
 
                 # 提取并保存经验
                 self.extract_and_save_experience(task, result)
@@ -1610,6 +1675,9 @@ class AgentCore:
 
             summary["iterations"] += 1
             self._iteration_count = summary["iterations"]
+
+        # Push session completion
+        _push_log_sync("info", f"Session completed. Iterations: {summary['iterations']}, Completed: {summary['completed']}, Errors: {summary['errors']}", "session")
 
         self.complete_session(summary)
         return summary
