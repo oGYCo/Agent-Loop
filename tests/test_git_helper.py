@@ -101,33 +101,9 @@ class TestGitHelper:
 
         assert helper.has_changes() is True
 
-    def test_stage_and_commit(self, git_helper, initialized_repo):
-        """Test staging and committing changes"""
-        helper = GitHelper(project_root=initialized_repo)
-        test_file = Path(initialized_repo) / "new_file.txt"
-        test_file.write_text("New content")
-
-        result = helper.stage_and_commit("Add new file")
-        assert result is True
-
-        # Verify the commit was made
-        status = helper.get_status()
-        assert status == ""
-
-    def test_stage_and_commit_no_changes(self, git_helper, initialized_repo):
-        """Test stage_and_commit with no changes"""
-        helper = GitHelper(project_root=initialized_repo)
-        result = helper.stage_and_commit("Empty commit")
-        assert result is True  # Should return True even with no changes
-
     def test_get_recent_commits(self, git_helper, initialized_repo):
         """Test getting recent commits"""
         helper = GitHelper(project_root=initialized_repo)
-
-        # Make a commit
-        test_file = Path(initialized_repo) / "new_file.txt"
-        test_file.write_text("New content")
-        helper.stage_and_commit("Add new file")
 
         commits = helper.get_recent_commits(3)
         assert len(commits) >= 1

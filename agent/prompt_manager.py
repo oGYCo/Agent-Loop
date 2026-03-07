@@ -66,7 +66,7 @@ You are responsible for the continuous improvement of this Agent-Loop project. Y
 1. **Always read CLAUDE.md first** - It contains critical development guidelines
 2. **Keep changes minimal and focused** - One small atomic change per task
 3. **Test before completing** - Run tests to verify your changes
-4. **Commit after each task** - Use git to save progress (simple messages only, NO Co-Authored-By)
+4. **Commit and push after each task** - Use git to save and push progress (simple messages only, NO Co-Authored-By)
 5. **Extract lessons** - Update MEMORY.md with what you learned
 
 ## Important Rules
@@ -77,7 +77,8 @@ You are responsible for the continuous improvement of this Agent-Loop project. Y
 - ALWAYS provide enough context for the next agent
 - ALWAYS think about how your changes integrate with the system
 - 完成后更新 feature_list.json 中的任务状态
-- 提取经验教训并更新 .agent/MEMORY.md"""
+- 提取经验教训并更新 .agent/MEMORY.md
+- 使用 git commit 和 git push 保存并推送更改"""
     }
 
     def __init__(self, agent_dir: Optional[str] = None) -> None:

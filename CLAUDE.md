@@ -57,7 +57,7 @@ python main.py init
 | `agent/state_manager.py` | State persistence to JSON files in `.agent/` |
 | `agent/task_selector.py` | Priority-based task selection |
 | `agent/human_intervention.py` | Human intervention when error threshold exceeded |
-| `agent/git_helper.py` | Git operations wrapper |
+| `agent/git_helper.py` | Git status, branch, and diff operations |
 | `agent/test_runner.py` | Test execution wrapper |
 | `agent/prompt_manager.py` | Prompt management and customization |
 | `main.py` | CLI entry point |
@@ -68,7 +68,7 @@ python main.py init
 main.py → AgentCore.run_agent_loop()
          → TaskSelector.select_next_task() → execute_task()
          → ClaudeSDKClient (SDK) → StreamEvent handling
-         → GitHelper (commit) → StateManager (persist)
+         → StateManager (persist)
 ```
 
 ### Configuration (`.agent/`)
@@ -154,4 +154,4 @@ After completing any task, the agent MUST:
 1. Review feature_list.json - manually adjust priorities, remove obsolete tasks, add new tasks if needed
 2. Update MEMORY.md - extract key learnings from this task
 3. Update CLAUDE.md - add important patterns or insights discovered
-4. Commit changes - save progress with git
+4. Commit and push changes - save progress with git and push to remote

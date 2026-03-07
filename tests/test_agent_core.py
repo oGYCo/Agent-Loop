@@ -220,24 +220,14 @@ class TestAgentCore:
             content = f.read()
         assert "Test Task" in content
 
-    @patch('agent.agent_core.GitHelper')
-    def test_complete_session(self, mock_git, agent_core, state_manager):
+    def test_complete_session(self, agent_core, state_manager):
         """Test completing session"""
         # Setup
         state_manager.update_state({
             "current_session": {"id": "test-session"}
         })
 
-        mock_git_instance = Mock()
-        mock_git.return_value = mock_git_instance
-        mock_git_instance.stage_and_commit = Mock(return_value=True)
-
-        agent_core.git_helper = mock_git_instance
-
         agent_core.complete_session({"message": "Test summary"})
-
-        # Verify commit was attempted
-        mock_git_instance.stage_and_commit.assert_called()
 
     def test_task_selector_integration(self, agent_core, state_manager):
         """Test task selector is properly integrated"""
@@ -539,28 +529,6 @@ class TestAgentCore:
         # Check that session was moved to history
         history = state_manager.load_session_history()
         assert len(history) >= 1
-
-    @patch('agent.agent_core.GitHelper')
-    def test_complete_session_with_commit_failure(self, mock_git, agent_core, state_manager):
-        """Test completing session when commit fails"""
-        # Setup
-        state_manager.update_state({
-            "current_session": {"id": "test-session"}
-        })
-
-        mock_git_instance = Mock()
-        mock_git.return_value = mock_git_instance
-        # Make commit fail
-        mock_git_instance.stage_and_commit = Mock(side_effect=Exception("Commit failed"))
-
-        agent_core.git_helper = mock_git_instance
-
-        # Should handle commit failure gracefully
-        try:
-            agent_core.complete_session({"message": "Test summary"})
-        except Exception:
-            # Could also handle gracefully
-            pass
 
     # ===== Error Handling Tests =====
 

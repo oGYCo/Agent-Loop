@@ -384,7 +384,7 @@ This is an atomic task in a self-improving agent system. Before starting:
 3. **Plan your change** - Keep it minimal and focused
 4. **Implement** - Make the smallest possible change
 5. **Test** - Run tests to verify
-6. **Commit** - Save progress with git (DO NOT add Co-Authored-By, use simple commit messages)
+6. **Commit and push** - Save and push progress with git (DO NOT add Co-Authored-By, use simple commit messages)
 7. **Update MEMORY.md** - Record what you learned
 
 ## Key Instructions
@@ -395,6 +395,7 @@ This is an atomic task in a self-improving agent system. Before starting:
 - Always provide context for the next agent
 - Run tests before marking as complete
 - Use simple commit messages like "fix: description" or "feat: description", NO Co-Authored-By
+- Always run `git push` after committing to push changes to the remote repository
 
 ## Verification
 {self._get_verify_command(task)}
@@ -404,6 +405,7 @@ After completing this task, you MUST:
 1. Review and update feature_list.json - check if any pending tasks need priority adjustments, removal, or new tasks added based on the work just completed
 2. Update MEMORY.md - extract key learnings from this task and add to .agent/MEMORY.md
 3. Consider if CLAUDE.md needs updates - if you discovered important patterns or insights, add them to CLAUDE.md
+4. Commit and push - run `git add -A && git commit -m "描述"` then `git push` to save and push progress to remote
 
 Start by reading CLAUDE.md and the relevant source files for this task."""
 
@@ -1492,9 +1494,6 @@ Please start by gathering context, then analyze and make updates."""
                     session["summary"] = summary or {}
                     session["performance"] = perf_stats
             self.state_manager.save_session_history(history)
-
-        commit_message = f"Session {session_id}: {summary.get('message', 'Progress update') if summary else 'Progress update'}"
-        self.git_helper.stage_and_commit(commit_message)
 
         self._write_progress_summary()
         logger.info(f"Session {session_id} completed")

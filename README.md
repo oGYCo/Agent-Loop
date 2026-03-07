@@ -42,7 +42,7 @@ Agent-Loop is an autonomous AI agent system that automates task execution with r
 | **Session Management**     | Resume, fork, and checkpoint agent sessions                     |
 | **Hook System**            | PreToolUse, PostToolUse, Notification, Stop hooks               |
 | **Human-in-the-Loop**      | Automatic pause when error threshold exceeded                   |
-| **Git Integration**        | Auto-commit after each session for version control              |
+| **Git Integration**        | Agent-driven git commit and push after each task                |
 | **Task Retry**             | Configurable retry mechanism for failed tasks                   |
 | **Performance Monitoring** | Track task execution time, session duration, and resource usage |
 | **Config Hot Reload**      | Reload configuration without restart (manual or file watch)     |
@@ -158,17 +158,17 @@ python main.py add "New Feature"
 
 ### Core Modules
 
-| Module                   | Responsibility                                    |
-| ------------------------ | ------------------------------------------------- |
-| `agent_core.py`          | Core agent logic, SDK integration, task execution |
-| `session_manager.py`     | Session lifecycle, context management, history    |
-| `state_manager.py`       | State persistence to JSON, config validation      |
-| `task_selector.py`       | Priority-based task selection                     |
-| `human_intervention.py`  | Error threshold monitoring, intervention triggers |
-| `git_helper.py`          | Git operations wrapper, auto-commit               |
-| `test_runner.py`         | Test execution wrapper                            |
-| `performance_monitor.py` | Performance metrics tracking                      |
-| `config_reloader.py`     | Configuration hot reload                          |
+| Module                   | Responsibility                                       |
+| ------------------------ | ---------------------------------------------------- |
+| `agent_core.py`          | Core agent logic, SDK integration, task execution    |
+| `session_manager.py`     | Session lifecycle, context management, history       |
+| `state_manager.py`       | State persistence to JSON, config validation         |
+| `task_selector.py`       | Priority-based task selection                        |
+| `human_intervention.py`  | Error threshold monitoring, intervention triggers    |
+| `git_helper.py`          | Git operations wrapper, status and branch management |
+| `test_runner.py`         | Test execution wrapper                               |
+| `performance_monitor.py` | Performance metrics tracking                         |
+| `config_reloader.py`     | Configuration hot reload                             |
 
 ## Usage Examples
 
