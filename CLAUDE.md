@@ -31,7 +31,7 @@ pytest tests/test_agent_core.py -v
 pytest tests/ -x -q
 
 # Type checking
-mypy agent_core.py
+mypy agent/agent_core.py
 
 # Run agent
 python main.py run --iterations 3
@@ -70,7 +70,8 @@ python main.py prompt set <key>           # Set active prompt
 | `agent/human_intervention.py` | Human intervention when error threshold exceeded |
 | `agent/git_helper.py` | Git status, branch, and diff operations |
 | `agent/test_runner.py` | Test execution wrapper |
-| `agent/prompt_manager.py` | Prompt management and customization |
+| `agent/performance_monitor.py` | Performance metrics tracking |
+| `agent/config_reloader.py` | Configuration hot reload |
 | `main.py` | CLI entry point |
 
 ### Data Flow
