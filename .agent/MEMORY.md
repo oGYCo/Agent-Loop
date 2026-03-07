@@ -128,6 +128,54 @@ When adding tests for `agent_core.py`:
 
 4. **All 37 tests now pass** covering edge cases for initialize_session, gather_context, complete_session, execute_task, verify_task.
 
+### Claude Agent SDK Patterns
+
+- Use `ClaudeSDKClient` instead of simple `query()` for more control
+- Must unset `CLAUDECODE` env var when running nested sessions
+- Set `include_partial_messages=True` for streaming output
+- Use hooks for logging, blocking, and notifications
+- Hook functions should return `AsyncHookJSONOutput` (e.g., `{"async_": True}`)
+- Hook input types: `PreToolUseHookInput`, `PostToolUseHookInput`, `NotificationHookInput`, `StopHookInput`
+- For type annotations, use `Any` for hook inputs to avoid complex union type issues with HookMatcher
+
+### API Configuration
+
+- MiniMax uses Anthropic-compatible API
+- Set correct base URL: `https://api.minimaxi.com/anthropic`
+
+### MCP Servers
+
+- Configure via `mcp_servers` option in ClaudeAgentOptions
+- MCP tools named as `mcp__<server>__<action>`
+
+### Permission Modes
+
+- `default`: Ask for permission
+- `acceptEdits`: Auto-approve edits
+- `bypassPermissions`: No permission prompts
+
+### File Checkpointing
+
+- Enable with `enable_file_checkpointing=True` in ClaudeAgentOptions
+- Supports file modification tracking and recovery
+- Default value is `False`
+
+### Type Annotations (mypy)
+
+- Use `dict[str, Any]` instead of bare `dict` for generic dicts
+- Use explicit type annotation for dict literals: `context: Dict[str, Any] = {...}`
+- Use `cast()` from typing to handle JSON-loaded dicts
+- Empty list `[]` is inferred as `list[str]`, use `list[str] = []` to specify type
+- `re.findall()` returns `list[str]`, annotate explicitly when needed
+- Use `Any` for SDK hook inputs to avoid complex union type issues with HookMatcher
+
+### Unused Import Detection
+
+- Manually check imports by searching for usage patterns (e.g., `os\.`, `Path\(`)
+- Common unused imports: `os`, `Path`, `json` (if only used in one place but not needed)
+- Unused variables: Check if assigned but never used (e.g., `project_root`, `test_pattern`)
+- Use `python -m py_compile` to verify syntax after changes
+
 ## Important Documentation URLs
 
 Before implementing new features, always check these docs first:
@@ -250,49 +298,6 @@ Or via `env` parameter in ClaudeAgentOptions.
 2. **Run Tests**: `pytest tests/ -x -q`
 3. **Check Types**: `mypy agent_core.py`
 4. **Run Agent**: `python main.py run --iterations 1`
-
-## Lessons Learned
-
-### Claude Agent SDK
-- Use `ClaudeSDKClient` instead of simple `query()` for more control
-- Must unset `CLAUDECODE` env var when running nested sessions
-- Set `include_partial_messages=True` for streaming output
-- Use hooks for logging, blocking, and notifications
-- Hook functions should return `AsyncHookJSONOutput` (e.g., `{"async_": True}`)
-- Hook input types: `PreToolUseHookInput`, `PostToolUseHookInput`, `NotificationHookInput`, `StopHookInput`
-- For type annotations, use `Any` for hook inputs to avoid complex union type issues with HookMatcher
-
-### API Configuration
-- MiniMax uses Anthropic-compatible API
-- Set correct base URL: `https://api.minimaxi.com/anthropic`
-
-### MCP Servers
-- Configure via `mcp_servers` option in ClaudeAgentOptions
-- MCP tools named as `mcp__<server>__<action>`
-
-### Permission Modes
-- `default`: Ask for permission
-- `acceptEdits`: Auto-approve edits
-- `bypassPermissions`: No permission prompts
-
-### File Checkpointing
-- Enable with `enable_file_checkpointing=True` in ClaudeAgentOptions
-- Supports file modification tracking and recovery
-- Default value is `False`
-
-### Type Annotations (mypy)
-- Use `dict[str, Any]` instead of bare `dict` for generic dicts
-- Use explicit type annotation for dict literals: `context: Dict[str, Any] = {...}`
-- Use `cast()` from typing to handle JSON-loaded dicts
-- Empty list `[]` is inferred as `list[str]`, use `list[str] = []` to specify type
-- `re.findall()` returns `list[str]`, annotate explicitly when needed
-- Use `Any` for SDK hook inputs to avoid complex union type issues with HookMatcher
-
-### Unused Import Detection
-- Manually check imports by searching for usage patterns (e.g., `os\.`, `Path\(`)
-- Common unused imports: `os`, `Path`, `json` (if only used in one place but not needed)
-- Unused variables: Check if assigned but never used (e.g., `project_root`, `test_pattern`)
-- Use `python -m py_compile` to verify syntax after changes
 
 ---
 
