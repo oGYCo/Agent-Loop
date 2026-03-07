@@ -19,6 +19,7 @@ from agent.agent_core import AgentCore
 from agent.session_manager import SessionManager
 from agent.git_helper import GitHelper
 from agent.config_reloader import ConfigReloader
+from agent.prompt_manager import PromptManager
 
 # 全局 shutdown 标志
 _shutdown_requested = False
@@ -232,6 +233,117 @@ def reload_config(args: argparse.Namespace) -> None:
     print("-" * 40)
 
 
+def list_prompts(args: argparse.Namespace) -> None:
+    """列出所有提示词"""
+    prompt_manager = PromptManager(args.project_dir if args.project_dir else None)
+
+    prompts = prompt_manager.list_prompts()
+
+    print("\nAvailable Prompts:")
+    print("-" * 60)
+
+    for p in prompts:
+        active_mark = " [ACTIVE]" if p["is_active"] else ""
+        print(f"[{p['key']}] {p['name']}{active_mark}")
+        print(f"   {p['description']}")
+        print()
+
+    print("-" * 60)
+
+
+def show_prompt(args: argparse.Namespace) -> None:
+    """显示指定提示词"""
+    prompt_manager = PromptManager(args.project_dir if args.project_dir else None)
+
+    if args.key:
+        prompt = prompt_manager.get_prompt(args.key)
+        if prompt:
+            print(f"\nPrompt: {prompt['name']}")
+            print(f"Key: {args.key}")
+            print(f"Description: {prompt['description']}")
+            print(f"Created: {prompt.get('created_at', 'N/A')}")
+            print(f"Updated: {prompt.get('updated_at', 'N/A')}")
+            print("\n" + "=" * 60)
+            print("System Prompt:")
+            print("=" * 60)
+            print(prompt["system"])
+            print("=" * 60)
+        else:
+            print(f"Prompt '{args.key}' not found.")
+    else:
+        # Show active prompt
+        system_prompt = prompt_manager.get_active_prompt()
+        active_name = prompt_manager.get_active_prompt_name()
+        print(f"\nActive Prompt: {active_name}")
+        print("=" * 60)
+        print(system_prompt)
+        print("=" * 60)
+
+
+def set_prompt(args: argparse.Namespace) -> None:
+    """设置活动提示词"""
+    prompt_manager = PromptManager(args.project_dir if args.project_dir else None)
+
+    if prompt_manager.set_active_prompt(args.key):
+        print(f"Active prompt set to: {args.key}")
+    else:
+        print(f"Error: Prompt '{args.key}' not found.")
+
+
+def add_prompt(args: argparse.Namespace) -> None:
+    """添加新提示词"""
+    prompt_manager = PromptManager(args.project_dir if args.project_dir else None)
+
+    # If --system is not provided, use the default prompt
+    system_prompt = args.system
+    if not system_prompt:
+        # Use default prompt template
+        system_prompt = f"""You are an autonomous AI agent for the {args.name} task.
+
+## CRITICAL: Read Project Context First
+
+Before starting any task, you MUST read these key files:
+1. CLAUDE.md - Project guidelines and architecture
+2. README.md - Project overview and usage
+3. The relevant source files for the task
+
+Use the Read tool to read these files completely.
+
+## Your Mission
+
+{args.description or 'Complete the assigned task efficiently and effectively.'}
+
+## Available Tools
+
+- Browser Tools: Navigate, Snapshot, Click, Type, Evaluate, Search
+- Web Tools: WebSearch, WebFetch
+- File Tools: Read, Write, Edit, Glob, Grep
+- Terminal Tools: Bash
+
+## Working Principles
+
+1. Always read CLAUDE.md first
+2. Keep changes minimal and focused
+3. Test before completing
+4. Commit after each task
+5. Extract lessons learned"""
+
+    if prompt_manager.add_prompt(args.key, args.name, args.description or "", system_prompt):
+        print(f"Added prompt: {args.key} - {args.name}")
+    else:
+        print(f"Error: Prompt '{args.key}' already exists. Use 'prompt edit' to modify it.")
+
+
+def delete_prompt(args: argparse.Namespace) -> None:
+    """删除提示词"""
+    prompt_manager = PromptManager(args.project_dir if args.project_dir else None)
+
+    if prompt_manager.delete_prompt(args.key):
+        print(f"Deleted prompt: {args.key}")
+    else:
+        print(f"Error: Could not delete prompt '{args.key}'. It may be the last prompt or not exist.")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         description="Agent-Loop: Autonomous AI Agent System",
@@ -363,6 +475,77 @@ For more information, see: https://github.com/agent-loop/docs
         help="Force reload even if files haven't changed"
     )
 
+    # prompt command
+    prompt_parser = subparsers.add_parser(
+        "prompt",
+        help="Manage prompts",
+        description="Manage system prompts for different task types"
+    )
+    prompt_subparsers = prompt_parser.add_subparsers(dest="prompt_action", help="Prompt actions")
+
+    # prompt list
+    prompt_list_parser = prompt_subparsers.add_parser(
+        "list",
+        help="List all prompts"
+    )
+
+    # prompt show
+    prompt_show_parser = prompt_subparsers.add_parser(
+        "show",
+        help="Show prompt content"
+    )
+    prompt_show_parser.add_argument(
+        "key",
+        nargs="?",
+        help="Prompt key to show (default: show active prompt)"
+    )
+
+    # prompt set
+    prompt_set_parser = prompt_subparsers.add_parser(
+        "set",
+        help="Set active prompt"
+    )
+    prompt_set_parser.add_argument(
+        "key",
+        help="Prompt key to activate"
+    )
+
+    # prompt add
+    prompt_add_parser = prompt_subparsers.add_parser(
+        "add",
+        help="Add a new prompt"
+    )
+    prompt_add_parser.add_argument(
+        "key",
+        help="Unique key for the prompt"
+    )
+    prompt_add_parser.add_argument(
+        "name",
+        help="Display name for the prompt"
+    )
+    prompt_add_parser.add_argument(
+        "--description",
+        "-d",
+        default="",
+        help="Description of the prompt"
+    )
+    prompt_add_parser.add_argument(
+        "--system",
+        "-s",
+        default="",
+        help="System prompt content"
+    )
+
+    # prompt delete
+    prompt_delete_parser = prompt_subparsers.add_parser(
+        "delete",
+        help="Delete a prompt"
+    )
+    prompt_delete_parser.add_argument(
+        "key",
+        help="Prompt key to delete"
+    )
+
     # Backwards compatibility: --init and --run flags
     parser.add_argument("--init", action="store_true", help="Initialize the project (deprecated, use 'init' subcommand)")
     parser.add_argument("--run", action="store_true", help="Run the agent (deprecated, use 'run' subcommand)")
@@ -394,6 +577,19 @@ For more information, see: https://github.com/agent-loop/docs
             show_status(args)
         elif args.command == "reload":
             reload_config(args)
+        elif args.command == "prompt":
+            if args.prompt_action == "list":
+                list_prompts(args)
+            elif args.prompt_action == "show":
+                show_prompt(args)
+            elif args.prompt_action == "set":
+                set_prompt(args)
+            elif args.prompt_action == "add":
+                add_prompt(args)
+            elif args.prompt_action == "delete":
+                delete_prompt(args)
+            else:
+                prompt_parser.print_help()
     else:
         parser.print_help()
 
