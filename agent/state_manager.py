@@ -7,7 +7,7 @@ import json
 import os
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, Optional, cast
 
 
 class StateManager:
@@ -32,7 +32,7 @@ class StateManager:
             return {"features": []}
 
         with open(self.feature_list_path, "r", encoding="utf-8") as f:
-            return json.load(f)
+            return cast(dict[str, Any], json.load(f))
 
     def save_feature_list(self, data: dict[str, Any]) -> None:
         """保存功能列表"""
@@ -44,7 +44,7 @@ class StateManager:
         data = self.load_feature_list()
         for feature in data.get("features", []):
             if feature.get("id") == feature_id:
-                return feature
+                return cast(dict[str, Any], feature)
         return None
 
     def update_feature(self, feature_id: str, updates: dict[str, Any]) -> bool:
@@ -135,7 +135,7 @@ class StateManager:
             }
 
         with open(self.state_path, "r", encoding="utf-8") as f:
-            return json.load(f)
+            return cast(dict[str, Any], json.load(f))
 
     def save_state(self, state: dict[str, Any]) -> None:
         """保存当前状态"""
@@ -156,7 +156,7 @@ class StateManager:
             return {"sessions": [], "total_sessions": 0}
 
         with open(self.session_history_path, "r", encoding="utf-8") as f:
-            return json.load(f)
+            return cast(dict[str, Any], json.load(f))
 
     def save_session_history(self, data: dict[str, Any]) -> None:
         """保存会话历史"""
@@ -178,7 +178,7 @@ class StateManager:
             return {}
 
         with open(self.config_path, "r", encoding="utf-8") as f:
-            return json.load(f)
+            return cast(dict[str, Any], json.load(f))
 
     def save_config(self, config: dict[str, Any]) -> None:
         """保存配置"""
