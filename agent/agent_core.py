@@ -468,7 +468,7 @@ Start by reading CLAUDE.md and the relevant source files for this task."""
     def _build_self_review_prompt(self, completed_task: Dict[str, Any]) -> str:
         """Build prompt for post-task self-review
 
-        Let the Agent analyze feature_list.json and decide what modifications are needed.
+        Let the Agent gather context first, then analyze feature_list.json and decide what modifications are needed.
 
         Args:
             completed_task: The task that was just completed
@@ -483,34 +483,55 @@ Start by reading CLAUDE.md and the relevant source files for this task."""
         pending_count = sum(1 for f in features if f.get("status") == "pending")
         failed_count = sum(1 for f in features if f.get("status") == "failed")
 
+        # Get recent commits for context
+        recent_commits = self.git_helper.get_recent_commits(5)
+        current_branch = self.git_helper.get_current_branch()
+        git_status = self.git_helper.get_status()
+
         prompt = f"""## Post-Task Self-Review
 
 You just completed: **{completed_task.get('name', 'N/A')}**
 
-Current project status:
+### Current Project Context
+
+**Git Info:**
+- Branch: {current_branch}
+- Recent commits:
+{chr(10).join(f"  - {c}" for c in recent_commits) if recent_commits else "  (none)"}
+- Status: {git_status[:200] if git_status else "clean"}
+
+**Task Status:**
 - Completed tasks: {completed_count}
 - Pending tasks: {pending_count}
 - Failed tasks: {failed_count}
 
-### Self-Review Task
+### Step 1: Gather Context (REQUIRED)
 
-Please perform the following analysis (do this in the current session, do NOT create new tasks):
+Before making any decisions, you MUST gather sufficient context:
 
-1. Read `.agent/feature_list.json` file
-2. Analyze all pending tasks
-3. Identify obsolete tasks (dependencies completed or no longer needed)
-4. Adjust priorities based on current project state
-5. Identify if new tasks need to be added
-6. Identify duplicate tasks that should be merged
+1. Read `.agent/feature_list.json` - understand all pending tasks and their dependencies
+2. Read `CLAUDE.md` - understand current project guidelines
+3. Read `.agent/MEMORY.md` - understand accumulated lessons
+4. Run `git diff` to see what files were changed in recent commits
+5. Check the main code files to understand current architecture
 
-### Actions
+### Step 2: Analyze and Decide
 
-- Use Edit or Write tools to modify feature_list.json if needed
+After gathering context, analyze:
+
+1. Which pending tasks are now obsolete (dependencies completed)?
+2. Which task priorities should change based on project state?
+3. Are there any new tasks that should be added based on recent changes?
+4. Are there duplicate or overlapping tasks that should be merged?
+
+### Step 3: Execute Changes
+
+- Use Edit or Write tools to modify feature_list.json
 - DO NOT create new self-review tasks
 - Only modify what truly needs to be changed
 - After completing, summarize what changes you made
 
-Please start the self-review analysis."""
+Please start by gathering context, then analyze and make updates."""
 
         return prompt
 
@@ -850,30 +871,46 @@ Please start the self-review analysis."""
         if not suggestion:
             return ""
 
+        # Get recent context for the prompt
+        recent_commits = self.git_helper.get_recent_commits(5)
+        current_branch = self.git_helper.get_current_branch()
+
         prompt = f"""## MEMORY.md Optimization
 
 {suggestion}
 
-### Task
+### Current Context
 
-Please analyze and optimize the MEMORY.md file:
+- Branch: {current_branch}
+- Recent commits:
+{chr(10).join(f"  - {c}" for c in recent_commits) if recent_commits else "  (none)"}
 
-1. Read `.agent/MEMORY.md` file
-2. **DELETE**: Remove redundant, duplicate, or outdated content
-3. **UPDATE**: Fix incorrect or stale information
-4. **ADD**: Insert new insights, patterns, or lessons learned from recent work
-5. Use Edit or Write tools to make changes
+### Step 1: Gather Context (REQUIRED)
 
-### Guidelines
+Before making any decisions, you MUST gather sufficient context:
 
+1. Read `.agent/MEMORY.md` - understand current content structure
+2. Read `.agent/feature_list.json` - understand completed tasks and recent work
+3. Run `git diff HEAD~5 --stat` to see what files changed recently
+4. Read recent code files to understand new patterns or changes
+
+### Step 2: Analyze
+
+After gathering context, analyze:
+
+1. **What to DELETE**: Redundant, duplicate, or outdated content
+2. **What to UPDATE**: Incorrect or stale information that needs fixing
+3. **What to ADD**: New insights, patterns, or lessons from recent work
+
+### Step 3: Execute
+
+- Use Edit or Write tools to make changes to `.agent/MEMORY.md`
 - Keep essential technical details and key learnings
 - Merge similar sections to reduce duplication
-- Update outdated patterns or configurations
 - Add new lessons learned from recent tasks
-- Organize content for better readability
 - After completing, summarize what you added, updated, and deleted
 
-Please start optimizing."""
+Please start by gathering context, then analyze and make updates."""
 
         return prompt
 
@@ -900,30 +937,48 @@ Please start optimizing."""
         if not suggestion:
             return ""
 
+        # Get recent context for the prompt
+        recent_commits = self.git_helper.get_recent_commits(5)
+        current_branch = self.git_helper.get_current_branch()
+
         prompt = f"""## CLAUDE.md Optimization
 
 {suggestion}
 
-### Task
+### Current Context
 
-Please analyze and optimize the CLAUDE.md file:
+- Branch: {current_branch}
+- Recent commits:
+{chr(10).join(f"  - {c}" for c in recent_commits) if recent_commits else "  (none)"}
 
-1. Read `CLAUDE.md` in the project root
-2. **DELETE**: Remove redundant, duplicate, or outdated content
-3. **UPDATE**: Fix incorrect or stale information
-4. **ADD**: Insert new project patterns, commands, or insights discovered recently
-5. Use Edit or Write tools to make changes
+### Step 1: Gather Context (REQUIRED)
 
-### Guidelines
+Before making any decisions, you MUST gather sufficient context:
 
+1. Read `CLAUDE.md` - understand current content structure and guidelines
+2. Read `.agent/feature_list.json` - understand completed tasks and recent work
+3. Run `git diff HEAD~5 --stat` to see what files changed recently
+4. Read recent code files to understand new patterns or APIs used
+5. Check `.agent/MEMORY.md` for recent lessons learned
+
+### Step 2: Analyze
+
+After gathering context, analyze:
+
+1. **What to DELETE**: Redundant, duplicate, or outdated content
+2. **What to UPDATE**: Incorrect or stale commands, configurations, or guidelines
+3. **What to ADD**: New project patterns, commands, or insights from recent work
+
+### Step 3: Execute
+
+- Use Edit or Write tools to make changes to `CLAUDE.md`
 - Keep essential project guidelines and technical details
 - Merge similar sections to reduce duplication
 - Update outdated commands or configurations
 - Add new patterns or insights from recent work
-- Organize content for better readability
 - After completing, summarize what you added, updated, and deleted
 
-Please start optimizing."""
+Please start by gathering context, then analyze and make updates."""
 
         return prompt
 
