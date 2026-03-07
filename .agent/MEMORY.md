@@ -464,7 +464,7 @@ Accumulated experience and lessons learned from task execution.
 
 ## Task Experience Records
 
-### 2026-03-07 - Clean up MEMORY.md duplicate entries (fix-015)
+2026-03-07 - Clean up MEMORY.md duplicate entries (fix-015)
 
 **任务描述**: MEMORY.md 文件中存在重复的条目（例如 fix-008 出现了两次）。需要清理重复内容，保留最新和最完整的版本。
 
@@ -473,10 +473,36 @@ Accumulated experience and lessons learned from task execution.
 
 Successfully cleaned up the duplicate entries in MEMORY.md. Here's what was done:
 
-### Changes Made
+
+---
+
+Changes Made
 - **Removed duplicate entries** for fix-008 through fix-014 that appeared twice in the file
 - Each task had two versions: 
   - A well-organized English version at the top
   - An incomplete Chinese version in the "Task Experience Records" section
 - Kept only the complete English versions (which are more detailed and better formatted)
 - File reduced from **676 lines to 437 lines**
+
+---
+
+### 2026-03-07 - Verify and fix any remaining documentation inconsistencies (fix-016)
+
+**任务描述**: 检查所有文档文件（README.md, README.zh-CN.md, CLAUDE.md）中是否还存在与代码不一致的地方，并进行修正。
+
+**执行结果**: completed
+**执行消息**: ## Task Completed
+
+I've verified and fixed documentation inconsistencies in the project. Here's a summary:
+
+### Changes Made to CLAUDE.md:
+
+1. **Fixed duplicate entry in Core Modules table**: Removed duplicate `agent/prompt_manager.py` entry
+
+2. **Added missing modules**: Added `agent/performance_monitor.py` and `agent/config_reloader.py` to the Core Modules table
+
+3. **Fixed mypy command path**: Changed `mypy agent_core.py` to `mypy agent/agent_core.py`
+
+### Verification:
+
+- All 223 tests pass 
