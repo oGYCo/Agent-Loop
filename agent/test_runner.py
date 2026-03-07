@@ -3,6 +3,7 @@
 验证功能完成度
 """
 
+import shlex
 import subprocess
 from pathlib import Path
 from typing import Tuple, Optional, Dict, Any
@@ -34,10 +35,11 @@ class AgentTestRunner:
         test_command = test_command or self.config.get("test_command", "pytest")
 
         try:
-            # 运行测试命令
+            # 运行测试命令 - 使用 shlex.split 防止命令注入
+            cmd_list = shlex.split(test_command)
             result = subprocess.run(
-                test_command,
-                shell=True,
+                cmd_list,
+                shell=False,
                 capture_output=True,
                 text=True,
                 timeout=300  # 5分钟超时
@@ -88,9 +90,11 @@ class AgentTestRunner:
         verify_command = feature.get("verify_command")
         if verify_command:
             try:
+                # 使用 shlex.split 防止命令注入
+                cmd_list = shlex.split(verify_command)
                 result = subprocess.run(
-                    verify_command,
-                    shell=True,
+                    cmd_list,
+                    shell=False,
                     capture_output=True,
                     text=True,
                     timeout=60
