@@ -38,6 +38,23 @@ This file stores accumulated experience and lessons learned from the Agent-Loop 
 - `state.json` - Current state
 - `MEMORY.md` - Accumulated experience
 
+## Lessons Learned
+
+### 2026-03-07: Adding Comprehensive Unit Tests
+
+When adding tests for `agent_core.py`:
+
+1. **Mock setup matters**: The test fixture sets up git_helper with mocked methods. Tests that need to verify specific return values must override the mock after the fixture is created.
+
+2. **Method behavior differs from expectations**:
+   - `verify_task` checks git status string for changes
+   - `_get_session_stats` loads from session_history, not features
+   - `gather_context` doesn't include timestamp field
+
+3. **Test approach**: When testing with mocks, configure the mock within the test to return specific values rather than relying on real git operations.
+
+4. **All 37 tests now pass** covering edge cases for initialize_session, gather_context, complete_session, execute_task, verify_task.
+
 ## Important Documentation URLs
 
 Before implementing new features, always check these docs first:
@@ -201,6 +218,10 @@ Or via `env` parameter in ClaudeAgentOptions.
 ---
 
 ## Task Experience Records
+
+
+
+
 
 
 
@@ -499,7 +520,10 @@ Changes Made
 
 ---
 
-### 2026-03-07 - Add type annotations to human_intervention.py (self-019)
+
+---
+
+2026-03-07 - Add type annotations to human_intervention.py (self-019)
 
 **任务描述**: 使用 mypy 检查 agent/human_intervention.py 的类型错误，添加完整的类型注解。
 
@@ -531,5 +555,77 @@ Changes Made
 - `show_status(args)` 需要添加参数类型 `argparse.Namespace` 和返回类型 `None`
 - `main()` 需要添加返回类型 `None`
 - 使用 `mypy main.py --disallow-untyped-defs --strict` 可以检测到这些缺失的注解
+
+**改进建议**: 无
+
+---
+
+
+---
+
+2026-03-07 - Add type annotations to main.py (self-020)
+
+**任务描述**: 使用 mypy 检查 main.py 的类型错误，添加完整的类型注解。
+
+**执行结果**: completed
+**执行消息**: ## Summary
+
+I've successfully added type annotations to `main.py`:
+
+
+---
+
+Changes Made
+
+1. **Line 143**: Added type annotation to `show_status` function:
+   - Before: `def show_status(args):`
+   - After: `def show_status(args: argparse.Namespace) -> None:`
+
+2. **Line 174**: Added return type annotation to `main` function:
+   - Before: `def main():`
+   - After: `def main() -> None:`
+
+
+---
+
+Verification
+
+- ✅ `mypy main.py` passes (default settings)
+- ✅ `mypy main.py --disallow-untyped-defs --strict` p
+
+---
+
+### 2026-03-07 - Add comprehensive tests for agent_core.py (self-021)
+
+**任务描述**: 为 agent_core.py 增加全面的单元测试，覆盖核心方法：initialize_session, gather_context, complete_session, execute_task, verify_task。测试各种边界情况和错误处理。
+
+**执行结果**: completed
+**执行消息**: ## Summary
+
+Successfully added comprehensive unit tests for `agent_core.py`. Here's what was accomplished:
+
+### Tests Added (24 new test cases)
+
+**initialize_session edge cases:**
+- `test_initialize_session_with_existing_session` - Tests session creation/reuse
+- `test_initialize_session_resets_error_count` - Tests error reset on new session
+- `test_initialize_session_different_agent_types` - Tests with various agent types
+
+**gather_context edge cases:**
+- `test_gather_context_with_no_tasks` - Em
+
+---
+
+### 2026-03-07 - Update README.md with current features (self-025)
+
+**任务描述**: 更新 README.md，添加项目最新功能介绍、使用方法、配置说明和示例。确保文档与代码同步。
+
+**执行结果**: completed
+
+**学到的经验**:
+- README.md 需要与代码保持同步，定期更新以反映最新功能
+- 文档应包含完整的 CLI 参考，包括所有命令和选项
+- 添加实际使用示例可以帮助新用户快速上手
+- 项目结构图和架构说明有助于理解系统设计
 
 **改进建议**: 无
