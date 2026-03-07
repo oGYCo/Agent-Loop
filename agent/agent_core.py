@@ -7,6 +7,7 @@ import os
 import asyncio
 import json
 import sys
+import logging
 from datetime import datetime
 from pathlib import Path
 from typing import Optional, Dict, Any, List
@@ -32,11 +33,13 @@ async def pre_tool_hook(input_data: dict, tool_use_id: str | None, context: dict
     tool_name = input_data.get("tool_name", "unknown")
     tool_input = input_data.get("tool_input", {})
 
-    print(f"\n[PreToolUse] {tool_name}", flush=True)
+    logger.debug(f"PreToolUse: {tool_name}")
     # 显示简化后的输入
     input_preview = json.dumps(tool_input, ensure_ascii=False)
     if len(input_preview) > 300:
         input_preview = input_preview[:300] + "..."
+    # Keep print for user feedback
+    print(f"\n[PreToolUse] {tool_name}", flush=True)
     print(f"  Input: {input_preview}", flush=True)
 
     return {}  # 允许执行
@@ -79,6 +82,7 @@ async def notification_hook(input_data: dict, tool_use_id: str | None, context: 
     message = input_data.get("message", "")
     notification_type = input_data.get("notification_type", "")
 
+    logger.info(f"Notification: {notification_type}: {message[:200]}")
     print(f"\n[Notification] {notification_type}: {message[:200]}", flush=True)
 
     return {}
@@ -87,6 +91,7 @@ async def notification_hook(input_data: dict, tool_use_id: str | None, context: 
 async def stop_hook(input_data: dict, tool_use_id: str | None, context: dict) -> dict:
     """处理停止事件"""
     session_id = input_data.get("session_id", "")
+    logger.info(f"Session {session_id} ended")
     print(f"\n[Stop] Session {session_id} ended", flush=True)
 
     return {}
@@ -95,6 +100,35 @@ from .state_manager import StateManager
 from .task_selector import TaskSelector
 from .git_helper import GitHelper
 from .human_intervention import HumanIntervention
+
+
+# 配置日志
+def setup_logging(name: str = "agent_core", level: int = logging.INFO) -> logging.Logger:
+    """配置日志记录器"""
+    logger = logging.getLogger(name)
+    logger.setLevel(level)
+
+    # 避免重复添加 handler
+    if logger.handlers:
+        return logger
+
+    # 控制台处理器
+    console_handler = logging.StreamHandler(sys.stdout)
+    console_handler.setLevel(level)
+
+    # 格式化
+    formatter = logging.Formatter(
+        '%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+        datefmt='%Y-%m-%d %H:%M:%S'
+    )
+    console_handler.setFormatter(formatter)
+
+    logger.addHandler(console_handler)
+    return logger
+
+
+# 创建模块级日志记录器
+logger = setup_logging("agent_core")
 
 
 class AgentCore:
@@ -257,8 +291,8 @@ Start by reading CLAUDE.md and the relevant source files for this task."""
         task_id = task.get("id")
         task_name = task.get("name")
 
-        print(f"\nExecuting task: {task_name}")
-        print(f"Description: {task.get('description')}")
+        logger.info(f"Executing task: {task_name}")
+        logger.debug(f"Description: {task.get('description')}")
 
         # 更新当前任务状态
         self.state_manager.update_state({
@@ -484,7 +518,7 @@ Start by reading CLAUDE.md and the relevant source files for this task."""
                         num_turns = message.num_turns
                         stop_reason = message.stop_reason
                         session_id = message.session_id
-                        print(f"\n✅ Final Result (turns: {num_turns}, stop: {stop_reason}): {result_text[:500]}...")
+                        logger.info(f"Final Result (turns: {num_turns}, stop: {stop_reason}): {result_text[:500]}...")
 
                     # 处理其他消息类型
                     else:
@@ -494,46 +528,46 @@ Start by reading CLAUDE.md and the relevant source files for this task."""
                             subtype = getattr(message, 'subtype', '')
                             if subtype == "task_started":
                                 desc = getattr(message, 'description', '')
-                                print(f"\n[系统] 任务开始: {desc}")
+                                logger.info(f"任务开始: {desc}")
                             elif subtype == "task_progress":
                                 desc = getattr(message, 'description', '')
                                 last_tool = getattr(message, 'last_tool_name', '')
-                                print(f"[系统] 进度: {desc} (工具: {last_tool})")
+                                logger.debug(f"进度: {desc} (工具: {last_tool})")
                             elif subtype == "task_notification":
                                 status = getattr(message, 'status', '')
                                 summary = getattr(message, 'summary', '')
-                                print(f"[系统] 任务通知: {status} - {summary[:100]}")
+                                logger.info(f"任务通知: {status} - {summary[:100]}")
 
         except CLINotFoundError as e:
-            print(f"Error: Claude Code not found. Please install Claude Code.")
+            logger.error(f"Claude Code not found: {e}")
             return {
                 "task_id": task_id,
                 "status": "error",
                 "message": f"Claude Code not found: {e}"
             }
         except CLIConnectionError as e:
-            print(f"Error: Cannot connect to Claude Code. Please check your connection.")
+            logger.error(f"Cannot connect to Claude Code: {e}")
             return {
                 "task_id": task_id,
                 "status": "error",
                 "message": f"Connection error: {e}"
             }
         except ProcessError as e:
-            print(f"Error: Claude Code process failed with exit code {e.exit_code}")
+            logger.error(f"Claude Code process failed with exit code {e.exit_code}")
             return {
                 "task_id": task_id,
                 "status": "error",
                 "message": f"Process error: {e}"
             }
         except ClaudeSDKError as e:
-            print(f"SDK error: {e}")
+            logger.error(f"SDK error: {e}")
             return {
                 "task_id": task_id,
                 "status": "error",
                 "message": f"SDK error: {e}"
             }
         except Exception as e:
-            print(f"SDK execution error: {e}")
+            logger.error(f"SDK execution error: {e}")
             return {
                 "task_id": task_id,
                 "status": "error",
@@ -553,7 +587,7 @@ Start by reading CLAUDE.md and the relevant source files for this task."""
         try:
             return asyncio.run(self.execute_task_with_sdk(task))
         except Exception as e:
-            print(f"Error in execute_task: {e}")
+            logger.error(f"Error in execute_task: {e}")
             return {
                 "task_id": task.get("id"),
                 "status": "error",
@@ -571,10 +605,10 @@ Start by reading CLAUDE.md and the relevant source files for this task."""
 
         if has_changes and task_id:
             self.task_selector.mark_task_completed(task_id)
-            print(f"Task {task_id} verified - changes detected")
+            logger.info(f"Task {task_id} verified - changes detected")
             return True
         else:
-            print(f"Task {task_id} - no changes detected")
+            logger.info(f"Task {task_id} - no changes detected")
             return False
 
     def handle_error(self, error: str, task: Optional[Dict[str, Any]] = None) -> None:
@@ -660,7 +694,7 @@ Start by reading CLAUDE.md and the relevant source files for this task."""
         self.git_helper.stage_and_commit(commit_message)
 
         self._write_progress_summary()
-        print(f"\nSession {session_id} completed")
+        logger.info(f"Session {session_id} completed")
 
     def _write_progress_summary(self) -> None:
         """写进度总结"""
@@ -710,7 +744,7 @@ Start by reading CLAUDE.md and the relevant source files for this task."""
         with open(memory_file, "w", encoding="utf-8") as f:
             f.write(updated_content)
 
-        print(f"\n经验已记录到 {memory_file}")
+        logger.info(f"经验已记录到 {memory_file}")
 
     def run_agent_loop(self, max_iterations: int = 10, resume_session_id: Optional[str] = None) -> Dict[str, Any]:
         """运行Agent循环
@@ -720,10 +754,10 @@ Start by reading CLAUDE.md and the relevant source files for this task."""
             resume_session_id: 要恢复的会话ID（如果需要恢复之前的会话）
         """
         init_info = self.initialize_session("coder")
-        print(f"Session initialized: {init_info['session_id']}")
+        logger.info(f"Session initialized: {init_info['session_id']}")
         if resume_session_id:
-            print(f"Resuming from session: {resume_session_id}")
-        print(f"Pending tasks: {init_info['pending_tasks']}")
+            logger.info(f"Resuming from session: {resume_session_id}")
+        logger.info(f"Pending tasks: {init_info['pending_tasks']}")
 
         # 保存会话ID用于可能的恢复
         current_sdk_session_id = resume_session_id
@@ -736,12 +770,12 @@ Start by reading CLAUDE.md and the relevant source files for this task."""
         }
 
         for i in range(max_iterations):
-            print(f"\n--- Iteration {i + 1} ---")
+            logger.info(f"--- Iteration {i + 1} ---")
 
             context = self.gather_context()
 
             if not context["current_task"]:
-                print("No pending tasks. Exiting.")
+                logger.info("No pending tasks. Exiting.")
                 break
 
             task = context["current_task"]
@@ -766,7 +800,7 @@ Start by reading CLAUDE.md and the relevant source files for this task."""
                 self.extract_and_save_experience(task, result)
 
             except Exception as e:
-                print(f"Error executing task: {e}")
+                logger.error(f"Error executing task: {e}")
                 self.handle_error(str(e), task)
                 summary["errors"] += 1
 
