@@ -349,6 +349,23 @@ def reload_config(args: argparse.Namespace) -> None:
     print("-" * 40)
 
 
+def start_server(args: argparse.Namespace) -> None:
+    """Start the REST API server"""
+    import uvicorn
+
+    print(f"Starting Agent-Loop API server...")
+    print(f"Host: {args.host}")
+    print(f"Port: {args.port}")
+    print(f"API docs: http://{args.host}:{args.port}/docs")
+
+    uvicorn.run(
+        "api:app",
+        host=args.host,
+        port=args.port,
+        reload=False
+    )
+
+
 def list_prompts(args: argparse.Namespace) -> None:
     """列出所有提示词"""
     prompt_manager = PromptManager(args.project_dir if args.project_dir else None)
@@ -623,6 +640,25 @@ For more information, see: https://github.com/oGYCo/Agent-Loop
         help="Force reload even if files haven't changed"
     )
 
+    # server command
+    server_parser = subparsers.add_parser(
+        "server",
+        help="Start REST API server",
+        description="Start FastAPI REST API server"
+    )
+    server_parser.add_argument(
+        "--host",
+        type=str,
+        default="0.0.0.0",
+        help="Host to bind to (default: 0.0.0.0)"
+    )
+    server_parser.add_argument(
+        "--port",
+        type=int,
+        default=8000,
+        help="Port to bind to (default: 8000)"
+    )
+
     # prompt command
     prompt_parser = subparsers.add_parser(
         "prompt",
@@ -765,6 +801,8 @@ For more information, see: https://github.com/oGYCo/Agent-Loop
             show_status(args)
         elif args.command == "reload":
             reload_config(args)
+        elif args.command == "server":
+            start_server(args)
         elif args.command == "prompt":
             if args.prompt_action == "list":
                 list_prompts(args)
