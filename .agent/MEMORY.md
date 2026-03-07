@@ -4,6 +4,48 @@ Accumulated experience and lessons learned from task execution.
 
 ---
 
+## 2026-03-08 - WebSocket Real-time Push Integration (feature-003)
+
+**Task Description**: 实现WebSocket端点 /ws 用于实时推送Agent运行状态、任务进度、日志
+
+**Lessons Learned:**
+
+1. **WebSocket Implementation in FastAPI**:
+   - FastAPI provides WebSocket support via `@app.websocket("/ws")` decorator
+   - Need to import `WebSocket` and `WebSocketDisconnect` from fastapi
+   - WebSocket connections are async and require `async def` handlers
+
+2. **Existing Code Structure**:
+   - The api.py already had ConnectionManager and EventPusher classes implemented
+   - The `/ws` endpoint was added in previous commit
+   - ConnectionManager handles connection lifecycle (connect, disconnect, broadcast)
+   - EventPusher is a singleton for pushing events to all connected clients
+
+3. **Integration with agent_core.py**:
+   - Used lazy import in _get_event_pusher() to avoid circular dependency (api.py imports agent_core.py for /run endpoint)
+   - Added async _push_log_async for use in async hooks
+   - Added sync _push_log_sync wrapper for sync code paths with event loop handling
+
+4. **Event Push Integration Points**:
+   - pre_tool_hook: Pushes tool call start events
+   - post_tool_hook: Pushes tool call completion events
+   - notification_hook: Pushes notification messages
+   - stop_hook: Pushes session end events
+   - run_agent_loop: Pushes session start, iteration start, task start/completion, session completion
+
+5. **Event Types**:
+   - `log`: Log messages with level (info, warning, error) and source (tool, session, task, etc.)
+
+6. **Verification**:
+   - Tested WebSocket connection: `ws://localhost:8000/ws`
+   - Server successfully accepts connections and sends welcome message
+   - All 223 existing tests pass
+   - No circular import issues
+
+7. **Commit**: Pushed as `feat: integrate EventPusher into agent_core for WebSocket event push`
+
+---
+
 ## 2026-03-08 - WebSearch and WebFetch Abilities (feature-015)
 
 **Task Description**: 确认系统是否具有能够成功进行WebSearch和WebFetch的功能，同时，要在默认的提示词中加入这两个能力应该是在执行任务之前用来查阅任务相关的各种必要的文档信息
@@ -593,6 +635,8 @@ Accumulated experience and lessons learned from task execution.
 
 
 
+
+
 2026-03-07 - Clean up MEMORY.md duplicate entries (fix-015)
 
 **任务描述**: MEMORY.md 文件中存在重复的条目（例如 fix-008 出现了两次）。需要清理重复内容，保留最新和最完整的版本。
@@ -781,9 +825,38 @@ python main.py server --port 8000
 
 ---
 
-### 2026-03-08 - Webhook通知系统 (feature-005)
+
+---
+
+2026-03-08 - Webhook通知系统 (feature-005)
 
 **任务描述**: 实现Webhook通知功能：当任务完成/失败/需要人工干预时，发送HTTP POST请求到配置的URL。需要阅读agent/human_intervention.py了解干预触发机制。
 
 **执行结果**: completed
 **执行消息**: API Error: 429 {"type":"error","error":{"type":"rate_limit_error","message":"rate limit exceeded(RPM) (1002)"},"request_id":"05fb8304fb9b0a028244c6e27b4621b4"}
+
+---
+
+### 2026-03-08 - WebSearch and WebFetch abilities (feature-015)
+
+**任务描述**: 确认系统是否具有能够成功进行WebSearch和WebFetch的功能，同时，要在默认的提示词中加入这两个能力应该是在执行任务之前用来查阅任务相关的各种必要的文档信息
+
+**执行结果**: completed
+**执行消息**: ## 任务完成
+
+我已完成 feature-015 任务：**WebSearch and WebFetch abilities**
+
+### 完成的工作：
+
+1. **确认了系统已具备 WebSearch/WebFetch 功能**：
+   - `agent_core.py` 中已有默认工具列表包含 WebSearch 和 WebFetch
+   - `prompt_manager.py` 的系统提示词中已提及这些工具
+
+2. **修复了 config.json 配置**：
+   - 添加 WebSearch 和 WebFetch 到 `allowed_tools` 列表
+   - 注：config.json 在 .gitignore 中（本地配置），不会提交到仓库
+
+3. **更新了系统提示词**：
+   - 在 "Before Starting Any Task" 部分添加了明确的 Web 工具使用说明
+   - 在工作流程中添加了 "Research task-related information using WebSearch/WebFetch" 作为第二步
+   - 更新了
