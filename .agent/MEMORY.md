@@ -204,6 +204,10 @@ Or via `env` parameter in ClaudeAgentOptions.
 
 
 
+
+
+
+
 2026-03-07 - Add type annotations to state_manager.py (self-004)
 
 **任务描述**: 使用 mypy 检查 agent/state_manager.py 的类型错误，然后添加完整的类型注解。
@@ -414,7 +418,10 @@ Or via `env` parameter in ClaudeAgentOptions.
 
 ---
 
-### 2026-03-07 - Add type annotations to agent_core.py (self-017)
+
+---
+
+2026-03-07 - Add type annotations to agent_core.py (self-017)
 
 **任务描述**: 使用 mypy 检查 agent_core.py 的类型错误，添加完整的类型注解。确保所有函数有正确的参数和返回值类型。
 
@@ -427,7 +434,10 @@ Or via `env` parameter in ClaudeAgentOptions.
 
 ---
 
-### 2026-03-07 - Add type annotations to session_manager.py (self-018)
+
+---
+
+2026-03-07 - Add type annotations to session_manager.py (self-018)
 
 **任务描述**: 使用 mypy 检查 agent/session_manager.py 的类型错误，添加完整的类型注解。
 
@@ -437,5 +447,89 @@ Or via `env` parameter in ClaudeAgentOptions.
 - 从 JSON 加载的字典使用 `session.get("key")` 返回 `Any`，需要使用 `cast()` 显式转换
 - 遍历 `history.get("sessions", [])` 时，需要显式声明类型 `sessions: List[Dict[str, Any]]`
 - 使用 `cast(Dict[str, Any], json.load(f))` 处理反序列化结果
+
+**改进建议**: 无
+
+---
+
+
+---
+
+2026-03-07 - Add type annotations to session_manager.py (self-018)
+
+**任务描述**: 使用 mypy 检查 agent/session_manager.py 的类型错误，添加完整的类型注解。
+
+**执行结果**: completed
+**执行消息**: ## Task Complete ✅
+
+Successfully added type annotations to `agent/session_manager.py`.
+
+
+---
+
+Changes Made
+
+1. **Added `cast` import** - Line 8: Added `cast` from `typing` module
+
+2. **Fixed `should_resume_session` method** (lines 68-72):
+   - Added explicit type `sessions: List[Dict[str, Any]]` for the sessions list
+   - Used `cast(str, session.get("status"))` to properly type the status comparison
+
+3. **Fixed `get_session_summary` method** (lines 78-79):
+   - Added explicit type annotation for sessions variable
+
+**改进建议**: 无
+
+---
+
+
+---
+
+2026-03-07 - Add type annotations to human_intervention.py (self-019)
+
+**任务描述**: 使用 mypy 检查 agent/human_intervention.py 的类型错误，添加完整的类型注解。
+
+**执行结果**: completed
+
+**学到的经验**:
+- 文件中已有的类型注解已经完整，只有一个多余的 `# type: ignore[no-untyped-def]` 注释
+- 运行 `mypy --strict` 可以检测到未使用的 type ignore 注释
+
+**改进建议**: 无
+
+---
+
+### 2026-03-07 - Add type annotations to human_intervention.py (self-019)
+
+**任务描述**: 使用 mypy 检查 agent/human_intervention.py 的类型错误，添加完整的类型注解。
+
+**执行结果**: completed
+**执行消息**: All done. Let me provide a summary:
+
+## Summary
+
+**Task**: Add type annotations to human_intervention.py (self-019)
+
+**What was done**:
+- Ran `mypy agent/human_intervention.py --strict` which found 1 issue: an unused `# type: ignore[no-untyped-def]` comment on line 157
+- The `notify_completion` method already had proper type annotations (`summary: Dict[str, Any] -> None`), so the type ignore comment was unnecessary
+- Removed the unused comment
+
+**Result**:
+- ✅ mypy passes with no issues (both regular and strict modes)
+
+---
+
+2026-03-07 - Add type annotations to main.py (self-020)
+
+**任务描述**: 使用 mypy 检查 main.py 的类型错误，添加完整的类型注解。
+
+**执行结果**: completed
+
+**学到的经验**:
+- main.py 中有两个函数缺少类型注解：`show_status(args)` 和 `main()`
+- `show_status(args)` 需要添加参数类型 `argparse.Namespace` 和返回类型 `None`
+- `main()` 需要添加返回类型 `None`
+- 使用 `mypy main.py --disallow-untyped-defs --strict` 可以检测到这些缺失的注解
 
 **改进建议**: 无
