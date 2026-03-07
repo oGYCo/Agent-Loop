@@ -15,8 +15,8 @@
       "name": "Replace magic number 999 in task_selector.py",
       "description": "在 agent/task_selector.py:42 中，使用了 magic number 999 作为默认优先级。需要将其替换为常量定义，例如 DEFAULT_PRIORITY = 1000，并在代码中使用该常量。这样可以提高代码可读性，避免优先级冲突。",
       "priority": 2,
-      "status": "pending",
-      "passes": false,
+      "status": "completed",
+      "passes": true,
       "context": "读取 agent/task_selector.py 文件，找到 pending_tasks.sort(key=lambda x: x.get('priority', 999)) 这行代码，添加常量定义 DEFAULT_PRIORITY = 1000，然后替换 999 为 DEFAULT_PRIORITY。同时更新相关的类型注解和文档字符串。",
       "created_at": "2026-03-07 21:00:00",
       "updated_at": "2026-03-07"
@@ -26,8 +26,8 @@
       "name": "Replace blocking input() with async solution in human_intervention.py",
       "description": "在 agent/human_intervention.py:139 中使用了阻塞式的 input() 函数，这在异步上下文中会阻塞整个事件循环。需要改用异步输入方法或提供替代方案（如文件标记、API端点、环境变量等）。建议方案：1）使用 asyncio.to_thread 将 input() 放到线程中执行；2）添加一个可选的异步输入回调接口。",
       "priority": 3,
-      "status": "pending",
-      "passes": false,
+      "status": "completed",
+      "passes": true,
       "context": "读取 agent/human_intervention.py 文件，找到 input() 调用的位置（第139行附近）。考虑使用 asyncio.to_thread(input, ...) 或添加一个可选的 input_callback 参数来支持异步输入。",
       "created_at": "2026-03-07 21:00:00",
       "updated_at": "2026-03-07"

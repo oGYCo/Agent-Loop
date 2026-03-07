@@ -463,7 +463,7 @@ Examples:
   %(prog)s status               Show current agent status
   %(prog)s --version            Show version information
 
-For more information, see: https://github.com/agent-loop/docs
+For more information, see: https://github.com/oGYCo/Agent-Loop
 """
     )
 
