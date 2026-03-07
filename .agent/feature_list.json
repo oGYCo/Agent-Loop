@@ -218,6 +218,198 @@
       "verify_command": "运行agent后检查curl http://localhost:8000/metrics",
       "created_at": "2026-03-08",
       "updated_at": "2026-03-08"
+    },
+    {
+      "id": "feature-016",
+      "name": "explore and plan",
+      "description": "请仔细详细的审查整个代码库的文件，以工业生产级的视角来 批判性的审查代码，同时还有对文档问题的审查例如过时的信息，需要进行更新的内容，需要删除的内容等等，然后执行一系列的后续的执行计划到feature_list.json文件中，然后注意在最后再制定一个（制定计划）的计划，也就是以后每一个plan任务都要在执行的时候在所有其他任务的最后加 上一个plan任务，以便后续的系统能持续不断的运行。然后一定要注意计划不仅仅是限于对现有问题的改进，还有及时的更新各种的相关文件，测试 任务，新功能任务，更好的架构设计，修改MEMORY文件，完善整个系统，修改CLAUDE.md文件，修改README文件等等等等，不要受到局限，同时最终的目的一定是让整个系统变的越来越好，能够不断的优化和越来越成熟",
+      "priority": 1,
+      "status": "completed",
+      "passes": true,
+      "context_files": [
+        "CLAUDE.md",
+        "README.md",
+        "README.zh-CN.md",
+        "NEW_FEATURES_ANALYSIS.md",
+        "analysis_report.md",
+        "agent/*.py",
+        "tests/*.py"
+      ],
+      "created_at": "2026-03-08",
+      "updated_at": "2026-03-08"
+    },
+    {
+      "id": "feature-018",
+      "name": "改进代码错误处理和日志记录",
+      "description": "审查并改进代码中的错误处理：1) 将 silent except:pass 改为适当的错误日志记录 2) 添加更详细的异常信息到日志 3) 确保关键错误被正确传播而非静默忽略。需要审查 agent_core.py, human_intervention.py, session_manager.py, webhook.py, email_notifier.py 等模块。",
+      "priority": 2,
+      "status": "pending",
+      "passes": false,
+      "context_files": [
+        "agent/agent_core.py",
+        "agent/human_intervention.py",
+        "agent/session_manager.py",
+        "agent/webhook.py",
+        "agent/email_notifier.py",
+        "agent/config_reloader.py"
+      ],
+      "verify_command": "运行测试并检查日志输出",
+      "created_at": "2026-03-08",
+      "updated_at": "2026-03-08"
+    },
+    {
+      "id": "feature-019",
+      "name": "更新README.md文档",
+      "description": "更新README.md以包含所有已实现的功能：1) 邮件通知服务 (feature-007) 2) 任务看板功能 (feature-011) 3) API密钥认证 (feature-013) 4) Webhook通知 (feature-005) 5) Grafana仪表板模板 (feature-012)。确保文档与代码功能保持同步。",
+      "priority": 3,
+      "status": "pending",
+      "passes": false,
+      "context_files": [
+        "README.md",
+        "agent/email_notifier.py",
+        "agent/webhook.py"
+      ],
+      "verify_command": "检查README.md内容完整性",
+      "created_at": "2026-03-08",
+      "updated_at": "2026-03-08"
+    },
+    {
+      "id": "feature-020",
+      "name": "更新README.zh-CN.md中文文档",
+      "description": "更新README.zh-CN.md以包含所有已实现的功能，与README.md保持同步。确保所有新功能的描述准确且翻译正确。",
+      "priority": 3,
+      "status": "pending",
+      "passes": false,
+      "context_files": [
+        "README.zh-CN.md",
+        "README.md"
+      ],
+      "verify_command": "检查README.zh-CN.md内容完整性",
+      "created_at": "2026-03-08",
+      "updated_at": "2026-03-08"
+    },
+    {
+      "id": "feature-021",
+      "name": "清理过时的analysis_report.md",
+      "description": "分析并清理analysis_report.md文件：1) 移除已修复的问题标记 2) 更新仍存在的问题 3) 或者考虑删除该文件，因为问题已在代码中修复或在其他文档中记录。",
+      "priority": 4,
+      "status": "pending",
+      "passes": false,
+      "context_files": [
+        "analysis_report.md"
+      ],
+      "verify_command": "检查analysis_report.md内容",
+      "created_at": "2026-03-08",
+      "updated_at": "2026-03-08"
+    },
+    {
+      "id": "feature-022",
+      "name": "更新NEW_FEATURES_ANALYSIS.md",
+      "description": "更新NEW_FEATURES_ANALYSIS.md文件，将已实现的功能从待实现列表中移除，并添加新的功能建议。确保文档反映项目的当前状态。",
+      "priority": 4,
+      "status": "pending",
+      "passes": false,
+      "context_files": [
+        "NEW_FEATURES_ANALYSIS.md",
+        ".agent/feature_list.json"
+      ],
+      "verify_command": "检查NEW_FEATURES_ANALYSIS.md内容",
+      "created_at": "2026-03-08",
+      "updated_at": "2026-03-08"
+    },
+    {
+      "id": "feature-023",
+      "name": "添加API端点测试",
+      "description": "为api.py添加完整的单元测试和集成测试：1) 测试所有REST端点 2) 测试WebSocket连接 3) 测试API密钥认证 4) 测试错误处理。确保API的稳定性和可靠性。",
+      "priority": 5,
+      "status": "pending",
+      "passes": false,
+      "context_files": [
+        "api.py",
+        "tests/test_state_manager.py"
+      ],
+      "verify_command": "pytest tests/test_api.py -v",
+      "created_at": "2026-03-08",
+      "updated_at": "2026-03-08"
+    },
+    {
+      "id": "feature-024",
+      "name": "添加缺失的类型注解",
+      "description": "为关键函数和类添加类型注解：1) 检查agent模块中的函数签名 2) 添加返回类型注解 3) 确保与项目要求一致 (Python 3.11+)。运行mypy检查类型错误。",
+      "priority": 6,
+      "status": "pending",
+      "passes": false,
+      "context_files": [
+        "agent/*.py",
+        "main.py",
+        "api.py"
+      ],
+      "verify_command": "mypy agent/ --ignore-missing-imports",
+      "created_at": "2026-03-08",
+      "updated_at": "2026-03-08"
+    },
+    {
+      "id": "feature-025",
+      "name": "增强MEMORY.md和CLAUDE.md文档",
+      "description": "更新MEMORY.md和CLAUDE.md：1) 添加从当前任务中提取的关键经验 2) 更新架构图和模块说明 3) 添加新发现的最佳实践。确保文档反映项目的最新状态。",
+      "priority": 7,
+      "status": "pending",
+      "passes": false,
+      "context_files": [
+        ".agent/MEMORY.md",
+        "CLAUDE.md"
+      ],
+      "verify_command": "检查MEMORY.md和CLAUDE.md内容",
+      "created_at": "2026-03-08",
+      "updated_at": "2026-03-08"
+    },
+    {
+      "id": "feature-026",
+      "name": "添加代码覆盖率报告",
+      "description": "配置代码覆盖率报告：1) 在pyproject.toml中添加coverage配置 2) 确保测试覆盖关键模块 3) 设置覆盖率目标。运行coverage报告并分析结果。",
+      "priority": 8,
+      "status": "pending",
+      "passes": false,
+      "context_files": [
+        "pyproject.toml",
+        "tests/"
+      ],
+      "verify_command": "pytest tests/ --cov=agent --cov-report=term-missing",
+      "created_at": "2026-03-08",
+      "updated_at": "2026-03-08"
+    },
+    {
+      "id": "feature-027",
+      "name": "添加更多集成测试",
+      "description": "添加端到端集成测试：1) 测试Agent完整执行流程 2) 测试状态管理器的持久化 3) 测试Git集成。确保各模块协同工作正常。",
+      "priority": 8,
+      "status": "pending",
+      "passes": false,
+      "context_files": [
+        "agent/agent_core.py",
+        "agent/state_manager.py",
+        "tests/test_agent_core.py"
+      ],
+      "verify_command": "pytest tests/test_agent_core.py -v",
+      "created_at": "2026-03-08",
+      "updated_at": "2026-03-08"
+    },
+    {
+      "id": "feature-028",
+      "name": "持续改进计划",
+      "description": "这是一个meta任务，用于持续改进系统。在完成每个主要功能后，系统应该：1) 自动审查和更新feature_list.json 2) 更新MEMORY.md记录经验 3) 审查和更新CLAUDE.md和README.md 4) 确保测试覆盖新功能。此任务确保系统能够持续自我优化和成长。",
+      "priority": 99,
+      "status": "pending",
+      "passes": false,
+      "context_files": [
+        ".agent/feature_list.json",
+        ".agent/MEMORY.md",
+        "CLAUDE.md",
+        "README.md"
+      ],
+      "verify_command": "定期审查和更新文档",
+      "created_at": "2026-03-08",
+      "updated_at": "2026-03-08"
     }
   ]
 }

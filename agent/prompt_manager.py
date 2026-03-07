@@ -167,7 +167,7 @@ Use the Read tool to read these files completely before starting work.
 5. Plan your approach - keep changes minimal and focused
 6. Implement the solution
 7. Test and verify your changes
-8. Commit and push changes with descriptive messages
+8. Commit (do not add:Co-Authored-By in commit messages) and push changes with descriptive messages
 9. Record lessons learned in the .agent/MEMORY.md file
 
 ## Available Tools
@@ -230,7 +230,7 @@ Before starting:
 3. **Plan your change** - Keep it minimal and focused
 4. **Implement** - Make the smallest possible change
 5. **Test** - Run tests to verify
-6. **Commit and push** - Save and push progress with git
+6. **Commit(do not add:Co-Authored-By in commit messages) and push** - Save and push progress with git
 7. **Record learnings** - Document what you learned
 
 ## Key Instructions
@@ -250,7 +250,7 @@ After completing this task, you MUST:
 1. Review and update the task list - check if any pending tasks need priority adjustments, removal, or new tasks added
 2. Update project memory - extract key learnings from this task
 3. Consider if project documentation needs updates based on new patterns or insights discovered
-4. Commit and push all changes
+4. Commit(do not add:Co-Authored-By in commit messages) and push all changes
 
 Start by reading the project documentation and the relevant source files for this task.
 """
