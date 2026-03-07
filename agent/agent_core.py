@@ -10,7 +10,7 @@ import sys
 import logging
 from datetime import datetime
 from pathlib import Path
-from typing import Optional, Dict, Any, List, cast
+from typing import Optional, Dict, Any, List, cast, Callable
 
 from claude_agent_sdk import (
     query,
@@ -1650,7 +1650,7 @@ Please start by gathering context, then analyze and make updates."""
         self,
         max_iterations: int = 10,
         resume_session_id: Optional[str] = None,
-        shutdown_flag: Optional[callable] = None
+        shutdown_flag: Optional[Callable[[], bool]] = None
     ) -> Dict[str, Any]:
         """运行Agent循环
 
