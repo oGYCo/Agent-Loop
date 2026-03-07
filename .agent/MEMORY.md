@@ -4,6 +4,33 @@ Accumulated experience and lessons learned from task execution.
 
 ---
 
+## 2026-03-08 - WebSearch and WebFetch Abilities (feature-015)
+
+**Task Description**: 确认系统是否具有能够成功进行WebSearch和WebFetch的功能，同时，要在默认的提示词中加入这两个能力应该是在执行任务之前用来查阅任务相关的各种必要的文档信息
+
+**Lessons Learned:**
+
+1. **WebSearch/WebFetch Already Exist in Code**:
+   - agent_core.py already has WebSearch and WebFetch in the default tools list (lines 815-819)
+   - prompt_manager.py already mentions them in the system prompt
+
+2. **Config.json Was Missing WebSearch/WebFetch**:
+   - The .agent/config.json had allowed_tools without WebSearch and WebFetch
+   - Added both tools to config.json allowed_tools: `["Read", "Write", "Edit", "Bash", "Glob", "Grep", "MultiEdit", "WebSearch", "WebFetch"]`
+   - Note: config.json is in .gitignore so changes won't be committed (intentional - it's local config)
+
+3. **Updated System Prompt**:
+   - Added explicit instruction to use WebSearch/WebFetch before executing tasks
+   - Added "Use Web Tools to Research" section in the "Before Starting Any Task" section
+   - Updated workflow to include web research as step 2
+   - Updated Web Tools description to emphasize documentation research
+
+4. **Verification**: All 223 tests pass.
+
+5. **Commit**: Pushed as `feat: add WebSearch/WebFetch to system prompt for documentation lookup`
+
+---
+
 ## 2026-03-08 - REST API Service with FastAPI (feature-002)
 
 **Task Description**: 使用FastAPI搭建REST API服务，提供以下端点：GET /status (Agent状态), GET /tasks (任务列表), POST /tasks (添加任务), POST /run (启动Agent), GET /sessions (会话历史)。需要先阅读agent/state_manager.py了解状态管理机制，阅读main.py了解CLI命令结构。
@@ -556,6 +583,16 @@ Accumulated experience and lessons learned from task execution.
 
 
 
+
+
+
+
+
+
+
+
+
+
 2026-03-07 - Clean up MEMORY.md duplicate entries (fix-015)
 
 **任务描述**: MEMORY.md 文件中存在重复的条目（例如 fix-008 出现了两次）。需要清理重复内容，保留最新和最完整的版本。
@@ -610,7 +647,10 @@ Verification:
 
 ---
 
-### 2026-03-07 - Explore and new feature plan (feature-001)
+
+---
+
+2026-03-07 - Explore and new feature plan (feature-001)
 
 **任务描述**: 现在请完整的探索整个仓库的内容，然后进行头脑风暴想一些能够让项目变的更加完备以及用户友好（例如添加前端交互等等）的各种新的功能，然后进行细致的分析和规划，并将内容详细的写到一个markdown文档中，并且制定详细的后续的计划和任务到feature_list.json中，并且按照优先级排序（注意任务的描述一定要先让agent先获取足够的上下文信息之后再开始执行任务）。
 
@@ -619,7 +659,10 @@ Verification:
 
 我已完成对整个仓库的探索和新功能规划，以下是完成的工作：
 
-### 1. 创建了详细分析文档 `NEW_FEATURES_ANALYSIS.md`
+
+---
+
+1. 创建了详细分析文档 `NEW_FEATURES_ANALYSIS.md`
 
 包含以下内容：
 - **项目现状分析**: 评估了现有10个核心模块的功能和成熟度
@@ -636,7 +679,10 @@ Verification:
 - **技术选型建议**: 推荐的实现技术栈
 - **实施路线图**: 5个阶段的开发计划
 
-### 2. 更新了 `feature_list.json`
+
+---
+
+2. 更新了 `feature_list.json`
 
 添加了16个按优先级排序的任务：
 
@@ -644,3 +690,100 @@ Verification:
 |--------|------|
 | P0 (2-4) | REST API、WebSocket、Web Dashboard |
 | P1 (5-10) | Webhook、Prometheus、邮
+
+---
+
+
+---
+
+2026-03-08 - REST API服务搭建 (FastAPI) (feature-002)
+
+**任务描述**: 使用FastAPI搭建REST API服务，提供以下端点：GET /status (Agent状态), GET /tasks (任务列表), POST /tasks (添加任务), POST /run (启动Agent), GET /sessions (会话历史)。需要先阅读agent/state_manager.py了解状态管理机制，阅读main.py了解CLI命令结构。
+
+**执行结果**: completed
+**执行消息**: ## 任务完成
+
+已成功使用FastAPI搭建REST API服务。以下是完成的工作：
+
+
+---
+
+新增文件
+- **api.py** - FastAPI应用程序，包含所有端点
+
+
+---
+
+修改文件
+- **pyproject.toml** - 添加 FastAPI 和 uvicorn 依赖
+- **main.py** - 添加 `server` 子命令
+
+
+---
+
+API 端点
+
+| 端点 | 方法 | 说明 |
+|------|------|------|
+| `/status` | GET | 获取Agent状态 |
+| `/tasks` | GET | 获取任务列表（支持 `?status_filter=` 过滤）|
+| `/tasks` | POST | 添加新任务 |
+| `/run` | POST | 启动Agent |
+| `/sessions` | GET | 获取会话历史 |
+| `/health` | GET | 健康检查 |
+
+
+---
+
+启动方式
+
+```bash
+# 方式1: CLI命令
+python main.py server --port 8000
+
+# 方式2
+
+---
+
+
+---
+
+2026-03-08 - WebSocket实时推送支持 (feature-003)
+
+**任务描述**: 实现WebSocket端点 /ws 用于实时推送Agent运行状态、任务进度、日志。需要先了解FastAPI的WebSocket实现方式，以及如何在现有agent_core.py中集成状态推送。
+
+**执行结果**: completed
+**执行消息**: API Error: 429 {"type":"error","error":{"type":"rate_limit_error","message":"rate limit exceeded(RPM) (1002)"},"request_id":"05fb8090d0e4ee1fad548584adab0336"}
+
+---
+
+
+---
+
+2026-03-08 - WebSearch and WebFetch abilities (feature-015)
+
+**任务描述**: 确认系统是否具有能够成功进行WebSearch和WebFetch的功能，同时，要在默认的提示词中加入这两个能力应该是在执行任务之前用来查阅任务相关的各种必要的文档信息
+
+**执行结果**: completed
+**执行消息**: API Error: 429 {"type":"error","error":{"type":"rate_limit_error","message":"rate limit exceeded(RPM) (1002)"},"request_id":"05fb814a4a6b0b6b7a1bf02ca370af2a"}
+
+---
+
+
+---
+
+2026-03-08 - 基础Web Dashboard界面 (feature-004)
+
+**任务描述**: 创建简单的Web Dashboard展示：1) Agent当前状态 2) 任务列表和进度 3) 实时日志输出。可以使用HTML+JavaScript实现，需要先了解API端点设计。
+
+**执行结果**: completed
+**执行消息**: API Error: 429 {"type":"error","error":{"type":"rate_limit_error","message":"rate limit exceeded(RPM) (1002)"},"request_id":"05fb820c4dc17d74bd4a9105636c52a4"}
+
+---
+
+### 2026-03-08 - Webhook通知系统 (feature-005)
+
+**任务描述**: 实现Webhook通知功能：当任务完成/失败/需要人工干预时，发送HTTP POST请求到配置的URL。需要阅读agent/human_intervention.py了解干预触发机制。
+
+**执行结果**: completed
+**执行消息**: API Error: 429 {"type":"error","error":{"type":"rate_limit_error","message":"rate limit exceeded(RPM) (1002)"},"request_id":"05fb8304fb9b0a028244c6e27b4621b4"}

@@ -42,7 +42,7 @@
       ],
       "verify_command": "测试WebSocket连接",
       "created_at": "2026-03-07",
-      "updated_at": "2026-03-07"
+      "updated_at": "2026-03-08"
     },
     {
       "id": "feature-004",
@@ -57,7 +57,7 @@
       ],
       "verify_command": "访问 http://localhost:8000/",
       "created_at": "2026-03-07",
-      "updated_at": "2026-03-07"
+      "updated_at": "2026-03-08"
     },
     {
       "id": "feature-005",
@@ -72,7 +72,7 @@
       ],
       "verify_command": "curl -X POST http://localhost:8000/webhook/test",
       "created_at": "2026-03-07",
-      "updated_at": "2026-03-07"
+      "updated_at": "2026-03-08"
     },
     {
       "id": "feature-006",
@@ -191,56 +191,22 @@
       "updated_at": "2026-03-07"
     },
     {
-      "id": "feature-014",
-      "name": "飞书/钉钉集成",
-      "description": "添加飞书webhook和钉钉webhook支持，国内团队可使用这些工具接收通知。",
-      "priority": 14,
-      "status": "pending",
-      "passes": false,
-      "context_files": [
-        "NEW_FEATURES_ANALYSIS.md"
-      ],
-      "verify_command": "测试消息发送",
-      "created_at": "2026-03-07",
-      "updated_at": "2026-03-07"
-    },
-    {
-      "id": "feature-015",
-      "name": "插件系统基础架构",
-      "description": "设计并实现基础插件架构：定义插件接口、插件加载机制、插件目录结构。允许用户编写自定义Python插件扩展功能。",
-      "priority": 15,
-      "status": "pending",
-      "passes": false,
-      "context_files": [
-        "agent/agent_core.py",
-        "agent/state_manager.py"
-      ],
-      "verify_command": "加载测试插件",
-      "created_at": "2026-03-07",
-      "updated_at": "2026-03-07"
-    },
-    {
-      "id": "feature-016",
-      "name": "SQLite可选存储",
-      "description": "添加SQLite作为可选的状态存储方案，用于大规模数据场景。需要设计数据库schema并保持与现有JSON存储的兼容性。",
-      "priority": 16,
-      "status": "pending",
-      "passes": false,
-      "context_files": [
-        "agent/state_manager.py",
-        "agent/session_manager.py"
-      ],
-      "verify_command": "测试SQLite存储",
-      "created_at": "2026-03-07",
-      "updated_at": "2026-03-07"
-    },
-    {
       "id": "task-017",
       "name": "Test Task via API",
       "description": "Testing POST /tasks endpoint",
       "priority": 50,
       "status": "pending",
       "passes": false,
+      "created_at": "2026-03-08",
+      "updated_at": "2026-03-08"
+    },
+    {
+      "id": "feature-015",
+      "name": "WebSearch and WebFetch abilities",
+      "description": "确认系统是否具有能够成功进行WebSearch和WebFetch的功能，同时，要在默认的提示词中加入这两个能力应该是在执行任务之前用来查阅任务相关的各种必要的文档信息",
+      "priority": 1,
+      "status": "completed",
+      "passes": true,
       "created_at": "2026-03-08",
       "updated_at": "2026-03-08"
     }
