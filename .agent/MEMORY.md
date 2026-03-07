@@ -4,6 +4,42 @@ Accumulated experience and lessons learned from task execution.
 
 ---
 
+## 2026-03-07 - Unify Type Annotation Style (fix-013)
+
+**Task Description**: 当前项目中类型注解风格不统一：有些地方使用 Optional[]，有些使用 | None。建议统一使用 Python 3.11+ 的 | None 语法（因为 pyproject.toml 指定 python_version = 3.11）。
+
+**Lessons Learned:**
+
+1. **Type Annotation Standardization**: Successfully converted all Optional[] type annotations to Python 3.11+ | None syntax across the entire agent/ codebase.
+
+2. **Changes Made**:
+
+   - Converted 11 files:
+     - agent/agent_core.py (7 occurrences)
+     - agent/config_reloader.py (5 occurrences)
+     - agent/git_helper.py (2 occurrences)
+     - agent/human_intervention.py (6 occurrences)
+     - agent/performance_monitor.py (5 occurrences)
+     - agent/prompt_manager.py (7 occurrences)
+     - agent/session_manager.py (3 occurrences)
+     - agent/state_manager.py (4 occurrences)
+     - agent/task_selector.py (2 occurrences)
+     - agent/test_runner.py (2 occurrences)
+
+   - Removed unused `Optional` imports from all files
+   - Updated analysis_report.md to reflect the completed fix
+
+3. **Key Design Decisions**:
+   - Used Python 3.11+ `| None` syntax as it's more concise and modern
+   - Removed Optional imports only after all usages were converted
+   - Kept other typing imports (Dict, Any, List, cast, Callable) that are still needed
+
+4. **Verification**: All 223 tests pass.
+
+5. **Commit**: Pushed to remote as `fix: unify type annotation style to Python 3.11+ | None syntax`
+
+---
+
 ## 2026-03-07 - Standardize Error Handling (fix-012)
 
 **Task Description**: 当前项目中错误处理不一致：git_helper.py 某些方法静默返回空值；test_runner.py 返回错误消息格式不统一；session_manager.py 某些异常被捕获但不记录。
@@ -379,6 +415,8 @@ Accumulated experience and lessons learned from task execution.
 
 
 
+
+
 2026-03-07 - Add caching mechanism to prompt_manager.py (fix-008)
 
 **任务描述**: 当前 prompt_manager.py 每次调用 load_template() 都会读取文件，这对于频繁调用的场景会导致不必要的 I/O 操作。建议添加模板缓存机制，可以设置缓存过期时间或提供手动刷新方法。
@@ -490,7 +528,10 @@ Changes Made
 
 ---
 
-### 2026-03-07 - Add logging configuration to the project (fix-011)
+
+---
+
+2026-03-07 - Add logging configuration to the project (fix-011)
 
 **任务描述**: 当前项目中多处使用 logging.getLogger()，但没有统一的日志配置。建议在 main.py 中添加日志配置，设置日志级别、格式和处理器，以便于调试生产环境问题。
 
@@ -499,7 +540,10 @@ Changes Made
 
 Successfully added logging configuration to the project:
 
-### Changes Made
+
+---
+
+Changes Made
 
 **main.py** - Added centralized logging configuration:
 - Added `_configure_logging()` function that initializes logging on module import
@@ -508,3 +552,26 @@ Successfully added logging configuration to the project:
   - `LOG_FILE`: Optional file path for logging
 - Consistent log format: `timestamp | level | logger name | message`
 - Supports both console and optional file outp
+
+---
+
+### 2026-03-07 - Standardize error handling across modules (fix-012)
+
+**任务描述**: 当前项目中错误处理不一致：git_helper.py 某些方法静默返回空值；test_runner.py 返回错误消息格式不统一；session_manager.py 某些异常被捕获但不记录。建议制定错误处理规范并在各模块中统一实施。
+
+**执行结果**: completed
+**执行消息**: ## Summary
+
+Successfully completed task **fix-012**: Standardize error handling across modules.
+
+### Changes Made
+
+**1. agent/git_helper.py**:
+- Added `logging` import and logger setup
+- Replaced `print()` with `logger.error()` in `init_repo()` 
+- Added `logger.warning()` for silent return cases in:
+  - `get_recent_commits()` - now logs when returning empty list
+  - `get_current_branch()` - now logs when returning default "main"
+  - `get_diff()` - now logs when returning empty string
+
+**2. agent
