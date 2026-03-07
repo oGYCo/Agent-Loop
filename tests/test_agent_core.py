@@ -56,9 +56,9 @@ class TestAgentCore:
     def test_get_system_prompt(self, agent_core):
         """Test getting system prompt"""
         prompt = agent_core.get_system_prompt()
-        assert "You are an autonomous AI agent for the Agent-Loop project" in prompt
-        assert "Browser Navigate" in prompt
-        assert "WebSearch" in prompt
+        assert "autonomous AI agent" in prompt
+        assert "File Tools" in prompt or "Read" in prompt
+        assert "Working Principles" in prompt or "Workflow" in prompt
 
     def test_get_task_prompt(self, agent_core, state_manager):
         """Test getting task prompt"""

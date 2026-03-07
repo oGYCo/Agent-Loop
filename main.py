@@ -69,15 +69,20 @@ def init_project(args: argparse.Namespace) -> None:
             "test_pattern": "test_*.py",
             "max_errors_before_intervention": 3,
             "context_window_limit": 100000,
+            "context_files": ["CLAUDE.md", "README.md"],
+            "verify_command": "pytest tests/ -x -q",
+            "allowed_tools": [
+                "Read", "Write", "Edit", "Bash", "Glob", "Grep",
+                "WebSearch", "WebFetch", "AskUserQuestion",
+                "TodoWrite", "ExitPlanMode", "EnterPlanMode"
+            ],
+            "mcp_servers": {},
             "retry": {
                 "max_retries": 3,
                 "retry_interval": 5,
                 "retry_on_errors": ["connection_error", "timeout", "process_error"]
             },
-            "documentation_urls": {
-                "sdk_overview": "https://platform.claude.com/docs/en/agent-sdk/overview",
-                "python_sdk": "https://platform.claude.com/docs/en/agent-sdk/python"
-            }
+            "documentation_urls": {}
         }
         state_manager.save_config(default_config)
 
@@ -107,6 +112,10 @@ def init_project(args: argparse.Namespace) -> None:
     if not state_manager.state_path.exists():
         state_manager.save_state(state_manager.load_state())
 
+    # Scaffold prompt templates for user customization
+    prompt_manager = PromptManager(str(state_manager.agent_dir))
+    created_templates = prompt_manager.scaffold_templates()
+
     # 显示初始化信息
     print(f"Project directory: {state_manager.agent_dir}")
     print("Configuration files created:")
@@ -115,10 +124,15 @@ def init_project(args: argparse.Namespace) -> None:
     print("  - progress.txt")
     print("  - session_history.json")
     print("  - state.json")
+    if created_templates:
+        print(f"  - prompt_templates/ ({len(created_templates)} templates)")
+        for t in created_templates:
+            print(f"      - {t}")
 
     print("\nProject initialized successfully!")
     print("\nTo add features, edit .agent/feature_list.json")
-    print("To run the agent, use: python main.py --run")
+    print("To customize prompts, edit files in .agent/prompt_templates/")
+    print("To run the agent, use: python main.py run")
 
 
 def run_agent(args: argparse.Namespace, max_restarts: int = 3) -> None:
@@ -352,39 +366,10 @@ def add_prompt(args: argparse.Namespace) -> None:
     """添加新提示词"""
     prompt_manager = PromptManager(args.project_dir if args.project_dir else None)
 
-    # If --system is not provided, use the default prompt
+    # If --system is not provided, use the system template as default
     system_prompt = args.system
     if not system_prompt:
-        # Use default prompt template
-        system_prompt = f"""You are an autonomous AI agent for the {args.name} task.
-
-## CRITICAL: Read Project Context First
-
-Before starting any task, you MUST read these key files:
-1. CLAUDE.md - Project guidelines and architecture
-2. README.md - Project overview and usage
-3. The relevant source files for the task
-
-Use the Read tool to read these files completely.
-
-## Your Mission
-
-{args.description or 'Complete the assigned task efficiently and effectively.'}
-
-## Available Tools
-
-- Browser Tools: Navigate, Snapshot, Click, Type, Evaluate, Search
-- Web Tools: WebSearch, WebFetch
-- File Tools: Read, Write, Edit, Glob, Grep
-- Terminal Tools: Bash
-
-## Working Principles
-
-1. Always read CLAUDE.md first
-2. Keep changes minimal and focused
-3. Test before completing
-4. Commit after each task
-5. Extract lessons learned"""
+        system_prompt = prompt_manager.load_template("system")
 
     if prompt_manager.add_prompt(args.key, args.name, args.description or "", system_prompt):
         print(f"Added prompt: {args.key} - {args.name}")
@@ -400,6 +385,67 @@ def delete_prompt(args: argparse.Namespace) -> None:
         print(f"Deleted prompt: {args.key}")
     else:
         print(f"Error: Could not delete prompt '{args.key}'. It may be the last prompt or not exist.")
+
+
+def list_templates(args: argparse.Namespace) -> None:
+    """列出所有提示词模板"""
+    prompt_manager = PromptManager(args.project_dir if args.project_dir else None)
+
+    templates = prompt_manager.list_templates()
+
+    print("\nAvailable Templates:")
+    print("-" * 60)
+
+    for t in templates:
+        override_mark = " [OVERRIDE]" if t["has_override"] else ""
+        builtin_mark = " (built-in)" if t["builtin"] else " (custom)"
+        print(f"  {t['name']}{override_mark}{builtin_mark}")
+        if t["path"]:
+            print(f"    Path: {t['path']}")
+
+    print("-" * 60)
+    print("\nTo customize a template, edit: .agent/prompt_templates/<name>.md")
+    print("To scaffold all templates: python main.py template scaffold")
+
+
+def show_template(args: argparse.Namespace) -> None:
+    """显示指定模板内容"""
+    prompt_manager = PromptManager(args.project_dir if args.project_dir else None)
+
+    try:
+        content = prompt_manager.load_template(args.name)
+        print(f"\nTemplate: {args.name}")
+        print("=" * 60)
+        print(content)
+        print("=" * 60)
+    except ValueError as e:
+        print(f"Error: {e}")
+
+
+def scaffold_templates(args: argparse.Namespace) -> None:
+    """生成所有默认模板文件"""
+    prompt_manager = PromptManager(args.project_dir if args.project_dir else None)
+
+    created = prompt_manager.scaffold_templates()
+
+    if created:
+        print(f"\nCreated {len(created)} template files in .agent/prompt_templates/:")
+        for name in created:
+            print(f"  - {name}")
+        print("\nEdit these files to customize prompts for your project.")
+    else:
+        print("\nAll template files already exist. No new files created.")
+        print("To reset a template to default, use: python main.py template reset <name>")
+
+
+def reset_template(args: argparse.Namespace) -> None:
+    """重置模板为内置默认值"""
+    prompt_manager = PromptManager(args.project_dir if args.project_dir else None)
+
+    if prompt_manager.reset_template(args.name):
+        print(f"Reset template '{args.name}' to built-in default.")
+    else:
+        print(f"No override found for template '{args.name}'.")
 
 
 def main() -> None:
@@ -604,6 +650,46 @@ For more information, see: https://github.com/agent-loop/docs
         help="Prompt key to delete"
     )
 
+    # template command
+    template_parser = subparsers.add_parser(
+        "template",
+        help="Manage prompt templates",
+        description="Manage prompt templates for customizing agent behavior"
+    )
+    template_subparsers = template_parser.add_subparsers(dest="template_action", help="Template actions")
+
+    # template list
+    template_subparsers.add_parser(
+        "list",
+        help="List all available templates"
+    )
+
+    # template show
+    template_show_parser = template_subparsers.add_parser(
+        "show",
+        help="Show template content"
+    )
+    template_show_parser.add_argument(
+        "name",
+        help="Template name (e.g., system, task, self_review)"
+    )
+
+    # template scaffold
+    template_subparsers.add_parser(
+        "scaffold",
+        help="Create all default template files for editing"
+    )
+
+    # template reset
+    template_reset_parser = template_subparsers.add_parser(
+        "reset",
+        help="Reset a template to built-in default"
+    )
+    template_reset_parser.add_argument(
+        "name",
+        help="Template name to reset"
+    )
+
     # Backwards compatibility: --init and --run flags
     parser.add_argument("--init", action="store_true", help="Initialize the project (deprecated, use 'init' subcommand)")
     parser.add_argument("--run", action="store_true", help="Run the agent (deprecated, use 'run' subcommand)")
@@ -648,6 +734,17 @@ For more information, see: https://github.com/agent-loop/docs
                 delete_prompt(args)
             else:
                 prompt_parser.print_help()
+        elif args.command == "template":
+            if args.template_action == "list":
+                list_templates(args)
+            elif args.template_action == "show":
+                show_template(args)
+            elif args.template_action == "scaffold":
+                scaffold_templates(args)
+            elif args.template_action == "reset":
+                reset_template(args)
+            else:
+                template_parser.print_help()
     else:
         parser.print_help()
 

@@ -111,7 +111,7 @@ from .task_selector import TaskSelector
 from .git_helper import GitHelper
 from .human_intervention import HumanIntervention
 from .performance_monitor import PerformanceMonitor, get_monitor
-from .prompt_manager import PromptManager
+from .prompt_manager import PromptManager, render_template, scan_project_structure
 
 
 # 配置日志
@@ -318,109 +318,59 @@ class AgentCore:
         }
 
     def get_system_prompt(self) -> str:
-        """获取系统提示词"""
-        return self.prompt_manager.get_active_prompt()
+        """获取系统提示词 - 渲染模板变量"""
+        raw_prompt = self.prompt_manager.get_active_prompt()
+
+        # Build context files list from config
+        context_files = self.config.get("context_files", ["CLAUDE.md", "README.md"])
+        context_list = "\n".join(f"- {f}" for f in context_files)
+
+        variables = {
+            "project_name": self.config.get("project_name", Path(self.project_root).name),
+            "context_files_list": context_list,
+        }
+
+        return render_template(raw_prompt, variables)
 
     def get_task_prompt(self, task: Dict[str, Any]) -> str:
-        """获取任务提示词 - 包含完整上下文"""
+        """获取任务提示词 - 使用模板系统渲染"""
         git_status = self.git_helper.get_status()
         current_branch = self.git_helper.get_current_branch()
-        project_root = self.project_root
 
         # 读取 CLAUDE.md 关键内容
         claude_md = self.read_claude_md()
-        # 提取关键部分（项目概述、技术栈、开发原则）
         key_sections = self._extract_key_claude_sections(claude_md)
 
-        prompt = f"""# Task: {task.get('name')}
+        # 动态扫描项目结构（而非硬编码）
+        project_structure = scan_project_structure(self.project_root)
 
-## Task ID
-`{task.get('id')}`
+        variables = {
+            "task_name": task.get("name", ""),
+            "task_id": task.get("id", ""),
+            "task_description": task.get("description", ""),
+            "task_priority": str(task.get("priority", "")),
+            "project_root": self.project_root,
+            "project_structure": project_structure,
+            "current_branch": current_branch,
+            "git_status": git_status,
+            "project_guidelines": key_sections,
+            "verify_command": self._get_verify_command(task),
+            "test_command": self.config.get("test_command", ""),
+        }
 
-## Description
-{task.get('description')}
-
-## Priority
-{task.get('priority')} (lower = higher priority)
-
-## Project Structure
-```
-{project_root}/
-├── agent/                  # Core package (READ FIRST)
-│   ├── __init__.py
-│   ├── agent_core.py       # Main agent logic
-│   ├── session_manager.py
-│   ├── state_manager.py
-│   ├── task_selector.py
-│   ├── human_intervention.py
-│   ├── git_helper.py
-│   └── test_runner.py
-├── tests/                  # Unit tests
-├── main.py                 # CLI entry
-├── CLAUDE.md              # Project guidelines (READ FIRST)
-├── README.md              # Documentation
-├── pyproject.toml         # Project config
-└── .agent/                # Configuration
-    ├── config.json
-    ├── feature_list.json  # Task list
-    └── MEMORY.md          # Lessons learned
-```
-
-## Current Git Status
-```
-Branch: {current_branch}
-{git_status}
-```
-
-## Project Guidelines (from CLAUDE.md)
-{key_sections}
-
-## Your Task Context
-
-This is an atomic task in a self-improving agent system. Before starting:
-
-1. **READ CLAUDE.md** - Use Read tool to understand project guidelines
-2. **READ relevant source files** - Understand the code you'll modify
-3. **Plan your change** - Keep it minimal and focused
-4. **Implement** - Make the smallest possible change
-5. **Test** - Run tests to verify
-6. **Commit and push** - Save and push progress with git (DO NOT add Co-Authored-By, use simple commit messages)
-7. **Update MEMORY.md** - Record what you learned
-
-## Key Instructions
-
-- This task should take 5-15 minutes
-- Make ONE small atomic change
-- If task is too large, complete only a part and update status to "in_progress"
-- Always provide context for the next agent
-- Run tests before marking as complete
-- Use simple commit messages like "fix: description" or "feat: description", NO Co-Authored-By
-- Always run `git push` after committing to push changes to the remote repository
-
-## Verification
-{self._get_verify_command(task)}
-
-## Post-Task Actions
-After completing this task, you MUST:
-1. Review and update feature_list.json - check if any pending tasks need priority adjustments, removal, or new tasks added based on the work just completed
-2. Update MEMORY.md - extract key learnings from this task and add to .agent/MEMORY.md
-3. Consider if CLAUDE.md needs updates - if you discovered important patterns or insights, add them to CLAUDE.md
-4. Commit and push - run `git add -A && git commit -m "描述"` then `git push` to save and push progress to remote
-
-Start by reading CLAUDE.md and the relevant source files for this task."""
-
-        return prompt
+        return self.prompt_manager.render_template("task", variables)
 
     def _get_verify_command(self, task: Dict[str, Any]) -> str:
-        """获取验证命令"""
+        """获取验证命令 - 从任务或配置中获取"""
         if task.get('verify_command'):
             return f"Run: `{task.get('verify_command')}`"
-        return "Run: `pytest tests/ -x -q`"
+        default_cmd = self.config.get("verify_command", self.config.get("test_command", ""))
+        if default_cmd:
+            return f"Run: `{default_cmd}`"
+        return "Verify your changes manually or run the project's test suite."
 
     def _build_self_review_prompt(self, completed_task: Dict[str, Any]) -> str:
-        """Build prompt for post-task self-review
-
-        Let the Agent gather context first, then analyze feature_list.json and decide what modifications are needed.
+        """Build prompt for post-task self-review using templates.
 
         Args:
             completed_task: The task that was just completed
@@ -428,64 +378,29 @@ Start by reading CLAUDE.md and the relevant source files for this task."""
         Returns:
             Self-review prompt
         """
-        # Read current task list statistics
         data = self.state_manager.load_feature_list()
         features = data.get("features", [])
         completed_count = sum(1 for f in features if f.get("status") == "completed")
         pending_count = sum(1 for f in features if f.get("status") == "pending")
         failed_count = sum(1 for f in features if f.get("status") == "failed")
 
-        # Get recent commits for context
         recent_commits = self.git_helper.get_recent_commits(5)
         current_branch = self.git_helper.get_current_branch()
         git_status = self.git_helper.get_status()
 
-        prompt = f"""## Post-Task Self-Review
+        commits_text = "\n".join(f"  - {c}" for c in recent_commits) if recent_commits else "  (none)"
 
-You just completed: **{completed_task.get('name', 'N/A')}**
+        variables = {
+            "completed_task_name": completed_task.get("name", "N/A"),
+            "current_branch": current_branch,
+            "recent_commits": commits_text,
+            "git_status": git_status[:200] if git_status else "clean",
+            "completed_count": str(completed_count),
+            "pending_count": str(pending_count),
+            "failed_count": str(failed_count),
+        }
 
-### Current Project Context
-
-**Git Info:**
-- Branch: {current_branch}
-- Recent commits:
-{chr(10).join(f"  - {c}" for c in recent_commits) if recent_commits else "  (none)"}
-- Status: {git_status[:200] if git_status else "clean"}
-
-**Task Status:**
-- Completed tasks: {completed_count}
-- Pending tasks: {pending_count}
-- Failed tasks: {failed_count}
-
-### Step 1: Gather Context (REQUIRED)
-
-Before making any decisions, you MUST gather sufficient context:
-
-1. Read `.agent/feature_list.json` - understand all pending tasks and their dependencies
-2. Read `CLAUDE.md` - understand current project guidelines
-3. Read `.agent/MEMORY.md` - understand accumulated lessons
-4. Run `git diff` to see what files were changed in recent commits
-5. Check the main code files to understand current architecture
-
-### Step 2: Analyze and Decide
-
-After gathering context, analyze:
-
-1. Which pending tasks are now obsolete (dependencies completed)?
-2. Which task priorities should change based on project state?
-3. Are there any new tasks that should be added based on recent changes?
-4. Are there duplicate or overlapping tasks that should be merged?
-
-### Step 3: Execute Changes
-
-- Use Edit or Write tools to modify feature_list.json
-- DO NOT create new self-review tasks
-- Only modify what truly needs to be changed
-- After completing, summarize what changes you made
-
-Please start by gathering context, then analyze and make updates."""
-
-        return prompt
+        return self.prompt_manager.render_template("self_review", variables)
 
     def _extract_key_claude_sections(self, claude_md: str) -> str:
         """从 CLAUDE.md 提取关键部分"""
@@ -814,7 +729,7 @@ Please start by gathering context, then analyze and make updates."""
         return self.suggest_memory_cleanup()
 
     def _build_memory_cleanup_prompt(self) -> str:
-        """Build prompt for MEMORY.md optimization
+        """Build prompt for MEMORY.md optimization using templates.
 
         Returns:
             Optimization prompt, empty string if not needed
@@ -823,48 +738,18 @@ Please start by gathering context, then analyze and make updates."""
         if not suggestion:
             return ""
 
-        # Get recent context for the prompt
         recent_commits = self.git_helper.get_recent_commits(5)
         current_branch = self.git_helper.get_current_branch()
 
-        prompt = f"""## MEMORY.md Optimization
+        commits_text = "\n".join(f"  - {c}" for c in recent_commits) if recent_commits else "  (none)"
 
-{suggestion}
+        variables = {
+            "cleanup_suggestions": suggestion,
+            "current_branch": current_branch,
+            "recent_commits": commits_text,
+        }
 
-### Current Context
-
-- Branch: {current_branch}
-- Recent commits:
-{chr(10).join(f"  - {c}" for c in recent_commits) if recent_commits else "  (none)"}
-
-### Step 1: Gather Context (REQUIRED)
-
-Before making any decisions, you MUST gather sufficient context:
-
-1. Read `.agent/MEMORY.md` - understand current content structure
-2. Read `.agent/feature_list.json` - understand completed tasks and recent work
-3. Run `git diff HEAD~5 --stat` to see what files changed recently
-4. Read recent code files to understand new patterns or changes
-
-### Step 2: Analyze
-
-After gathering context, analyze:
-
-1. **What to DELETE**: Redundant, duplicate, or outdated content
-2. **What to UPDATE**: Incorrect or stale information that needs fixing
-3. **What to ADD**: New insights, patterns, or lessons from recent work
-
-### Step 3: Execute
-
-- Use Edit or Write tools to make changes to `.agent/MEMORY.md`
-- Keep essential technical details and key learnings
-- Merge similar sections to reduce duplication
-- Add new lessons learned from recent tasks
-- After completing, summarize what you added, updated, and deleted
-
-Please start by gathering context, then analyze and make updates."""
-
-        return prompt
+        return self.prompt_manager.render_template("memory_cleanup", variables)
 
     def refine_claude_md(self, force: bool = False) -> str:
         """生成 CLAUDE.md 清理任务
@@ -880,7 +765,7 @@ Please start by gathering context, then analyze and make updates."""
         return self.suggest_claude_md_cleanup()
 
     def _build_claude_md_cleanup_prompt(self) -> str:
-        """Build prompt for CLAUDE.md optimization
+        """Build prompt for CLAUDE.md optimization using templates.
 
         Returns:
             Optimization prompt, empty string if not needed
@@ -889,50 +774,18 @@ Please start by gathering context, then analyze and make updates."""
         if not suggestion:
             return ""
 
-        # Get recent context for the prompt
         recent_commits = self.git_helper.get_recent_commits(5)
         current_branch = self.git_helper.get_current_branch()
 
-        prompt = f"""## CLAUDE.md Optimization
+        commits_text = "\n".join(f"  - {c}" for c in recent_commits) if recent_commits else "  (none)"
 
-{suggestion}
+        variables = {
+            "cleanup_suggestions": suggestion,
+            "current_branch": current_branch,
+            "recent_commits": commits_text,
+        }
 
-### Current Context
-
-- Branch: {current_branch}
-- Recent commits:
-{chr(10).join(f"  - {c}" for c in recent_commits) if recent_commits else "  (none)"}
-
-### Step 1: Gather Context (REQUIRED)
-
-Before making any decisions, you MUST gather sufficient context:
-
-1. Read `CLAUDE.md` - understand current content structure and guidelines
-2. Read `.agent/feature_list.json` - understand completed tasks and recent work
-3. Run `git diff HEAD~5 --stat` to see what files changed recently
-4. Read recent code files to understand new patterns or APIs used
-5. Check `.agent/MEMORY.md` for recent lessons learned
-
-### Step 2: Analyze
-
-After gathering context, analyze:
-
-1. **What to DELETE**: Redundant, duplicate, or outdated content
-2. **What to UPDATE**: Incorrect or stale commands, configurations, or guidelines
-3. **What to ADD**: New project patterns, commands, or insights from recent work
-
-### Step 3: Execute
-
-- Use Edit or Write tools to make changes to `CLAUDE.md`
-- Keep essential project guidelines and technical details
-- Merge similar sections to reduce duplication
-- Update outdated commands or configurations
-- Add new patterns or insights from recent work
-- After completing, summarize what you added, updated, and deleted
-
-Please start by gathering context, then analyze and make updates."""
-
-        return prompt
+        return self.prompt_manager.render_template("claude_md_cleanup", variables)
 
     async def execute_task_with_sdk(self, task: Dict[str, Any]) -> Dict[str, Any]:
         """使用 Claude Agent SDK 执行任务"""
@@ -951,12 +804,21 @@ Please start by gathering context, then analyze and make updates."""
         system_prompt = self.get_system_prompt()
         user_prompt = self.get_task_prompt(task)
 
-        # 配置选项 - 使用 MiniMax 模型
+        # 配置选项 - 模型从配置文件读取
         model = self.config.get("model", "MiniMax-M2.5-highspeed")
 
         # 获取环境变量
         api_key = os.environ.get("ANTHROPIC_AUTH_TOKEN", "")
         base_url = os.environ.get("ANTHROPIC_BASE_URL", "https://api.minimaxi.com/anthropic")
+
+        # 从配置文件加载工具列表和 MCP 服务器（而非硬编码）
+        default_tools = [
+            "Read", "Write", "Edit", "Bash", "Glob", "Grep",
+            "WebSearch", "WebFetch", "AskUserQuestion",
+            "TodoWrite", "ExitPlanMode", "EnterPlanMode",
+        ]
+        allowed_tools = self.config.get("allowed_tools", default_tools)
+        mcp_servers = self.config.get("mcp_servers", {})
 
         # 创建 agent 选项
         options = ClaudeAgentOptions(
@@ -967,59 +829,16 @@ Please start by gathering context, then analyze and make updates."""
                 "ANTHROPIC_AUTH_TOKEN": api_key,
                 "ANTHROPIC_BASE_URL": base_url,
             },
-            # 允许所有内置工具和 MCP 工具
-            allowed_tools=[
-                # 内置工具
-                "Read", "Write", "Edit", "Bash", "Glob", "Grep",
-                "WebSearch", "WebFetch", "AskUserQuestion",
-                "TodoWrite", "ExitPlanMode", "EnterPlanMode",
-                "mcp__plugin_playwright_playwright__browser_navigate",
-                "mcp__plugin_playwright_playwright__browser_snapshot",
-                "mcp__plugin_playwright_playwright__browser_click",
-                "mcp__plugin_playwright_playwright__browser_type",
-                "mcp__plugin_playwright_playwright__browser_evaluate",
-                "mcp__plugin_playwright_playwright__browser_search",
-                "mcp__plugin_playwright_playwright__browser_tabs",
-                "mcp__plugin_playwright_playwright__browser_console_messages",
-                "mcp__plugin_playwright_playwright__browser_resize",
-                "mcp__plugin_playwright_playwright__browser_select_option",
-                "mcp__plugin_playwright_playwright__browser_hover",
-                "mcp__plugin_playwright_playwright__browser_drag",
-                "mcp__plugin_playwright_playwright__browser_install",
-                "mcp__plugin_playwright_playwright__browser_take_screenshot",
-                "mcp__plugin_playwright_playwright__browser_network_requests",
-                "mcp__plugin_playwright_playwright__browser_handle_dialog",
-                "mcp__plugin_playwright_playwright__browser_file_upload",
-                "mcp__plugin_playwright_playwright__browser_press_key",
-                "mcp__plugin_playwright_playwright__browser_wait_for",
-                "mcp__plugin_playwright_playwright__browser_navigate_back",
-                "mcp__plugin_playwright_playwright__browser_run_code",
-                "mcp__plugin_playwright_playwright__browser_close",
-                "mcp__plugin_playwright_playwright__browser_fill_form",
-                # MiniMax MCP 工具
-                "mcp__MiniMax__web_search",
-                "mcp__MiniMax__understand_image",
-                # Context7 MCP 工具 (文档查找)
-                "mcp__context7__get-context7-library-docs",
-                "mcp__context7__get-library-description",
-            ],
+            # 工具列表从配置加载
+            allowed_tools=allowed_tools,
             # 启用完整流式输出
             include_partial_messages=True,
             # 启用文件检查点功能，支持文件修改追踪和恢复
             enable_file_checkpointing=True,
             # 使用 acceptEdits 模式允许所有操作
             permission_mode="acceptEdits",
-            # 配置 MCP 服务器
-            mcp_servers={
-                "playwright": {
-                    "command": "npx",
-                    "args": ["-y", "@playwright/mcp@latest"]
-                },
-                "context7": {
-                    "command": "npx",
-                    "args": ["-y", "@context7/mcp-server"]
-                }
-            },
+            # MCP 服务器从配置加载
+            mcp_servers=mcp_servers,
             # 注册 Hooks
             hooks={
                 "PreToolUse": [HookMatcher(hooks=[pre_tool_hook])],
