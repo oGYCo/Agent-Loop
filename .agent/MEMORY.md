@@ -168,6 +168,9 @@ Or via `env` parameter in ClaudeAgentOptions.
 - Must unset `CLAUDECODE` env var when running nested sessions
 - Set `include_partial_messages=True` for streaming output
 - Use hooks for logging, blocking, and notifications
+- Hook functions should return `AsyncHookJSONOutput` (e.g., `{"async_": True}`)
+- Hook input types: `PreToolUseHookInput`, `PostToolUseHookInput`, `NotificationHookInput`, `StopHookInput`
+- For type annotations, use `Any` for hook inputs to avoid complex union type issues with HookMatcher
 
 ### API Configuration
 - MiniMax uses Anthropic-compatible API
@@ -187,11 +190,19 @@ Or via `env` parameter in ClaudeAgentOptions.
 - Supports file modification tracking and recovery
 - Default value is `False`
 
+### Type Annotations (mypy)
+- Use `dict[str, Any]` instead of bare `dict` for generic dicts
+- Use explicit type annotation for dict literals: `context: Dict[str, Any] = {...}`
+- Use `cast()` from typing to handle JSON-loaded dicts
+- Empty list `[]` is inferred as `list[str]`, use `list[str] = []` to specify type
+- `re.findall()` returns `list[str]`, annotate explicitly when needed
+- Use `Any` for SDK hook inputs to avoid complex union type issues with HookMatcher
+
 ---
 
 ## Task Experience Records
 
-### 2026-03-07 - Add type annotations to state_manager.py (self-004)
+2026-03-07 - Add type annotations to state_manager.py (self-004)
 
 **任务描述**: 使用 mypy 检查 agent/state_manager.py 的类型错误，然后添加完整的类型注解。
 
@@ -205,7 +216,10 @@ Or via `env` parameter in ClaudeAgentOptions.
 
 ---
 
-### 2026-03-07 - Add type annotations to task_selector.py (self-005)
+
+---
+
+2026-03-07 - Add type annotations to task_selector.py (self-005)
 
 **任务描述**: 使用 mypy 检查 agent/task_selector.py 的类型错误，然后添加完整的类型注解。
 
@@ -219,7 +233,10 @@ Or via `env` parameter in ClaudeAgentOptions.
 
 ---
 
-### 2026-03-07 - Add type annotations to git_helper.py (self-006)
+
+---
+
+2026-03-07 - Add type annotations to git_helper.py (self-006)
 
 **任务描述**: 使用 mypy 检查 agent/git_helper.py 的类型错误，然后添加完整的类型注解。
 
@@ -233,7 +250,10 @@ Or via `env` parameter in ClaudeAgentOptions.
 
 ---
 
-### 2026-03-07 - Run full test suite (self-014)
+
+---
+
+2026-03-07 - Run full test suite (self-014)
 
 **任务描述**: 运行完整的测试套件，确保所有测试通过，分析失败的测试并尝试修复。
 
@@ -258,7 +278,10 @@ Or via `env` parameter in ClaudeAgentOptions.
 
 ---
 
-### 2026-03-07 - Verify project runs correctly (self-015)
+
+---
+
+2026-03-07 - Verify project runs correctly (self-015)
 
 **任务描述**: 实际运行项目，验证 Agent 可以正常启动和执行任务。测试 init 和 list 命令。
 
@@ -274,7 +297,10 @@ Or via `env` parameter in ClaudeAgentOptions.
 
 ---
 
-### 2026-03-07 - Add logging instead of print statements (self-003)
+
+---
+
+2026-03-07 - Add logging instead of print statements (self-003)
 
 **任务描述**: 将 agent_core.py 中的 print 语句替换为 Python logging 模块，创建统一的日志配置。
 
@@ -291,7 +317,10 @@ Or via `env` parameter in ClaudeAgentOptions.
 
 ---
 
-### 2026-03-07 - Create config validation (self-011)
+
+---
+
+2026-03-07 - Create config validation (self-011)
 
 **任务描述**: 为 .agent/config.json 添加验证逻辑，确保必填字段存在且格式正确。
 
@@ -306,7 +335,10 @@ Or via `env` parameter in ClaudeAgentOptions.
 
 ---
 
-### 2026-03-07 - Add task validation (self-012)
+
+---
+
+2026-03-07 - Add task validation (self-012)
 
 **任务描述**: 为 feature_list.json 添加验证逻辑，确保任务定义的完整性和正确性。
 
@@ -323,7 +355,10 @@ Or via `env` parameter in ClaudeAgentOptions.
 
 ---
 
-### 2026-03-07 - Review and add docstrings (self-007)
+
+---
+
+2026-03-07 - Review and add docstrings (self-007)
 
 **任务描述**: 检查所有核心模块的文档字符串，确保每个公共方法都有清晰的 docstring 说明其功能、参数和返回值。
 
@@ -335,3 +370,36 @@ Or via `env` parameter in ClaudeAgentOptions.
 
 **改进建议**:
 - 继续为 session_manager.py, task_selector.py, human_intervention.py, agent_core.py 添加完整 docstrings
+
+
+---
+
+### 2026-03-07 - Code review for agent_core.py (self-016)
+
+**任务描述**: 对 agent_core.py 进行全面的代码审查，检查代码质量、潜在 bug、安全问题和性能问题。审查要点：函数长度、圈复杂度、重复代码、命名规范、错误处理完整性。
+
+**执行结果**: completed
+**执行消息**: Now I have a comprehensive understanding of the code. Let me provide a detailed code review report.
+
+---
+
+# Code Review: agent_core.py
+
+## Summary
+
+| Metric | Value |
+|--------|-------|
+| **Total Lines** | 1301 |
+| **Test Coverage** | 13 tests passing |
+| **mypy errors** | 15 (2 files) |
+
+---
+
+## Critical Issues
+
+### 1. Type Annotation Errors (mypy)
+
+| Line | Error |
+|------|-------|
+| 280 | `data.get("features", [])` returns `Collection[str]`, not `Dict` |
+| 463 | Missing type annotation for `s

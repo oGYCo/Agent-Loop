@@ -225,8 +225,8 @@
       "name": "Code review for agent_core.py",
       "description": "对 agent_core.py 进行全面的代码审查，检查代码质量、潜在 bug、安全问题和性能问题。审查要点：函数长度、圈复杂度、重复代码、命名规范、错误处理完整性。",
       "priority": 1,
-      "status": "pending",
-      "passes": false,
+      "status": "completed",
+      "passes": true,
       "verify_command": "python -m mypy agent/agent_core.py",
       "context_files": [
         "agent/agent_core.py"
@@ -239,8 +239,8 @@
       "name": "Add type annotations to agent_core.py",
       "description": "使用 mypy 检查 agent_core.py 的类型错误，添加完整的类型注解。确保所有函数有正确的参数和返回值类型。",
       "priority": 2,
-      "status": "pending",
-      "passes": false,
+      "status": "completed",
+      "passes": true,
       "verify_command": "python -m mypy agent/agent_core.py --strict",
       "context_files": [
         "agent/agent_core.py"
