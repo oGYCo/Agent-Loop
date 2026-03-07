@@ -32,9 +32,12 @@ __version__ = "1.0.0"
 def _signal_handler(signum: int, frame: Any) -> None:
     """处理 SIGINT/SIGTERM 信号，实现优雅关闭"""
     global _shutdown_requested
+    if _shutdown_requested:
+        print("\n🛑 Force exit!")
+        sys.exit(1)
     sig_name = signal.Signals(signum).name
     print(f"\n⚠️  Received {sig_name}, initiating graceful shutdown...")
-    print("   Finishing current task before exit...")
+    print("   Finishing current task before exit... (press Ctrl+C again to force quit)")
     _shutdown_requested = True
 
 
