@@ -7,6 +7,7 @@ task execution, and human intervention capabilities.
 import argparse
 import sys
 import signal
+from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict
 
@@ -48,6 +49,60 @@ def init_project(args: argparse.Namespace) -> None:
     if not git_helper.is_git_repo():
         print("Initializing git repository...")
         git_helper.init_repo()
+
+    # 创建 .agent 目录
+    state_manager.agent_dir.mkdir(parents=True, exist_ok=True)
+
+    # 创建默认配置文件
+    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    if not state_manager.config_path.exists():
+        default_config = {
+            "project_name": Path.cwd().name,
+            "project_type": "python",
+            "model": "MiniMax-M2.5-highspeed",
+            "session_type": "coder",
+            "test_command": "pytest tests/ -v",
+            "test_pattern": "test_*.py",
+            "max_errors_before_intervention": 3,
+            "context_window_limit": 100000,
+            "retry": {
+                "max_retries": 3,
+                "retry_interval": 5,
+                "retry_on_errors": ["connection_error", "timeout", "process_error"]
+            },
+            "documentation_urls": {
+                "sdk_overview": "https://platform.claude.com/docs/en/agent-sdk/overview",
+                "python_sdk": "https://platform.claude.com/docs/en/agent-sdk/python"
+            }
+        }
+        state_manager.save_config(default_config)
+
+    if not state_manager.feature_list_path.exists():
+        default_features = {
+            "features": [
+                {
+                    "id": "example-task",
+                    "name": "Example Task",
+                    "description": "Replace this with your first task",
+                    "priority": 1,
+                    "status": "pending",
+                    "passes": False,
+                    "created_at": now,
+                    "updated_at": now
+                }
+            ]
+        }
+        state_manager.save_feature_list(default_features)
+
+    if not state_manager.progress_path.exists():
+        state_manager.save_progress("")
+
+    if not state_manager.session_history_path.exists():
+        state_manager.save_session_history({"sessions": [], "total_sessions": 0})
+
+    if not state_manager.state_path.exists():
+        state_manager.save_state(state_manager.load_state())
 
     # 显示初始化信息
     print(f"Project directory: {state_manager.agent_dir}")
