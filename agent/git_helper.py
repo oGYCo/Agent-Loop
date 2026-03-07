@@ -102,11 +102,12 @@ class GitHelper:
         status = self.get_status()
         return bool(status)
 
-    def stage_and_commit(self, message: str) -> bool:
+    def stage_and_commit(self, message: str, push: bool = True) -> bool:
         """Stage all changes and commit with the given message.
 
         Args:
             message: The commit message.
+            push: Whether to push after committing (default: True).
 
         Returns:
             bool: True if commit succeeded, False otherwise.
@@ -131,6 +132,8 @@ class GitHelper:
                 cwd=self.project_root
             )
             if result.returncode == 0:
+                if push:
+                    return self.push()
                 return True  # 没有要提交的内容
 
             # 提交
@@ -141,9 +144,55 @@ class GitHelper:
                 capture_output=True,
                 env={**os.environ, "GIT_AUTHOR_NAME": "Agent", "GIT_AUTHOR_EMAIL": "agent@local"}
             )
+
+            # Push after successful commit
+            if push:
+                return self.push()
+
             return True
         except subprocess.CalledProcessError as e:
             print(f"Failed to commit: {e}")
+            return False
+
+    def push(self, remote: str = "origin", branch: Optional[str] = None) -> bool:
+        """Push commits to the remote repository.
+
+        Args:
+            remote: The remote name to push to (default: "origin").
+            branch: The branch name to push (default: current branch).
+
+        Returns:
+            bool: True if push succeeded, False otherwise.
+        """
+        if not self.is_git_repo():
+            print("Not a git repository, cannot push")
+            return False
+
+        try:
+            cmd = ["git", "push", remote]
+            if branch:
+                cmd.append(branch)
+
+            result = subprocess.run(
+                cmd,
+                cwd=self.project_root,
+                capture_output=True,
+                text=True
+            )
+            if result.returncode != 0:
+                # Check if it's because there's no remote
+                if "No configured push destination" in result.stderr or "fatal: no push" in result.stderr.lower():
+                    print(f"No remote configured, skipping push")
+                    return True  # Not an error - just no remote
+                # Check if there's no upstream branch configured
+                if "no upstream branch" in result.stderr.lower() or "has no upstream branch" in result.stderr.lower():
+                    print(f"No upstream branch configured, skipping push")
+                    return True  # Not an error - just no upstream
+                print(f"Failed to push: {result.stderr}")
+                return False
+            return True
+        except Exception as e:
+            print(f"Error pushing: {e}")
             return False
 
     def get_recent_commits(self, count: int = 5) -> list[str]:
