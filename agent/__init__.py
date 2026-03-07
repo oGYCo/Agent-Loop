@@ -15,6 +15,8 @@ from .test_runner import AgentTestRunner
 from .prompt_manager import PromptManager
 from .performance_monitor import PerformanceMonitor
 from .config_reloader import ConfigReloader
+from .email_notifier import EmailNotifier, get_email_notifier, reset_email_notifier
+from .webhook import WebhookNotifier, get_webhook_notifier, reset_webhook_notifier
 
 __all__ = [
     "AgentCore",
@@ -27,4 +29,10 @@ __all__ = [
     "PromptManager",
     "PerformanceMonitor",
     "ConfigReloader",
+    "EmailNotifier",
+    "get_email_notifier",
+    "reset_email_notifier",
+    "WebhookNotifier",
+    "get_webhook_notifier",
+    "reset_webhook_notifier",
 ]

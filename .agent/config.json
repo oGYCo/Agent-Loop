@@ -1,0 +1,74 @@
+{
+  "project_name": "Agent-Loop",
+  "project_type": "python",
+  "model": "MiniMax-M2.5-highspeed",
+  "session_type": "coder",
+  "test_command": "pytest tests/ -v",
+  "test_pattern": "test_*.py",
+  "max_errors_before_intervention": 3,
+  "context_window_limit": 100000,
+  "api_keys": {
+    "enabled": false,
+    "keys": []
+  },
+  "retry": {
+    "max_retries": 3,
+    "retry_interval": 5,
+    "retry_on_errors": [
+      "connection_error",
+      "timeout",
+      "process_error"
+    ]
+  },
+  "webhook": {
+    "enabled": false,
+    "url": "",
+    "secret": "",
+    "timeout": 10,
+    "events": [
+      "task_completed",
+      "task_failed",
+      "human_intervention"
+    ],
+    "retry_count": 3,
+    "retry_interval": 2
+  },
+  "email": {
+    "enabled": false,
+    "smtp_host": "smtp.gmail.com",
+    "smtp_port": 587,
+    "smtp_user": "",
+    "smtp_password": "",
+    "use_tls": true,
+    "from_name": "Agent-Loop",
+    "from_email": "agent-loop@example.com",
+    "to_emails": [],
+    "events": [
+      "task_completed",
+      "task_failed",
+      "human_intervention"
+    ],
+    "timeout": 30
+  },
+  "documentation_urls": {
+    "sdk_overview": "https://platform.claude.com/docs/en/agent-sdk/overview",
+    "python_sdk": "https://platform.claude.com/docs/en/agent-sdk/python"
+  },
+  "context_files": [
+    "README.md",
+    "CLAUDE.md"
+  ],
+  "verify_command": "pytest tests/ -x -q",
+  "allowed_tools": [
+    "Read",
+    "Write",
+    "Edit",
+    "Bash",
+    "Glob",
+    "Grep",
+    "MultiEdit",
+    "WebSearch",
+    "WebFetch"
+  ],
+  "mcp_servers": []
+}
