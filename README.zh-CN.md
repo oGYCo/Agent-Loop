@@ -1,6 +1,8 @@
 <p align="center">
-  <img src="assets/logo.svg" alt="Agent-Loop" width="600" />
+  <img src="assets/logo.svg" alt="Agent-Loop" width="140" />
 </p>
+
+<h1 align="center">Agent-Loop</h1>
 
 <p align="center">
   <em>基于 Claude Agent SDK 构建的生产级自主 AI Agent 系统，支持 MiniMax API 后端</em>
@@ -24,28 +26,28 @@ Agent-Loop 是一个自主 AI Agent 系统，通过实时流式输出、会话�
 
 ## 为什么选择 Agent-Loop？
 
-| 优势 | 描述 |
-|------|------|
-| **完全透明** | AI 决策过程和工具调用的实时流式显示 |
-| **高可靠性** | 自动会话恢复、文件检查点和优雅关闭 |
-| **可扩展** | 强大的 Hook 机制，支持监控和自定义集成 |
-| **自我改进** | 自动任务计划审查和文档优化 |
-| **生产级** | 类型安全、测试完善、文档齐全、性能监控 |
+| 优势         | 描述                                   |
+| ------------ | -------------------------------------- |
+| **完全透明** | AI 决策过程和工具调用的实时流式显示    |
+| **高可靠性** | 自动会话恢复、文件检查点和优雅关闭     |
+| **可扩展**   | 强大的 Hook 机制，支持监控和自定义集成 |
+| **自我改进** | 自动任务计划审查和文档优化             |
+| **生产级**   | 类型安全、测试完善、文档齐全、性能监控 |
 
 ## 核心特性
 
-| 特性 | 描述 |
-|------|------|
-| **实时流式输出** | AI 决策过程和工具调用的实时显示 |
-| **会话管理** | 支持会话恢复、分支和检查点 |
-| **Hook 机制** | PreToolUse、PostToolUse、Notification、Stop 钩子 |
-| **人工干预** | 错误阈值超出时自动暂停 |
-| **Git 集成** | 每次会话后自动提交版本控制 |
-| **任务重试** | 可配置的任务失败重试机制 |
-| **性能监控** | 跟踪任务执行时间、会话时长和资源使用 |
-| **配置热重载** | 支持手动或文件监控方式重新加载配置 |
-| **优雅关闭** | 安全处理 SIGINT/SIGTERM 信号 |
-| **自动审查** | 任务完成后自动进行任务计划审查 |
+| 特性             | 描述                                             |
+| ---------------- | ------------------------------------------------ |
+| **实时流式输出** | AI 决策过程和工具调用的实时显示                  |
+| **会话管理**     | 支持会话恢复、分支和检查点                       |
+| **Hook 机制**    | PreToolUse、PostToolUse、Notification、Stop 钩子 |
+| **人工干预**     | 错误阈值超出时自动暂停                           |
+| **Git 集成**     | 每次会话后自动提交版本控制                       |
+| **任务重试**     | 可配置的任务失败重试机制                         |
+| **性能监控**     | 跟踪任务执行时间、会话时长和资源使用             |
+| **配置热重载**   | 支持手动或文件监控方式重新加载配置               |
+| **优雅关闭**     | 安全处理 SIGINT/SIGTERM 信号                     |
+| **自动审查**     | 任务完成后自动进行任务计划审查                   |
 
 ## 快速开始
 
@@ -100,13 +102,13 @@ python main.py --help                       # 显示帮助信息
 
 ### 命令详情
 
-| 命令 | 快捷方式 | 描述 |
-|------|----------|------|
-| `init` | `--init` | 初始化项目并创建配置文件 |
-| `run` | `--run` | 启动 Agent 循环（默认 10 次迭代） |
-| `list` | | 列出所有任务及其状态和优先级 |
-| `status` | | 显示项目状态、Git 信息和任务统计 |
-| `add` | | 添加新任务到功能列表 |
+| 命令     | 快捷方式 | 描述                              |
+| -------- | -------- | --------------------------------- |
+| `init`   | `--init` | 初始化项目并创建配置文件          |
+| `run`    | `--run`  | 启动 Agent 循环（默认 10 次迭代） |
+| `list`   |          | 列出所有任务及其状态和优先级      |
+| `status` |          | 显示项目状态、Git 信息和任务统计  |
+| `add`    |          | 添加新任务到功能列表              |
 
 ### Add 命令选项
 
@@ -152,17 +154,17 @@ python main.py add "新功能"
 
 ### 核心模块
 
-| 模块 | 职责 |
-|------|------|
-| `agent_core.py` | Agent 核心逻辑，SDK 集成，任务执行 |
-| `session_manager.py` | 会话生命周期管理，上下文管理，历史记录 |
-| `state_manager.py` | 状态持久化到 JSON，配置验证 |
-| `task_selector.py` | 基于优先级的任务选择 |
-| `human_intervention.py` | 错误阈值监控，干预触发 |
-| `git_helper.py` | Git 操作封装，自动提交 |
-| `test_runner.py` | 测试执行封装 |
-| `performance_monitor.py` | 性能指标跟踪 |
-| `config_reloader.py` | 配置热重载 |
+| 模块                     | 职责                                   |
+| ------------------------ | -------------------------------------- |
+| `agent_core.py`          | Agent 核心逻辑，SDK 集成，任务执行     |
+| `session_manager.py`     | 会话生命周期管理，上下文管理，历史记录 |
+| `state_manager.py`       | 状态持久化到 JSON，配置验证            |
+| `task_selector.py`       | 基于优先级的任务选择                   |
+| `human_intervention.py`  | 错误阈值监控，干预触发                 |
+| `git_helper.py`          | Git 操作封装，自动提交                 |
+| `test_runner.py`         | 测试执行封装                           |
+| `performance_monitor.py` | 性能指标跟踪                           |
+| `config_reloader.py`     | 配置热重载                             |
 
 ## 使用示例
 
@@ -227,10 +229,10 @@ python main.py --project-dir /path/to/project list
 
 ### 环境变量
 
-| 变量 | 描述 | 必填 | 默认值 |
-|------|------|------|--------|
-| `ANTHROPIC_AUTH_TOKEN` | API 认证令牌 | 是 | - |
-| `ANTHROPIC_BASE_URL` | API 端点 URL | 否 | `https://api.minimaxi.com/anthropic` |
+| 变量                   | 描述         | 必填 | 默认值                               |
+| ---------------------- | ------------ | ---- | ------------------------------------ |
+| `ANTHROPIC_AUTH_TOKEN` | API 认证令牌 | 是   | -                                    |
+| `ANTHROPIC_BASE_URL`   | API 端点 URL | 否   | `https://api.minimaxi.com/anthropic` |
 
 ### config.json
 
@@ -254,13 +256,13 @@ python main.py --project-dir /path/to/project list
 
 ### 配置选项
 
-| 选项 | 类型 | 描述 |
-|------|------|------|
-| `max_errors_before_intervention` | 整数 | 触发人工干预前的错误次数 |
-| `retry.max_retries` | 整数 | 任务失败后的最大重试次数 |
-| `retry.retry_interval` | 整数 | 重试间隔秒数 |
-| `context_window_limit` | 整数 | 上下文窗口的 Token 限制 |
-| `model` | 字符串 | 使用的模型名称 |
+| 选项                             | 类型   | 描述                     |
+| -------------------------------- | ------ | ------------------------ |
+| `max_errors_before_intervention` | 整数   | 触发人工干预前的错误次数 |
+| `retry.max_retries`              | 整数   | 任务失败后的最大重试次数 |
+| `retry.retry_interval`           | 整数   | 重试间隔秒数             |
+| `context_window_limit`           | 整数   | 上下文窗口的 Token 限制  |
+| `model`                          | 字符串 | 使用的模型名称           |
 
 ## SDK 使用示例
 

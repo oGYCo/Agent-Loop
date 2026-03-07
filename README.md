@@ -1,6 +1,8 @@
 <p align="center">
-  <img src="assets/logo.svg" alt="Agent-Loop" width="600" />
+  <img src="assets/logo.svg" alt="Agent-Loop" width="140" />
 </p>
+
+<h1 align="center">Agent-Loop</h1>
 
 <p align="center">
   <em>A production-ready autonomous AI agent system powered by Claude Agent SDK with MiniMax API backend</em>
@@ -24,28 +26,28 @@ Agent-Loop is an autonomous AI agent system that automates task execution with r
 
 ## Why Agent-Loop?
 
-| Benefit | Description |
-|---------|-------------|
-| **Full Transparency** | Real-time streaming of AI thinking process and tool executions |
-| **Resilient** | Automatic session resume, file checkpointing, and graceful shutdown |
-| **Extensible** | Powerful hook system for monitoring and custom integrations |
-| **Self-Improving** | Automatic task plan review and documentation refinement |
-| **Production-Ready** | Type-safe, tested, well-documented, and monitored |
+| Benefit               | Description                                                         |
+| --------------------- | ------------------------------------------------------------------- |
+| **Full Transparency** | Real-time streaming of AI thinking process and tool executions      |
+| **Resilient**         | Automatic session resume, file checkpointing, and graceful shutdown |
+| **Extensible**        | Powerful hook system for monitoring and custom integrations         |
+| **Self-Improving**    | Automatic task plan review and documentation refinement             |
+| **Production-Ready**  | Type-safe, tested, well-documented, and monitored                   |
 
 ## Features
 
-| Feature | Description |
-|---------|-------------|
-| **Streaming Output** | Live visibility into AI decision-making and tool calls |
-| **Session Management** | Resume, fork, and checkpoint agent sessions |
-| **Hook System** | PreToolUse, PostToolUse, Notification, Stop hooks |
-| **Human-in-the-Loop** | Automatic pause when error threshold exceeded |
-| **Git Integration** | Auto-commit after each session for version control |
-| **Task Retry** | Configurable retry mechanism for failed tasks |
+| Feature                    | Description                                                     |
+| -------------------------- | --------------------------------------------------------------- |
+| **Streaming Output**       | Live visibility into AI decision-making and tool calls          |
+| **Session Management**     | Resume, fork, and checkpoint agent sessions                     |
+| **Hook System**            | PreToolUse, PostToolUse, Notification, Stop hooks               |
+| **Human-in-the-Loop**      | Automatic pause when error threshold exceeded                   |
+| **Git Integration**        | Auto-commit after each session for version control              |
+| **Task Retry**             | Configurable retry mechanism for failed tasks                   |
 | **Performance Monitoring** | Track task execution time, session duration, and resource usage |
-| **Config Hot Reload** | Reload configuration without restart (manual or file watch) |
-| **Graceful Shutdown** | Handle SIGINT/SIGTERM signals safely |
-| **Self-Review** | Automatic task plan review after each task completion |
+| **Config Hot Reload**      | Reload configuration without restart (manual or file watch)     |
+| **Graceful Shutdown**      | Handle SIGINT/SIGTERM signals safely                            |
+| **Self-Review**            | Automatic task plan review after each task completion           |
 
 ## Quick Start
 
@@ -100,13 +102,13 @@ python main.py --help                       # Show help message
 
 ### Command Details
 
-| Command | Shortcut | Description |
-|---------|----------|-------------|
-| `init` | `--init` | Initialize project and create config files |
-| `run` | `--run` | Start agent loop (default: 10 iterations) |
-| `list` | | List all tasks with status and priority |
-| `status` | | Show project status, git info, and task stats |
-| `add` | | Add new task to feature list |
+| Command  | Shortcut | Description                                   |
+| -------- | -------- | --------------------------------------------- |
+| `init`   | `--init` | Initialize project and create config files    |
+| `run`    | `--run`  | Start agent loop (default: 10 iterations)     |
+| `list`   |          | List all tasks with status and priority       |
+| `status` |          | Show project status, git info, and task stats |
+| `add`    |          | Add new task to feature list                  |
 
 ### Add Command Options
 
@@ -152,17 +154,17 @@ python main.py add "New Feature"
 
 ### Core Modules
 
-| Module | Responsibility |
-|--------|----------------|
-| `agent_core.py` | Core agent logic, SDK integration, task execution |
-| `session_manager.py` | Session lifecycle, context management, history |
-| `state_manager.py` | State persistence to JSON, config validation |
-| `task_selector.py` | Priority-based task selection |
-| `human_intervention.py` | Error threshold monitoring, intervention triggers |
-| `git_helper.py` | Git operations wrapper, auto-commit |
-| `test_runner.py` | Test execution wrapper |
-| `performance_monitor.py` | Performance metrics tracking |
-| `config_reloader.py` | Configuration hot reload |
+| Module                   | Responsibility                                    |
+| ------------------------ | ------------------------------------------------- |
+| `agent_core.py`          | Core agent logic, SDK integration, task execution |
+| `session_manager.py`     | Session lifecycle, context management, history    |
+| `state_manager.py`       | State persistence to JSON, config validation      |
+| `task_selector.py`       | Priority-based task selection                     |
+| `human_intervention.py`  | Error threshold monitoring, intervention triggers |
+| `git_helper.py`          | Git operations wrapper, auto-commit               |
+| `test_runner.py`         | Test execution wrapper                            |
+| `performance_monitor.py` | Performance metrics tracking                      |
+| `config_reloader.py`     | Configuration hot reload                          |
 
 ## Usage Examples
 
@@ -227,10 +229,10 @@ python main.py --project-dir /path/to/project list
 
 ### Environment Variables
 
-| Variable | Description | Required | Default |
-|----------|-------------|----------|---------|
-| `ANTHROPIC_AUTH_TOKEN` | API token for authentication | Yes | - |
-| `ANTHROPIC_BASE_URL` | API endpoint URL | No | `https://api.minimaxi.com/anthropic` |
+| Variable               | Description                  | Required | Default                              |
+| ---------------------- | ---------------------------- | -------- | ------------------------------------ |
+| `ANTHROPIC_AUTH_TOKEN` | API token for authentication | Yes      | -                                    |
+| `ANTHROPIC_BASE_URL`   | API endpoint URL             | No       | `https://api.minimaxi.com/anthropic` |
 
 ### config.json
 
@@ -254,13 +256,13 @@ python main.py --project-dir /path/to/project list
 
 ### Configuration Options
 
-| Option | Type | Description |
-|--------|------|-------------|
-| `max_errors_before_intervention` | int | Errors before triggering human intervention |
-| `retry.max_retries` | int | Maximum retry attempts for failed tasks |
-| `retry.retry_interval` | int | Seconds between retry attempts |
-| `context_window_limit` | int | Token limit for context window |
-| `model` | string | Model name to use |
+| Option                           | Type   | Description                                 |
+| -------------------------------- | ------ | ------------------------------------------- |
+| `max_errors_before_intervention` | int    | Errors before triggering human intervention |
+| `retry.max_retries`              | int    | Maximum retry attempts for failed tasks     |
+| `retry.retry_interval`           | int    | Seconds between retry attempts              |
+| `context_window_limit`           | int    | Token limit for context window              |
+| `model`                          | string | Model name to use                           |
 
 ## SDK Usage
 
