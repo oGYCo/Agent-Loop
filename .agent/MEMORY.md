@@ -235,6 +235,8 @@ Or via `env` parameter in ClaudeAgentOptions.
 
 
 
+
+
 2026-03-07: Task Plan Self-Review
 
 When reviewing the task plan (feature_list.json):
@@ -435,7 +437,10 @@ When adding comprehensive unit tests for `state_manager.py`:
 
 ---
 
-### 2026-03-07 - Add more unit tests for state_manager (self-009)
+
+---
+
+2026-03-07 - Add more unit tests for state_manager (self-009)
 
 **任务描述**: 增加 agent/state_manager.py 的单元测试覆盖率，测试边界情况和错误处理。
 
@@ -444,11 +449,17 @@ When adding comprehensive unit tests for `state_manager.py`:
 
 Successfully completed task `self-009`: Add more unit tests for state_manager.
 
-### Changes Made
+
+---
+
+Changes Made
 - Added **26 new tests** to `tests/test_state_manager.py`, increasing test count from 20 to 46 tests
 - All tests pass
 
-### Test Categories Added
+
+---
+
+Test Categories Added
 1. **Validation Tests for `validate_config`** (5 tests):
    - Valid config success case
    - Missing required fields
@@ -460,17 +471,26 @@ Successfully completed task `self-009`: Add more unit tests for state_manager.
 
 ---
 
-### 2026-03-07 - Add more unit tests for task_selector (self-010)
+
+---
+
+2026-03-07 - Add more unit tests for task_selector (self-010)
 
 **任务描述**: 增加 agent/task_selector.py 的单元测试覆盖率，测试优先级选择逻辑。
 
 **执行结果**: completed
 
-### Changes Made
+
+---
+
+Changes Made
 - Added **8 new tests** to `tests/test_task_selector.py`, increasing test count from 11 to 19 tests
 - All tests pass
 
-### Test Categories Added
+
+---
+
+Test Categories Added
 1. **Completed Count Tests**:
    - `test_get_completed_count_with_passes_true`: Tests that passes=True counts as completed even when status is "pending"
 
@@ -488,7 +508,62 @@ Successfully completed task `self-009`: Add more unit tests for state_manager.
    - `test_get_pending_count_with_passes_true`: Tests pending excludes passes=True
    - `test_mark_task_failed_not_found`: Tests marking non-existent task as failed
 
-### Key Insights
+
+---
+
+Key Insights
 - The priority selection logic: selects pending tasks where passes=False, sorted by priority (lower = higher priority)
 - Missing priority defaults to 999 (lowest priority)
 - passes=True marks a task as completed regardless of status
+
+---
+
+### 2026-03-07 - Add more unit tests for task_selector (self-010)
+
+**任务描述**: 增加 agent/task_selector.py 的单元测试覆盖率，测试优先级选择逻辑。
+
+**执行结果**: completed
+**执行消息**: ## Summary
+
+Successfully completed task `self-010`: Add more unit tests for task_selector.
+
+### Changes Made
+- Added **8 new tests** to `tests/test_task_selector.py`, increasing test count from 11 to 19 tests
+- All tests pass
+
+### New Tests Added
+1. **Completed Count Tests**:
+   - `test_get_completed_count_with_passes_true`: Tests that passes=True counts as completed even when status is "pending"
+
+2. **Priority Selection Tests**:
+   - `test_missing_priority_field`: Tests that missing priority defaults to 999
+
+3. **Status Filtering Tests**:
+   - `test_in_progress_status_skipped`: Tests in_progress tasks are excluded
+   - `test_failed_status_not_selected`: Tests failed tasks are excluded
+   - `test_all_tasks_failed`: Tests None return when all tasks failed
+
+4. **Edge Case Tests**:
+   - `test_passes_none_vs_false`: Tests passes=None is treated as falsy
+   - `test_get_pending_count_with_passes_true`: Tests pending excludes passes=True
+   - `test_mark_task_failed_not_found`: Tests marking non-existent task as failed
+
+
+---
+
+## Task Experience Records
+
+### 2026-03-07: Add tests for session_manager.py (self-022)
+
+**任务**: 为 agent/session_manager.py 添加单元测试，测试会话创建、状态管理和历史记录功能。
+
+**执行结果**: completed
+
+**验证**: 17 tests pass - `pytest tests/test_session_manager.py -v`
+
+**发现**: 测试文件 `tests/test_session_manager.py` 已存在并包含全面的测试，覆盖:
+- 会话创建/恢复 (`should_resume_session` 测试)
+- 状态管理 (`get_session_stats`, `create/load_checkpoint`, `cleanup_checkpoints`)
+- 历史记录 (`get_session_summary`, `add_session` 集成测试)
+
+所有 17 个测试均已通过。

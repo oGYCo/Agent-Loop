@@ -310,8 +310,8 @@
       "name": "Add tests for session_manager.py",
       "description": "为 agent/session_manager.py 添加单元测试，测试会话创建、状态管理和历史记录功能。",
       "priority": 2,
-      "status": "pending",
-      "passes": false,
+      "status": "completed",
+      "passes": true,
       "verify_command": "pytest tests/test_session_manager.py -v",
       "context_files": [
         "agent/session_manager.py",
