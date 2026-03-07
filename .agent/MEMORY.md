@@ -40,6 +40,31 @@ This file stores accumulated experience and lessons learned from the Agent-Loop 
 
 ## Lessons Learned
 
+### 2026-03-07: Prompt Management System
+
+Added a comprehensive prompt management system to allow easy customization of prompts for different task types:
+
+1. **New Module**: Created `agent/prompt_manager.py` with:
+   - `PromptManager` class: Manages prompts stored in `.agent/prompts.json`
+   - Methods: `load_prompts()`, `save_prompts()`, `get_active_prompt()`, `list_prompts()`, `add_prompt()`, `update_prompt()`, `delete_prompt()`, `set_active_prompt()`
+
+2. **New Configuration File**: Created `.agent/prompts.json` with:
+   - Default prompts: `default`, `coder`, `researcher`, `reviewer`
+   - Active prompt selection stored in config
+
+3. **CLI Integration**: Added `prompt` subcommand to `main.py`:
+   - `python main.py prompt list` - List all prompts
+   - `python main.py prompt show [key]` - Show prompt content
+   - `python main.py prompt set <key>` - Set active prompt
+   - `python main.py prompt add <key> <name> -d "description" -s "system prompt"` - Add new prompt
+   - `python main.py prompt delete <key>` - Delete a prompt
+
+4. **Integration**: Modified `agent_core.py`:
+   - Added `PromptManager` import and initialization
+   - Changed `get_system_prompt()` to use `self.prompt_manager.get_active_prompt()`
+
+**Key Insight**: The prompt manager is automatically created on first access, with default prompts generated if the config file doesn't exist. This ensures backward compatibility and easy onboarding for new users.
+
 ### 2026-03-07: Performance Monitoring
 
 Added performance monitoring functionality to track task execution time, session duration, and system resource usage:

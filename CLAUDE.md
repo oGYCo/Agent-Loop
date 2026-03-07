@@ -59,6 +59,7 @@ python main.py init
 | `agent/human_intervention.py` | Human intervention when error threshold exceeded |
 | `agent/git_helper.py` | Git operations wrapper |
 | `agent/test_runner.py` | Test execution wrapper |
+| `agent/prompt_manager.py` | Prompt management and customization |
 | `main.py` | CLI entry point |
 
 ### Data Flow
@@ -74,6 +75,7 @@ main.py → AgentCore.run_agent_loop()
 
 - `config.json` - Model, API, documentation URLs
 - `feature_list.json` - Task list with priorities
+- `prompts.json` - Prompt templates for different task types
 - `state.json` - Current session state
 - `session_history.json` - Completed sessions
 - `MEMORY.md` - Accumulated experience
