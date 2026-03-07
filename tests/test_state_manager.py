@@ -267,7 +267,7 @@ class TestStateManager:
         assert "must be greater than 0" in str(exc_info.value)
 
     def test_validate_config_empty_documentation_urls(self, state_manager):
-        """Test config validation with empty documentation_urls"""
+        """Test config validation with empty documentation_urls (now allowed)"""
         config = {
             "project_name": "Test Project",
             "project_type": "python",
@@ -277,11 +277,11 @@ class TestStateManager:
             "test_pattern": "test_*.py",
             "max_errors_before_intervention": 5,
             "context_window_limit": 100000,
-            "documentation_urls": {}  # Empty
+            "documentation_urls": {}  # Empty - now allowed
         }
-        with pytest.raises(Exception) as exc_info:
-            state_manager.validate_config(config)
-        assert "cannot be empty" in str(exc_info.value)
+        # Empty dictionary should now be accepted
+        result = state_manager.validate_config(config)
+        assert result["documentation_urls"] == {}
 
     def test_validate_feature_list_success(self, state_manager):
         """Test feature list validation with valid data"""

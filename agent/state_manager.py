@@ -353,10 +353,8 @@ class StateManager:
             if config["context_window_limit"] <= 0:
                 errors.append("context_window_limit must be greater than 0")
 
-        # 验证 documentation_urls 是有效的对象
-        if "documentation_urls" in config and isinstance(config["documentation_urls"], dict):
-            if not config["documentation_urls"]:
-                errors.append("documentation_urls cannot be empty")
+        # documentation_urls 允许为空字典，但建议根据项目需求填写常用文档链接
+        # 例如: {"main": "https://docs.example.com", "api": "https://api.example.com/docs"}
 
         if errors:
             raise ConfigValidationError("\n".join(errors))
