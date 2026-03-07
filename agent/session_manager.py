@@ -4,11 +4,43 @@
 """
 
 import json
+import logging
 from datetime import datetime
 from typing import Optional, List, Dict, Any, cast
 from pathlib import Path
 
 from .state_manager import StateManager
+
+logger = logging.getLogger(__name__)
+
+# Try to import tiktoken for accurate token counting
+try:
+    import tiktoken
+
+    _tokenizer = tiktoken.get_encoding("cl100k_base")
+except ImportError:
+    _tokenizer = None
+    logger.warning("tiktoken not available, falling back to character-based estimation")
+
+
+def count_tokens(text: str) -> int:
+    """Count tokens in text using tiktoken (accurate) or fallback estimation.
+
+    Args:
+        text: Text to count tokens for
+
+    Returns:
+        Estimated token count
+    """
+    if _tokenizer is not None:
+        try:
+            return len(_tokenizer.encode(text))
+        except Exception as e:
+            logger.warning(f"tiktoken encoding failed: {e}, falling back to estimation")
+            return len(text) // 4
+    else:
+        # Fallback: simple character-based estimation
+        return len(text) // 4
 
 
 class SessionManager:
@@ -25,11 +57,14 @@ class SessionManager:
         Returns:
             (is_over_limit: bool, token_count: int)
         """
-        # 简单估算：每4个字符约等于1个token
-        total_chars = sum(len(json.dumps(m)) for m in messages)
-        estimated_tokens = total_chars // 4
+        # Use tiktoken for accurate token counting
+        total_tokens = 0
+        for m in messages:
+            # Serialize message to JSON and count tokens
+            msg_text = json.dumps(m)
+            total_tokens += count_tokens(msg_text)
 
-        return estimated_tokens > self.context_limit, estimated_tokens
+        return total_tokens > self.context_limit, total_tokens
 
     def summarize_old_messages(self, messages: List[Dict[str, Any]], keep_recent: int = 10) -> List[Dict[str, Any]]:
         """总结旧消息以节省上下文
