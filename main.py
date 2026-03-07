@@ -18,6 +18,7 @@ from agent.task_selector import TaskSelector
 from agent.agent_core import AgentCore
 from agent.session_manager import SessionManager
 from agent.git_helper import GitHelper
+from agent.config_reloader import ConfigReloader
 
 # 全局 shutdown 标志
 _shutdown_requested = False
@@ -199,6 +200,38 @@ def show_status(args: argparse.Namespace) -> None:
     print("=" * 50)
 
 
+def reload_config(args: argparse.Namespace) -> None:
+    """重载配置文件"""
+    state_manager = StateManager(args.project_dir if args.project_dir else None)
+    reloader = ConfigReloader(args.project_dir if args.project_dir else None)
+
+    print("\nReloading configuration...")
+    print(f"Config path: {reloader.agent_dir}")
+
+    # 执行重载
+    force = getattr(args, 'force', False)
+    result = reloader.reload(force=force)
+
+    # 显示结果
+    print("\nReload Result:")
+    print("-" * 40)
+    if result["success"]:
+        print(f"✓ Success: {result['message']}")
+    else:
+        print(f"✗ Failed: {result['message']}")
+
+    if result.get("reloaded"):
+        print(f"  Reloaded files: {', '.join(result['reloaded'])}")
+
+    if result.get("errors"):
+        print("  Errors:")
+        for error in result["errors"]:
+            print(f"    - {error}")
+
+    print(f"  Timestamp: {result.get('timestamp', 'N/A')}")
+    print("-" * 40)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         description="Agent-Loop: Autonomous AI Agent System",
@@ -318,6 +351,18 @@ For more information, see: https://github.com/agent-loop/docs
         help="Show verbose output"
     )
 
+    # reload command
+    reload_parser = subparsers.add_parser(
+        "reload",
+        help="Reload configuration files",
+        description="Reload config.json and feature_list.json without restarting the agent"
+    )
+    reload_parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Force reload even if files haven't changed"
+    )
+
     # Backwards compatibility: --init and --run flags
     parser.add_argument("--init", action="store_true", help="Initialize the project (deprecated, use 'init' subcommand)")
     parser.add_argument("--run", action="store_true", help="Run the agent (deprecated, use 'run' subcommand)")
@@ -347,6 +392,8 @@ For more information, see: https://github.com/agent-loop/docs
             add_feature(args)
         elif args.command == "status":
             show_status(args)
+        elif args.command == "reload":
+            reload_config(args)
     else:
         parser.print_help()
 
