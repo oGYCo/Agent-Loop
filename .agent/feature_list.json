@@ -48,8 +48,8 @@
       "name": "Refactor blocking file watcher to async in config_reloader.py",
       "description": "在 agent/config_reloader.py:233-240 中，ConfigWatcher.start() 方法使用了阻塞的 while 循环来监控文件变化。建议使用 watchdog 库或 asyncio 来实现非阻塞的文件监控。推荐使用 watchgod 库或标准库的 logging.handlers 中的 WatchedFileHandler 模式。",
       "priority": 5,
-      "status": "pending",
-      "passes": false,
+      "status": "completed",
+      "passes": true,
       "context": "读取 agent/config_reloader.py 文件，找到 ConfigWatcher 类的 start() 方法（约第233-240行）。使用 watchdog 库重写文件监控逻辑，或使用 threading.Thread 将监控放到后台线程中。",
       "created_at": "2026-03-07 21:00:00",
       "updated_at": "2026-03-07"
