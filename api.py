@@ -3,6 +3,8 @@
 Provides HTTP endpoints to interact with the Agent-Loop system.
 """
 
+import asyncio
+import json
 import logging
 import os
 import sys
@@ -10,7 +12,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from pydantic import BaseModel
 
 # Add project root to path
@@ -33,6 +35,118 @@ app = FastAPI(
 
 # Global state
 _agent_instance = None
+
+
+# ========== WebSocket Manager ==========
+
+class ConnectionManager:
+    """Manages WebSocket connections for real-time event streaming"""
+
+    def __init__(self):
+        self.active_connections: List[WebSocket] = []
+
+    async def connect(self, websocket: WebSocket):
+        """Accept a new WebSocket connection"""
+        await websocket.accept()
+        self.active_connections.append(websocket)
+        logger.info(f"WebSocket client connected. Total connections: {len(self.active_connections)}")
+
+    def disconnect(self, websocket: WebSocket):
+        """Remove a WebSocket connection"""
+        if websocket in self.active_connections:
+            self.active_connections.remove(websocket)
+            logger.info(f"WebSocket client disconnected. Total connections: {len(self.active_connections)}")
+
+    async def send_message(self, message: Dict[str, Any]):
+        """Send a message to all connected clients"""
+        if not self.active_connections:
+            return
+        message_json = json.dumps(message, ensure_ascii=False)
+        # Send to all active connections
+        disconnected = []
+        for connection in self.active_connections:
+            try:
+                await connection.send_text(message_json)
+            except Exception as e:
+                logger.warning(f"Failed to send to WebSocket: {e}")
+                disconnected.append(connection)
+        # Clean up disconnected clients
+        for conn in disconnected:
+            self.disconnect(conn)
+
+    async def broadcast(self, event_type: str, data: Dict[str, Any]):
+        """Broadcast an event to all connected clients"""
+        message = {
+            "type": event_type,
+            "timestamp": datetime.now().isoformat(),
+            "data": data
+        }
+        await self.send_message(message)
+
+
+# Global WebSocket manager
+ws_manager = ConnectionManager()
+
+
+# ========== Event Pusher ==========
+
+class EventPusher:
+    """Singleton class to push events to WebSocket clients"""
+
+    _instance = None
+    _ws_manager: Optional[ConnectionManager] = None
+
+    @classmethod
+    def get_instance(cls) -> "EventPusher":
+        """Get the singleton instance"""
+        if cls._instance is None:
+            cls._instance = cls()
+        return cls._instance
+
+    @classmethod
+    def set_ws_manager(cls, manager: ConnectionManager):
+        """Set the WebSocket manager"""
+        cls._ws_manager = manager
+
+    async def push_status(self, status: str, message: str, data: Optional[Dict[str, Any]] = None):
+        """Push agent status update"""
+        if self._ws_manager:
+            await self._ws_manager.broadcast("status", {
+                "status": status,
+                "message": message,
+                "data": data or {}
+            })
+
+    async def push_task_progress(self, task_id: str, progress: str, details: Optional[Dict[str, Any]] = None):
+        """Push task progress update"""
+        if self._ws_manager:
+            await self._ws_manager.broadcast("task_progress", {
+                "task_id": task_id,
+                "progress": progress,
+                "details": details or {}
+            })
+
+    async def push_log(self, level: str, message: str, source: Optional[str] = None):
+        """Push log message"""
+        if self._ws_manager:
+            await self._ws_manager.broadcast("log", {
+                "level": level,
+                "message": message,
+                "source": source
+            })
+
+    async def push_iteration(self, iteration: int, total: int, task: Optional[str] = None):
+        """Push iteration update"""
+        if self._ws_manager:
+            await self._ws_manager.broadcast("iteration", {
+                "current": iteration,
+                "total": total,
+                "task": task
+            })
+
+
+# Initialize EventPusher with ws_manager
+EventPusher.set_ws_manager(ws_manager)
 
 
 # ========== Request/Response Models ==========
@@ -263,6 +377,44 @@ def get_sessions() -> SessionResponse:
 def health_check() -> Dict[str, str]:
     """Health check endpoint"""
     return {"status": "healthy", "service": "agent-loop-api"}
+
+
+@app.websocket("/ws")
+async def websocket_endpoint(websocket: WebSocket):
+    """WebSocket endpoint for real-time agent event streaming
+
+    Clients can connect to receive:
+    - status: Agent status updates (idle, running, error)
+    - task_progress: Task execution progress
+    - log: Log messages (info, warning, error)
+    - iteration: Iteration updates during agent loop
+    """
+    await ws_manager.connect(websocket)
+    try:
+        # Send welcome message
+        await ws_manager.send_message({
+            "type": "connected",
+            "timestamp": datetime.now().isoformat(),
+            "data": {"message": "WebSocket connected to Agent-Loop"}
+        })
+
+        # Keep connection alive and handle incoming messages
+        while True:
+            # Wait for messages from client (can be used for subscriptions)
+            data = await websocket.receive_text()
+            try:
+                message = json.loads(data)
+                # Handle subscription messages if needed
+                # Example: {"action": "subscribe", "events": ["status", "log"]}
+                logger.info(f"Received WebSocket message: {message}")
+            except json.JSONDecodeError:
+                logger.warning(f"Invalid JSON received: {data}")
+    except WebSocketDisconnect:
+        ws_manager.disconnect(websocket)
+        logger.info("WebSocket client disconnected")
+    except Exception as e:
+        logger.error(f"WebSocket error: {e}")
+        ws_manager.disconnect(websocket)
 
 
 def get_app() -> FastAPI:
