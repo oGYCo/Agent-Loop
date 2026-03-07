@@ -6,6 +6,7 @@
 import os
 import asyncio
 import json
+import sys
 from datetime import datetime
 from pathlib import Path
 from typing import Optional, Dict, Any, List
@@ -31,18 +32,20 @@ async def pre_tool_hook(input_data: dict, tool_use_id: str | None, context: dict
     tool_name = input_data.get("tool_name", "unknown")
     tool_input = input_data.get("tool_input", {})
 
-    print(f"\n[PreToolUse] {tool_name}")
+    print(f"\n[PreToolUse] {tool_name}", flush=True)
     # 显示简化后的输入
     input_preview = json.dumps(tool_input, ensure_ascii=False)
     if len(input_preview) > 300:
         input_preview = input_preview[:300] + "..."
-    print(f"  Input: {input_preview}")
+    print(f"  Input: {input_preview}", flush=True)
 
     return {}  # 允许执行
 
 
 async def post_tool_hook(input_data: dict, tool_use_id: str | None, context: dict) -> dict:
     """工具执行后调用 - 流式输出结果"""
+    import sys
+
     tool_name = input_data.get("tool_name", "unknown")
     result = input_data.get("result", {})
     result_type = input_data.get("result_type", "unknown")
@@ -55,6 +58,7 @@ async def post_tool_hook(input_data: dict, tool_use_id: str | None, context: dic
             print(f"\n📤 Result: ", end="", flush=True)
             # 流式输出每个字符或行
             print(text_content, end="", flush=True)
+            sys.stdout.flush()
             print()  # 换行
     else:
         # 非文本结果（如文件操作）显示摘要
@@ -65,6 +69,7 @@ async def post_tool_hook(input_data: dict, tool_use_id: str | None, context: dic
         print(f"\n✅ [PostToolUse] {tool_name}: completed")
         if result_preview:
             print(f"  Result: {result_preview[:300]}...")
+        sys.stdout.flush()
 
     return {}
 
@@ -74,7 +79,7 @@ async def notification_hook(input_data: dict, tool_use_id: str | None, context: 
     message = input_data.get("message", "")
     notification_type = input_data.get("notification_type", "")
 
-    print(f"\n[Notification] {notification_type}: {message[:200]}")
+    print(f"\n[Notification] {notification_type}: {message[:200]}", flush=True)
 
     return {}
 
@@ -82,7 +87,7 @@ async def notification_hook(input_data: dict, tool_use_id: str | None, context: 
 async def stop_hook(input_data: dict, tool_use_id: str | None, context: dict) -> dict:
     """处理停止事件"""
     session_id = input_data.get("session_id", "")
-    print(f"\n[Stop] Session {session_id} ended")
+    print(f"\n[Stop] Session {session_id} ended", flush=True)
 
     return {}
 
@@ -365,7 +370,7 @@ Start by reading CLAUDE.md and the relevant source files for this task."""
                             if block_type == "tool_use":
                                 tool_name = content_block.get("name", "unknown")
                                 tool_call_count += 1
-                                print(f"\n🔧 Tool #{tool_call_count}: {tool_name}")
+                                print(f"\n🔧 Tool #{tool_call_count}: {tool_name}", flush=True)
 
                         elif event_type == "content_block_delta":
                             # 增量内容 - 实时文本或工具输入或工具结果
@@ -412,8 +417,8 @@ Start by reading CLAUDE.md and the relevant source files for this task."""
                                     input_str = json.dumps(tool_input, ensure_ascii=False, indent=2)
                                     if len(input_str) > 500:
                                         input_str = input_str[:500] + "..."
-                                    print(f"\n🔧 Tool #{tool_call_count}: {tool_name}")
-                                    print(f"   Input: {input_str[:300]}...")
+                                    print(f"\n🔧 Tool #{tool_call_count}: {tool_name}", flush=True)
+                                    print(f"   Input: {input_str[:300]}...", flush=True)
                                 elif block_type == "tool_result":
                                     # 工具结果 - 流式输出
                                     tool_use_id = getattr(block, 'tool_use_id', '')
