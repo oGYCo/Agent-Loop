@@ -4,6 +4,60 @@ Accumulated experience and lessons learned from task execution.
 
 ---
 
+## 2026-03-08 - Grafana Dashboard Template (feature-012)
+
+**Task Description**: 创建Grafana仪表板JSON模板，包含预置面板：任务统计、性能指标、会话历史、错误分析。配合Prometheus指标使用。
+
+**Lessons Learned:**
+
+1. **Grafana Dashboard Structure**:
+   - Dashboard uses Grafana v10 JSON format
+   - Uses `$__rate_interval` for rate queries
+   - Uses `$datasource` template variable for Prometheus data source
+
+2. **Panels Implemented**:
+   - **Task Statistics (任务统计)**: Total/pending tasks gauges, completion trend line chart, task completion table
+   - **Performance Metrics (性能指标)**: Task duration P50/P90/P99, API latency, session duration, iteration count
+   - **Session History (会话历史)**: Session creation trend, session duration distribution (P50/P90/P99)
+   - **Error Analysis (错误分析)**: Total errors, error rate, error trend, error breakdown table by type
+   - **Agent Status**: Current status indicator, total API calls, API calls by endpoint
+
+3. **Metrics Used** (from agent/metrics.py):
+   - `agent_tasks_completed_total` - Task completion by status
+   - `agent_tasks_pending` - Pending task count
+   - `agent_tasks_total` - Total task count
+   - `agent_task_duration_seconds` - Task execution time histogram
+   - `agent_api_duration_seconds` - API call duration histogram
+   - `agent_session_duration_seconds` - Session duration histogram
+   - `agent_sessions_total` - Total session count
+   - `agent_sessions_active` - Active session count
+   - `agent_errors_total` - Error count by type
+   - `agent_iterations_total` - Iteration counter
+   - `agent_api_calls_total` - API call count by endpoint
+   - `agent_status` - Agent status (0=idle, 1=running, 2=error)
+
+4. **Grafana Features Used**:
+   - Timeseries panels with gradient fills
+   - Stat panels for single values
+   - Table panels with color mapping
+   - Histogram quantile calculations for P50/P90/P99
+   - Threshold-based coloring
+
+5. **Dashboard File**:
+   - Created: `dashboards/agent-loop-dashboard.json`
+   - Tags: agent-loop, prometheus
+   - Auto-refresh: 5s
+   - Time range: Last 1 hour (default)
+
+6. **Verification**:
+   - JSON validation passed
+   - All metrics tests pass (9/9)
+   - Committed and pushed to remote
+
+7. **Commit**: Pushed as `feat: Add Grafana dashboard template for Agent-Loop monitoring`
+
+---
+
 ## 2026-03-08 - Interactive CLI with Rich Library (feature-009)
 
 **Task Description**: 使用rich库改进CLI输出：彩色日志、进度条、表格显示任务列表、状态面板。
@@ -434,6 +488,8 @@ Accumulated experience and lessons learned from task execution.
 
 
 
+
+
 2026-03-08 - API密钥认证 (feature-013)
 
 **任务描述**: 为API服务添加API Key认证机制，支持配置多个密钥，实现基本的访问控制。
@@ -524,7 +580,10 @@ Changes Made
 
 ---
 
-### 2026-03-08 - 任务看板Web界面 (feature-011)
+
+---
+
+2026-03-08 - 任务看板Web界面 (feature-011)
 
 **任务描述**: 在Web Dashboard中添加任务看板功能：可视化任务列表，支持拖拽调整优先级，任务详情展示。需要先完成基础Dashboard和API。
 
@@ -533,7 +592,10 @@ Changes Made
 
 I've successfully implemented the task board (看板) feature for the Web Dashboard. Here's what was added:
 
-### Changes Made
+
+---
+
+Changes Made
 
 1. **StateManager** (`agent/state_manager.py`)
    - Extended `update_feature()` to allow `priority` field updates
@@ -543,3 +605,24 @@ I've successfully implemented the task board (看板) feature for the Web Dashbo
    - `PATCH /tasks/{task_id}` - Update task priority, status, or passes
 
 3. **Web Dashboard** (`static/ind
+
+---
+
+### 2026-03-08 - 交互式CLI (Rich库) (feature-009)
+
+**任务描述**: 使用rich库改进CLI输出：彩色日志、进度条、表格显示任务列表、状态面板。需要阅读main.py了解当前CLI结构。
+
+**执行结果**: completed
+**执行消息**: I have successfully implemented the interactive CLI with the Rich library. Here's a summary of what was done:
+
+## Summary
+
+### Changes Made
+
+1. **Added Rich dependency** (`pyproject.toml`):
+   - Added `rich>=13.0.0` to dependencies
+
+2. **Created `agent/console.py`** - New module with rich utilities:
+   - `print_success()`, `print_error()`, `print_warning()`, `print_info()` - Colored status messages
+   - `print_task_table()` - Rich table for task list
+   - `print_status_panel()` - Status panel wi
