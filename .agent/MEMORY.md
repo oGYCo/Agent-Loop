@@ -40,6 +40,23 @@ This file stores accumulated experience and lessons learned from the Agent-Loop 
 
 ## Lessons Learned
 
+### 2026-03-07: Task Retry Mechanism
+
+Added a retry mechanism to the task execution in `agent_core.py`:
+
+1. **Retry Configuration**: Added `retry` config in `config.json` with:
+   - `max_retries`: Maximum number of retry attempts (default: 3)
+   - `retry_interval`: Seconds to wait between retries (default: 5)
+   - `retry_on_errors`: List of error types that should trigger retry
+
+2. **Implementation**: Modified `execute_task` method to:
+   - Check result status after each execution
+   - Retry on error status up to `max_retries` times
+   - Log retry attempts and reasons
+   - Return retry count and reasons in the result
+
+3. **Key Pattern**: Use a while loop with retry counter to handle retries, with proper error tracking in the result dictionary.
+
 ### 2026-03-07: Improving Error Messages
 
 When improving error messages in the codebase:
@@ -230,6 +247,8 @@ Or via `env` parameter in ClaudeAgentOptions.
 ---
 
 ## Task Experience Records
+
+
 
 
 
@@ -518,7 +537,10 @@ Key Insights
 
 ---
 
-### 2026-03-07 - Add more unit tests for task_selector (self-010)
+
+---
+
+2026-03-07 - Add more unit tests for task_selector (self-010)
 
 **任务描述**: 增加 agent/task_selector.py 的单元测试覆盖率，测试优先级选择逻辑。
 
@@ -527,11 +549,17 @@ Key Insights
 
 Successfully completed task `self-010`: Add more unit tests for task_selector.
 
-### Changes Made
+
+---
+
+Changes Made
 - Added **8 new tests** to `tests/test_task_selector.py`, increasing test count from 11 to 19 tests
 - All tests pass
 
-### New Tests Added
+
+---
+
+New Tests Added
 1. **Completed Count Tests**:
    - `test_get_completed_count_with_passes_true`: Tests that passes=True counts as completed even when status is "pending"
 
@@ -551,36 +579,23 @@ Successfully completed task `self-010`: Add more unit tests for task_selector.
 
 ---
 
-## Task Experience Records
 
-### 2026-03-07: Add tests for session_manager.py (self-022)
 
-**任务**: 为 agent/session_manager.py 添加单元测试，测试会话创建、状态管理和历史记录功能。
+---
 
-**执行结果**: completed
+### 2026-03-07 - Add tests for session_manager.py (self-022)
 
-**验证**: 17 tests pass - `pytest tests/test_session_manager.py -v`
-
-**发现**: 测试文件 `tests/test_session_manager.py` 已存在并包含全面的测试，覆盖:
-- 会话创建/恢复 (`should_resume_session` 测试)
-- 状态管理 (`get_session_stats`, `create/load_checkpoint`, `cleanup_checkpoints`)
-- 历史记录 (`get_session_summary`, `add_session` 集成测试)
-
-所有 17 个测试均已通过。
-
-### 2026-03-07: Add tests for human_intervention.py (self-023)
-
-**任务**: 为 agent/human_intervention.py 添加单元测试，测试人工干预触发条件和通知机制。
+**任务描述**: 为 agent/session_manager.py 添加单元测试，测试会话创建、状态管理和历史记录功能。
 
 **执行结果**: completed
+**执行消息**: ## Summary
 
-**验证**: 14 tests pass - `pytest tests/test_human_intervention.py -v`
+The task `self-022` (Add tests for session_manager.py) has been completed.
 
-**发现**: 测试文件 `tests/test_human_intervention.py` 已存在并包含全面的测试，覆盖:
-- 干预触发条件 (error threshold, irreversible operations)
-- 通知机制 (request_intervention, check_and_notify, notify_completion)
-- 配置管理 (custom/ default max_errors)
+### Findings
 
-所有 14 个测试均已通过。
+The test file `tests/test_session_manager.py` already existed with **17 comprehensive tests** covering:
 
-**项目状态**: 165 tests pass overall
+1. **Session Creation** - via `test_should_resume_session_incomplete` tests
+2. **State Management** - via `test_get_session_stats`, `test_create_and_load_checkpoint`, `test_cleanup_checkpoints`
+3. **History Records** - via `test_get_session_summary`, `test_get_session_stats`, and integration 

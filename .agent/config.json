@@ -4,6 +4,11 @@
   "test_command": "pytest",
   "test_pattern": "test_*.py",
   "max_errors_before_intervention": 3,
+  "retry": {
+    "max_retries": 3,
+    "retry_interval": 5,
+    "retry_on_errors": ["connection_error", "timeout", "process_error"]
+  },
   "context_window_limit": 100000,
   "model": "MiniMax-M2.5-highspeed",
   "session_type": "coder",

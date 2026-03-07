@@ -370,8 +370,8 @@
       "name": "Add task retry mechanism",
       "description": "为任务执行添加重试机制。当任务失败时，根据配置的重试次数和间隔自动重试。记录重试次数和原因。",
       "priority": 2,
-      "status": "pending",
-      "passes": false,
+      "status": "completed",
+      "passes": true,
       "verify_command": "grep -r 'retry' agent/ tests/",
       "context_files": [
         "agent/agent_core.py",

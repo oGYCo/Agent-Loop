@@ -1351,17 +1351,80 @@ Please start by gathering context, then analyze and make updates."""
         }
 
     def execute_task(self, task: Dict[str, Any]) -> Dict[str, Any]:
-        """同步包装器 - 执行任务"""
-        try:
-            return asyncio.run(self.execute_task_with_sdk(task))
-        except Exception as e:
-            logger.error(f"Error in execute_task: {e}")
-            error_msg = str(e) if str(e) else f"Task execution failed: {type(e).__name__}"
-            return {
-                "task_id": task.get("id"),
-                "status": "error",
-                "message": error_msg
-            }
+        """同步包装器 - 执行任务（带重试机制）"""
+        # 获取重试配置
+        retry_config = self.config.get("retry", {})
+        max_retries = retry_config.get("max_retries", 3)
+        retry_interval = retry_config.get("retry_interval", 5)
+
+        # 重试记录
+        retry_count = 0
+        retry_reasons: List[str] = []
+
+        # 尝试执行任务
+        while retry_count <= max_retries:
+            try:
+                # 执行任务
+                result = asyncio.run(self.execute_task_with_sdk(task))
+
+                # 检查结果状态
+                if result.get("status") == "error":
+                    error_msg = result.get("message", "Unknown error")
+
+                    # 判断是否应该重试
+                    if retry_count < max_retries:
+                        retry_count += 1
+                        retry_reasons.append(f"Attempt {retry_count}: {error_msg}")
+                        logger.warning(f"Task {task.get('id')} failed: {error_msg}. Retrying in {retry_interval}s (attempt {retry_count}/{max_retries})...")
+
+                        # 等待后重试
+                        import time
+                        time.sleep(retry_interval)
+
+                        # 继续下一次尝试
+                        continue
+                    else:
+                        # 达到最大重试次数，返回最终错误
+                        result["retry_count"] = retry_count
+                        result["retry_reasons"] = retry_reasons
+                        logger.error(f"Task {task.get('id')} failed after {retry_count} attempts: {error_msg}")
+                        return result
+                else:
+                    # 任务成功
+                    if retry_count > 0:
+                        result["retry_count"] = retry_count
+                        result["retry_reasons"] = retry_reasons
+                        logger.info(f"Task {task.get('id')} succeeded after {retry_count} retries")
+                    return result
+
+            except Exception as e:
+                error_msg = str(e) if str(e) else f"Task execution failed: {type(e).__name__}"
+
+                if retry_count < max_retries:
+                    retry_count += 1
+                    retry_reasons.append(f"Attempt {retry_count}: {error_msg}")
+                    logger.warning(f"Task {task.get('id')} exception: {error_msg}. Retrying in {retry_interval}s (attempt {retry_count}/{max_retries})...")
+
+                    import time
+                    time.sleep(retry_interval)
+                else:
+                    logger.error(f"Task {task.get('id')} failed after {retry_count} attempts: {error_msg}")
+                    return {
+                        "task_id": task.get("id"),
+                        "status": "error",
+                        "message": error_msg,
+                        "retry_count": retry_count,
+                        "retry_reasons": retry_reasons
+                    }
+
+        # 理论上不会到达这里
+        return {
+            "task_id": task.get("id"),
+            "status": "error",
+            "message": "Max retries exceeded",
+            "retry_count": retry_count,
+            "retry_reasons": retry_reasons
+        }
 
     def verify_task(self, task: Dict[str, Any]) -> bool:
         """验证任务完成度"""
