@@ -505,6 +505,32 @@ I successfully verified that the project runs correctly by testing the `init` an
 **改进建议**:
 - [待填写]
 
+### 2026-03-07 - Add type annotations to task_selector.py (self-005)
+
+**任务描述**: 使用 mypy 检查 agent/task_selector.py 的类型错误，然后添加完整的类型注解。
+
+**执行结果**: completed
+
+**问题分析**:
+- mypy 报错：`Returning Any from function declared to return "dict[str, Any] | None"`
+- 原因：`data.get("features", [])` 返回 `list[Any]` 类型，需要使用 `cast()` 转换为 `list[dict[str, Any]]`
+
+**修复内容**:
+- 添加 `from typing import cast` 导入
+- 为所有方法中的 `data` 和 `features` 变量添加显式类型注解
+- 对 `data.get("features", [])` 使用 `cast(list[dict[str, Any]], ...)` 包装
+
+**验证结果**:
+- `python -m mypy agent/task_selector.py` - task_selector.py 错误已修复 ✅
+- `pytest tests/test_task_selector.py -v` - 所有 11 个测试通过 ✅
+
+**学到的经验**:
+- 从 `dict[str, Any]` 访问的列表元素默认为 `Any` 类型，需要使用 `cast()` 显式转换
+- 可以在类级别定义类型别名（如 `FeatureType = dict[str, Any]`）来提高代码可读性
+
+**改进建议**:
+- 无
+
 ### 2026-03-07 - Add type annotations to state_manager.py (self-004)
 
 **任务描述**: 使用 mypy 检查 agent/state_manager.py 的类型错误，然后添加完整的类型注解。
@@ -530,3 +556,109 @@ I successfully verified that the project runs correctly by testing the `init` an
 
 **改进建议**:
 - 无
+
+### 2026-03-07 - Add type annotations to state_manager.py (self-004)
+
+**任务描述**: 使用 mypy 检查 agent/state_manager.py 的类型错误，然后添加完整的类型注解。
+
+**执行结果**: completed
+**执行消息**: ## Task Complete
+
+Successfully added type annotations to `agent/state_manager.py`.
+
+### Summary
+
+**Problem**: mypy reported `Returning Any from function declared to return "dict[str, Any]"` errors bec
+
+**学到的经验**:
+- [待填写]
+
+**改进建议**:
+- [待填写]
+
+### 2026-03-07 - Add type annotations to task_selector.py (self-005)
+
+**任务描述**: 使用 mypy 检查 agent/task_selector.py 的类型错误，然后添加完整的类型注解。
+
+**执行结果**: completed
+**执行消息**: ## Task Complete
+
+Successfully added type annotations to `agent/task_selector.py`.
+
+### Summary
+
+**Problem**: mypy reported `Returning Any from function declared to return "dict[str, Any] | None"` at
+
+**学到的经验**:
+- [待填写]
+
+**改进建议**:
+- [待填写]
+
+### 2026-03-07 - Add type annotations to git_helper.py (self-006)
+
+**任务描述**: 使用 mypy 检查 agent/git_helper.py 的类型错误，然后添加完整的类型注解。
+
+**执行结果**: completed
+
+**问题分析**:
+- git_helper.py 已有基本类型注解，但有不必要的导入和旧式类型提示
+- 移除了未使用的 `datetime` 导入
+- 将 `List[str]` 更新为现代的 `list[str]` (Python 3.9+)
+
+**验证结果**:
+- `python -m mypy agent/git_helper.py --strict` - 无错误 ✅
+- `pytest tests/test_git_helper.py -v` - 所有 21 个测试通过 ✅
+
+**学到的经验**:
+- git_helper.py 已有完整类型注解，只需清理冗余导入
+- 使用现代 Python 类型提示（list 而非 List）提高代码简洁性
+
+**改进建议**:
+- 无
+
+### 2026-03-07 - Add type annotations to git_helper.py (self-006)
+
+**任务描述**: 使用 mypy 检查 agent/git_helper.py 的类型错误，然后添加完整的类型注解。
+
+**执行结果**: completed
+**执行消息**: ## Summary
+
+Task **self-006** (Add type annotations to git_helper.py) completed successfully.
+
+### Changes Made
+
+**File**: `agent/git_helper.py`
+- Removed unused `datetime` import
+- Updated `List[str]
+
+**学到的经验**:
+- [待填写]
+
+**改进建议**:
+- [待填写]
+
+### 2026-03-07 - Create config validation (self-011)
+
+**任务描述**: 为 .agent/config.json 添加验证逻辑，确保必填字段存在且格式正确。
+
+**执行结果**: completed
+
+**修改内容**:
+1. 在 `agent/state_manager.py` 添加了 `ConfigValidationError` 异常类
+2. 添加了 `validate_config()` 方法，验证:
+   - 必填字段存在：project_name, project_type, model, session_type, test_command, test_pattern, max_errors_before_intervention, context_window_limit, documentation_urls
+   - 类型正确：字符串、整数、字典
+   - 数值范围：max_errors_before_intervention > 0, context_window_limit > 0
+   - documentation_urls 不为空
+
+**验证结果**:
+- 现有 106 个测试全部通过 ✅
+- `python -m mypy agent/state_manager.py` - 无新错误 ✅
+
+**学到的经验**:
+- 验证配置时先检查字段存在和类型，再检查值的范围，避免类型错误导致的运行时异常
+- 在 isinstance() 检查之后才能进行数值比较，确保类型安全
+
+**改进建议**:
+- 可以在 main.py 启动时自动调用 validate_config() 确保配置有效
