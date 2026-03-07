@@ -6,8 +6,7 @@
 import subprocess
 import os
 from pathlib import Path
-from datetime import datetime
-from typing import Optional, List
+from typing import Optional
 
 
 class GitHelper:
@@ -118,7 +117,7 @@ class GitHelper:
             print(f"Failed to commit: {e}")
             return False
 
-    def get_recent_commits(self, count: int = 5) -> List[str]:
+    def get_recent_commits(self, count: int = 5) -> list[str]:
         """获取最近的提交记录"""
         if not self.is_git_repo():
             return []
