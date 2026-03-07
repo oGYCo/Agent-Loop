@@ -125,8 +125,8 @@
       "name": "Add logging configuration to the project",
       "description": "当前项目中多处使用 logging.getLogger()，但没有统一的日志配置。建议在 main.py 中添加日志配置，设置日志级别、格式和处理器，以便于调试生产环境问题。",
       "priority": 12,
-      "status": "pending",
-      "passes": false,
+      "status": "completed",
+      "passes": true,
       "context": "读取 main.py 文件，在入口点添加 logging.basicConfig() 或更详细的日志配置。确保日志格式包含时间、级别、模块名和消息内容。",
       "created_at": "2026-03-07 21:00:00",
       "updated_at": "2026-03-07"
