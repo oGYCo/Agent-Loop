@@ -466,50 +466,51 @@ Start by reading CLAUDE.md and the relevant source files for this task."""
         return "Run: `pytest tests/ -x -q`"
 
     def _build_self_review_prompt(self, completed_task: Dict[str, Any]) -> str:
-        """构建任务完成后自省的 prompt
+        """Build prompt for post-task self-review
 
-        让 Agent 在当前会话中分析 feature_list.json 并决定需要做的修改。
+        Let the Agent analyze feature_list.json and decide what modifications are needed.
 
         Args:
-            completed_task: 刚完成的任务
+            completed_task: The task that was just completed
 
         Returns:
-            自省用的 prompt
+            Self-review prompt
         """
-        # 读取当前任务列表统计
+        # Read current task list statistics
         data = self.state_manager.load_feature_list()
         features = data.get("features", [])
         completed_count = sum(1 for f in features if f.get("status") == "completed")
         pending_count = sum(1 for f in features if f.get("status") == "pending")
         failed_count = sum(1 for f in features if f.get("status") == "failed")
 
-        prompt = f"""## 任务完成自省
+        prompt = f"""## Post-Task Self-Review
 
-你刚刚完成了任务: **{completed_task.get('name', 'N/A')}**
+You just completed: **{completed_task.get('name', 'N/A')}**
 
-当前项目状态:
-- 已完成任务: {completed_count} 个
-- 待办任务: {pending_count} 个
-- 失败任务: {failed_count} 个
+Current project status:
+- Completed tasks: {completed_count}
+- Pending tasks: {pending_count}
+- Failed tasks: {failed_count}
 
-### 自省任务
+### Self-Review Task
 
-请执行以下分析（直接在当前会话中完成，不要创建新任务）:
+Please perform the following analysis (do this in the current session, do NOT create new tasks):
 
-1. 读取 `.agent/feature_list.json` 文件
-2. 分析所有 pending 状态的任务
-3. 判断哪些任务已经过时（因为依赖已完成或不再需要）
-4. 判断哪些任务优先级需要调整（考虑项目当前状态）
-5. 判断是否需要新增任务
-6. 判断是否有重复任务需要合并
+1. Read `.agent/feature_list.json` file
+2. Analyze all pending tasks
+3. Identify obsolete tasks (dependencies completed or no longer needed)
+4. Adjust priorities based on current project state
+5. Identify if new tasks need to be added
+6. Identify duplicate tasks that should be merged
 
-重要:
-- 如果需要修改 feature_list.json，请直接使用 Edit 或 Write 工具修改
-- 不要创建新的 self-review 任务
-- 只修改真正需要变更的部分
-- 完成后请总结你做了哪些修改
+### Actions
 
-请开始自省分析。"""
+- Use Edit or Write tools to modify feature_list.json if needed
+- DO NOT create new self-review tasks
+- Only modify what truly needs to be changed
+- After completing, summarize what changes you made
+
+Please start the self-review analysis."""
 
         return prompt
 
@@ -840,33 +841,39 @@ Start by reading CLAUDE.md and the relevant source files for this task."""
         return self.suggest_memory_cleanup()
 
     def _build_memory_cleanup_prompt(self) -> str:
-        """构建 MEMORY.md 清理的 prompt
+        """Build prompt for MEMORY.md optimization
 
         Returns:
-            清理用的 prompt，如果不需要清理则返回空字符串
+            Optimization prompt, empty string if not needed
         """
         suggestion = self.suggest_memory_cleanup()
         if not suggestion:
             return ""
 
-        prompt = f"""## MEMORY.md 文档优化
+        prompt = f"""## MEMORY.md Optimization
 
 {suggestion}
 
-### 任务
+### Task
 
-请执行以下操作:
-1. 读取 `.agent/MEMORY.md` 文件
-2. 分析当前内容，识别可以合并、删除或精简的部分
-3. 直接使用 Edit 或 Write 工具修改文件
-4. 保留最重要的内容，删除冗余重复的内容
+Please analyze and optimize the MEMORY.md file:
 
-重要:
-- 不要删除所有内容，只删除真正冗余的部分
-- 保留关键的经验教训和技术细节
-- 完成后请总结你做了哪些修改
+1. Read `.agent/MEMORY.md` file
+2. **DELETE**: Remove redundant, duplicate, or outdated content
+3. **UPDATE**: Fix incorrect or stale information
+4. **ADD**: Insert new insights, patterns, or lessons learned from recent work
+5. Use Edit or Write tools to make changes
 
-请开始优化。"""
+### Guidelines
+
+- Keep essential technical details and key learnings
+- Merge similar sections to reduce duplication
+- Update outdated patterns or configurations
+- Add new lessons learned from recent tasks
+- Organize content for better readability
+- After completing, summarize what you added, updated, and deleted
+
+Please start optimizing."""
 
         return prompt
 
@@ -884,33 +891,39 @@ Start by reading CLAUDE.md and the relevant source files for this task."""
         return self.suggest_claude_md_cleanup()
 
     def _build_claude_md_cleanup_prompt(self) -> str:
-        """构建 CLAUDE.md 清理的 prompt
+        """Build prompt for CLAUDE.md optimization
 
         Returns:
-            清理用的 prompt，如果不需要清理则返回空字符串
+            Optimization prompt, empty string if not needed
         """
         suggestion = self.suggest_claude_md_cleanup()
         if not suggestion:
             return ""
 
-        prompt = f"""## CLAUDE.md 文档优化
+        prompt = f"""## CLAUDE.md Optimization
 
 {suggestion}
 
-### 任务
+### Task
 
-请执行以下操作:
-1. 读取项目根目录下的 `CLAUDE.md` 文件
-2. 分析当前内容，识别可以合并、删除或精简的部分
-3. 直接使用 Edit 或 Write 工具修改文件
-4. 保留最重要的内容，删除冗余重复的内容
+Please analyze and optimize the CLAUDE.md file:
 
-重要:
-- 不要删除所有内容，只删除真正冗余的部分
-- 保留关键的项目指南和技术细节
-- 完成后请总结你做了哪些修改
+1. Read `CLAUDE.md` in the project root
+2. **DELETE**: Remove redundant, duplicate, or outdated content
+3. **UPDATE**: Fix incorrect or stale information
+4. **ADD**: Insert new project patterns, commands, or insights discovered recently
+5. Use Edit or Write tools to make changes
 
-请开始优化。"""
+### Guidelines
+
+- Keep essential project guidelines and technical details
+- Merge similar sections to reduce duplication
+- Update outdated commands or configurations
+- Add new patterns or insights from recent work
+- Organize content for better readability
+- After completing, summarize what you added, updated, and deleted
+
+Please start optimizing."""
 
         return prompt
 
