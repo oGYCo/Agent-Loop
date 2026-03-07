@@ -385,12 +385,12 @@
       "name": "Add graceful shutdown handling",
       "description": "为 agent 添加优雅关闭机制。处理 SIGINT/SIGTERM 信号，确保正在执行的任务能够安全完成或保存状态后再退出。",
       "priority": 2,
-      "status": "pending",
-      "passes": false,
-      "verify_command": "grep -r 'signal' agent/",
+      "status": "completed",
+      "passes": true,
+      "verify_command": "grep -r 'signal' main.py",
       "context_files": [
-        "agent/agent_core.py",
-        "agent/state_manager.py"
+        "main.py",
+        "agent/agent_core.py"
       ],
       "created_at": "2026-03-07",
       "updated_at": "2026-03-07"

@@ -1675,12 +1675,18 @@ Please start by gathering context, then analyze and make updates."""
 
         return ""
 
-    def run_agent_loop(self, max_iterations: int = 10, resume_session_id: Optional[str] = None) -> Dict[str, Any]:
+    def run_agent_loop(
+        self,
+        max_iterations: int = 10,
+        resume_session_id: Optional[str] = None,
+        shutdown_flag: Optional[callable] = None
+    ) -> Dict[str, Any]:
         """运行Agent循环
 
         Args:
             max_iterations: 最大迭代次数
             resume_session_id: 要恢复的会话ID（如果需要恢复之前的会话）
+            shutdown_flag: 可调用对象，返回是否请求了关闭
         """
         init_info = self.initialize_session("coder")
         logger.info(f"Session initialized: {init_info['session_id']}")
@@ -1699,6 +1705,11 @@ Please start by gathering context, then analyze and make updates."""
         }
 
         for i in range(max_iterations):
+            # 检查是否请求了优雅关闭
+            if shutdown_flag and shutdown_flag():
+                logger.info("Shutdown requested, finishing current iteration...")
+                break
+
             logger.info(f"--- Iteration {i + 1} ---")
 
             context = self.gather_context()

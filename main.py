@@ -5,6 +5,7 @@
 
 import argparse
 import sys
+import signal
 from pathlib import Path
 from typing import Any, Dict
 
@@ -16,6 +17,18 @@ from agent.task_selector import TaskSelector
 from agent.agent_core import AgentCore
 from agent.session_manager import SessionManager
 from agent.git_helper import GitHelper
+
+# 全局 shutdown 标志
+_shutdown_requested = False
+
+
+def _signal_handler(signum: int, frame: Any) -> None:
+    """处理 SIGINT/SIGTERM 信号，实现优雅关闭"""
+    global _shutdown_requested
+    sig_name = signal.Signals(signum).name
+    print(f"\n⚠️  Received {sig_name}, initiating graceful shutdown...")
+    print("   Finishing current task before exit...")
+    _shutdown_requested = True
 
 
 def init_project(args: argparse.Namespace) -> None:
@@ -45,10 +58,21 @@ def init_project(args: argparse.Namespace) -> None:
 
 
 def run_agent(args: argparse.Namespace, max_restarts: int = 3) -> None:
-    """运行Agent循环，支持自动重启"""
+    """运行Agent循环，支持自动重启和优雅关闭"""
+    global _shutdown_requested
+    _shutdown_requested = False
+
+    # 注册信号处理器
+    signal.signal(signal.SIGINT, _signal_handler)
+    signal.signal(signal.SIGTERM, _signal_handler)
+
     project_root = args.project_dir if args.project_dir else None
 
     for restart_count in range(max_restarts + 1):
+        # 检查是否需要优雅关闭
+        if _shutdown_requested:
+            print("\n🛑 Shutdown requested, exiting gracefully...")
+            break
         # 检查是否需要重启
         state_manager = StateManager(project_root)
         state = state_manager.load_state()
@@ -70,7 +94,7 @@ def run_agent(args: argparse.Namespace, max_restarts: int = 3) -> None:
 
         # 运行Agent循环
         iterations = getattr(args, 'iterations', None) or 10
-        summary = agent.run_agent_loop(iterations)
+        summary = agent.run_agent_loop(iterations, shutdown_flag=lambda: _shutdown_requested)
 
         # 检查是否需要重启
         state = state_manager.load_state()

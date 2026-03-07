@@ -49,6 +49,26 @@ Added a retry mechanism to the task execution in `agent_core.py`:
    - `retry_interval`: Seconds to wait between retries (default: 5)
    - `retry_on_errors`: List of error types that should trigger retry
 
+### 2026-03-07: Graceful Shutdown Handling
+
+Added graceful shutdown mechanism to handle SIGINT/SIGTERM signals:
+
+1. **Signal Handler in main.py**: Added `_signal_handler` function that:
+   - Catches SIGINT (Ctrl+C) and SIGTERM signals
+   - Sets a global `_shutdown_requested` flag
+   - Prints user-friendly message
+
+2. **Shutdown Check in Agent Loop**:
+   - Added `shutdown_flag` parameter to `run_agent_loop()` method
+   - Pass lambda function that checks the global flag
+   - Loop checks flag at start of each iteration
+   - Allows current task to complete before exiting
+
+3. **Implementation Details**:
+   - Uses Python's `signal` module
+   - Signal handlers are registered in `run_agent()` function
+   - Agent loop completes current iteration before checking flag
+
 2. **Implementation**: Modified `execute_task` method to:
    - Check result status after each execution
    - Retry on error status up to `max_retries` times
@@ -247,6 +267,8 @@ Or via `env` parameter in ClaudeAgentOptions.
 ---
 
 ## Task Experience Records
+
+
 
 
 
@@ -583,7 +605,10 @@ New Tests Added
 
 ---
 
-### 2026-03-07 - Add tests for session_manager.py (self-022)
+
+---
+
+2026-03-07 - Add tests for session_manager.py (self-022)
 
 **任务描述**: 为 agent/session_manager.py 添加单元测试，测试会话创建、状态管理和历史记录功能。
 
@@ -592,10 +617,38 @@ New Tests Added
 
 The task `self-022` (Add tests for session_manager.py) has been completed.
 
-### Findings
+
+---
+
+Findings
 
 The test file `tests/test_session_manager.py` already existed with **17 comprehensive tests** covering:
 
 1. **Session Creation** - via `test_should_resume_session_incomplete` tests
 2. **State Management** - via `test_get_session_stats`, `test_create_and_load_checkpoint`, `test_cleanup_checkpoints`
 3. **History Records** - via `test_get_session_summary`, `test_get_session_stats`, and integration 
+
+---
+
+### 2026-03-07 - Add task retry mechanism (self-026)
+
+**任务描述**: 为任务执行添加重试机制。当任务失败时，根据配置的重试次数和间隔自动重试。记录重试次数和原因。
+
+**执行结果**: completed
+**执行消息**: ## Summary
+
+I've successfully implemented the task retry mechanism for the Agent-Loop project. Here's what was done:
+
+### Changes Made
+
+1. **Added retry configuration to `config.json`**:
+   ```json
+   "retry": {
+     "max_retries": 3,
+     "retry_interval": 5,
+     "retry_on_errors": ["connection_error", "timeout", "process_error"]
+   }
+   ```
+
+2. **Implemented retry logic in `execute_task` method** in `agent/agent_core.py`:
+   - Retries on task failure (status="error") up to `max_retries` times
