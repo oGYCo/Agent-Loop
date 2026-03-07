@@ -94,7 +94,7 @@
       "id": "feature-007",
       "name": "邮件通知服务",
       "description": "实现邮件通知功能，支持SMTP配置，任务状态变更时发送邮件通知。需要设计通知模板和配置结构。",
-      "priority": 7,
+      "priority": 10,
       "status": "pending",
       "passes": false,
       "context_files": [
@@ -103,13 +103,13 @@
       ],
       "verify_command": "测试邮件发送",
       "created_at": "2026-03-07",
-      "updated_at": "2026-03-07"
+      "updated_at": "2026-03-08"
     },
     {
       "id": "feature-008",
       "name": "Slack集成",
       "description": "添加Slack Webhook集成，任务状态变更时发送消息到Slack频道。需要实现消息格式化和配置管理。",
-      "priority": 8,
+      "priority": 11,
       "status": "pending",
       "passes": false,
       "context_files": [
@@ -117,7 +117,7 @@
       ],
       "verify_command": "测试Slack消息发送",
       "created_at": "2026-03-07",
-      "updated_at": "2026-03-07"
+      "updated_at": "2026-03-08"
     },
     {
       "id": "feature-009",
@@ -181,7 +181,7 @@
       "id": "feature-013",
       "name": "API密钥认证",
       "description": "为API服务添加API Key认证机制，支持配置多个密钥，实现基本的访问控制。",
-      "priority": 13,
+      "priority": 7,
       "status": "pending",
       "passes": false,
       "context_files": [
@@ -189,7 +189,7 @@
       ],
       "verify_command": "测试带密钥的API调用",
       "created_at": "2026-03-07",
-      "updated_at": "2026-03-07"
+      "updated_at": "2026-03-08"
     },
     {
       "id": "feature-015",
