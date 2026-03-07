@@ -505,10 +505,12 @@
       "name": "Fix type annotation errors in agent_core.py",
       "description": "修复 agent_core.py 中的 mypy 类型错误：第1653行使用内置 callbale 而非 typing.Callable，导致类型检查失败。需要将 shutdown_flag 参数类型从 Optional[callable] 改为 Optional[Callable[[], bool]]。",
       "priority": 1,
-      "status": "pending",
-      "passes": false,
+      "status": "completed",
+      "passes": true,
       "verify_command": "python -m mypy agent/agent_core.py --ignore-missing-imports",
-      "context_files": ["agent/agent_core.py"],
+      "context_files": [
+        "agent/agent_core.py"
+      ],
       "created_at": "2026-03-07",
       "updated_at": "2026-03-07"
     },
@@ -520,7 +522,9 @@
       "status": "pending",
       "passes": false,
       "verify_command": "python -m mypy agent/prompt_manager.py --ignore-missing-imports",
-      "context_files": ["agent/prompt_manager.py"],
+      "context_files": [
+        "agent/prompt_manager.py"
+      ],
       "created_at": "2026-03-07",
       "updated_at": "2026-03-07"
     },
@@ -532,7 +536,10 @@
       "status": "pending",
       "passes": false,
       "verify_command": "pytest tests/ -v 2>&1 | grep -i 'warning\\|TestRunner'",
-      "context_files": ["agent/test_runner.py", "tests/test_test_runner.py"],
+      "context_files": [
+        "agent/test_runner.py",
+        "tests/test_test_runner.py"
+      ],
       "created_at": "2026-03-07",
       "updated_at": "2026-03-07"
     },
@@ -544,7 +551,9 @@
       "status": "pending",
       "passes": false,
       "verify_command": "pytest tests/test_prompt_manager.py -v",
-      "context_files": ["agent/prompt_manager.py"],
+      "context_files": [
+        "agent/prompt_manager.py"
+      ],
       "created_at": "2026-03-07",
       "updated_at": "2026-03-07"
     },
@@ -556,7 +565,9 @@
       "status": "pending",
       "passes": false,
       "verify_command": "pytest tests/test_config_reloader.py -v",
-      "context_files": ["agent/config_reloader.py"],
+      "context_files": [
+        "agent/config_reloader.py"
+      ],
       "created_at": "2026-03-07",
       "updated_at": "2026-03-07"
     },
@@ -568,7 +579,9 @@
       "status": "pending",
       "passes": false,
       "verify_command": "pytest tests/test_performance_monitor.py -v",
-      "context_files": ["agent/performance_monitor.py"],
+      "context_files": [
+        "agent/performance_monitor.py"
+      ],
       "created_at": "2026-03-07",
       "updated_at": "2026-03-07"
     },
@@ -580,7 +593,9 @@
       "status": "pending",
       "passes": false,
       "verify_command": "grep -r '\"\"\"' agent/*.py | head -20",
-      "context_files": ["agent/"],
+      "context_files": [
+        "agent/"
+      ],
       "created_at": "2026-03-07",
       "updated_at": "2026-03-07"
     },
@@ -592,7 +607,10 @@
       "status": "pending",
       "passes": false,
       "verify_command": "python -c \"from agent.state_manager import StateManager; s = StateManager('/etc'); print(s.agent_dir)\"",
-      "context_files": ["agent/state_manager.py", "agent/git_helper.py"],
+      "context_files": [
+        "agent/state_manager.py",
+        "agent/git_helper.py"
+      ],
       "created_at": "2026-03-07",
       "updated_at": "2026-03-07"
     },
@@ -604,7 +622,9 @@
       "status": "pending",
       "passes": false,
       "verify_command": "ls -la .agent/backups/ 2>/dev/null || echo 'No backups directory'",
-      "context_files": ["agent/state_manager.py"],
+      "context_files": [
+        "agent/state_manager.py"
+      ],
       "created_at": "2026-03-07",
       "updated_at": "2026-03-07"
     },
@@ -616,7 +636,9 @@
       "status": "pending",
       "passes": false,
       "verify_command": "ls -la .agent/logs/ 2>/dev/null || echo 'No logs directory'",
-      "context_files": ["agent/agent_core.py"],
+      "context_files": [
+        "agent/agent_core.py"
+      ],
       "created_at": "2026-03-07",
       "updated_at": "2026-03-07"
     },
@@ -628,7 +650,9 @@
       "status": "pending",
       "passes": false,
       "verify_command": "python -m mypy agent/agent_core.py --ignore-missing-imports",
-      "context_files": ["agent/agent_core.py"],
+      "context_files": [
+        "agent/agent_core.py"
+      ],
       "created_at": "2026-03-07",
       "updated_at": "2026-03-07"
     },
@@ -640,7 +664,9 @@
       "status": "pending",
       "passes": false,
       "verify_command": "grep -r 'rate_limit\\|throttle' agent/",
-      "context_files": ["agent/agent_core.py"],
+      "context_files": [
+        "agent/agent_core.py"
+      ],
       "created_at": "2026-03-07",
       "updated_at": "2026-03-07"
     },
@@ -652,7 +678,9 @@
       "status": "pending",
       "passes": false,
       "verify_command": "grep -r 'class.*Error' agent/",
-      "context_files": ["agent/"],
+      "context_files": [
+        "agent/"
+      ],
       "created_at": "2026-03-07",
       "updated_at": "2026-03-07"
     },
@@ -664,7 +692,10 @@
       "status": "pending",
       "passes": false,
       "verify_command": "python main.py status",
-      "context_files": ["main.py", "agent/"],
+      "context_files": [
+        "main.py",
+        "agent/"
+      ],
       "created_at": "2026-03-07",
       "updated_at": "2026-03-07"
     },
@@ -676,7 +707,9 @@
       "status": "pending",
       "passes": false,
       "verify_command": "pytest tests/ -k 'integration' -v",
-      "context_files": ["tests/"],
+      "context_files": [
+        "tests/"
+      ],
       "created_at": "2026-03-07",
       "updated_at": "2026-03-07"
     }

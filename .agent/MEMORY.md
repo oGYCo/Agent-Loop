@@ -352,6 +352,8 @@ Or via `env` parameter in ClaudeAgentOptions.
 
 
 
+
+
 2026-03-07: Task Plan Self-Review
 
 When reviewing the task plan (feature_list.json):
@@ -989,7 +991,10 @@ Added automatic git push after commit in `git_helper.py`:
 
 ---
 
-### 2026-03-07 - Code Review: Production-Grade Analysis (feature-035)
+
+---
+
+2026-03-07 - Code Review: Production-Grade Analysis (feature-035)
 
 **任务描述**: 请先仔细的review当前项目的所有的文件，检查是否存在什么问题，要用工业生产级的标准来进行审查，然后制定一系列的后续的优化和迭代任务
 
@@ -997,7 +1002,10 @@ Added automatic git push after commit in `git_helper.py`:
 
 ## Code Review Summary
 
-### Issues Found (Fixed and New Tasks Created)
+
+---
+
+Issues Found (Fixed and New Tasks Created)
 
 #### 1. Type Annotation Errors (Priority 1)
 - **agent_core.py (line 1653)**: Using built-in `callable` instead of `typing.Callable`
@@ -1019,7 +1027,10 @@ Added automatic git push after commit in `git_helper.py`:
 - No custom exception hierarchy
 - No health check mechanism
 
-### Key Production-Grade Standards Applied
+
+---
+
+Key Production-Grade Standards Applied
 
 1. **Type Safety**: All code should pass mypy type checking
 2. **Test Coverage**: All modules should have comprehensive unit tests
@@ -1028,7 +1039,10 @@ Added automatic git push after commit in `git_helper.py`:
 5. **Observability**: Logging for debugging and monitoring
 6. **Maintainability**: Consistent documentation language, readable code structure
 
-### New Tasks Created (15 tasks)
+
+---
+
+New Tasks Created (15 tasks)
 
 | Task ID | Description | Priority |
 |---------|-------------|----------|
@@ -1048,7 +1062,10 @@ Added automatic git push after commit in `git_helper.py`:
 | feature-049 | Add health check mechanism | 4 |
 | feature-050 | Add integration test suite | 3 |
 
-### Key Insight
+
+---
+
+Key Insight
 
 When doing a production-grade code review:
 1. Run mypy for type checking issues
@@ -1056,3 +1073,46 @@ When doing a production-grade code review:
 3. Look for security issues like path traversal
 4. Consider production requirements: backup, logging, monitoring
 5. Maintain code quality: consistent style, readable structure
+
+---
+
+### 2026-03-07: Fix Type Annotation Error in agent_core.py
+
+When fixing mypy type annotation errors:
+
+1. **The issue**: Line 1653 used Python's built-in `callable` instead of `typing.Callable`, which caused mypy type checking to fail.
+
+2. **The fix**:
+   - Added `Callable` to the imports from `typing`: `from typing import Optional, Dict, Any, List, cast, Callable`
+   - Changed the parameter type from `Optional[callable]` to `Optional[Callable[[], bool]]`
+
+3. **Key insight**: Python's built-in `callable()` checks if an object is callable, while `typing.Callable` is used for type annotations to specify the signature of a callable (e.g., `Callable[[], bool]` means a function that takes no arguments and returns a bool).
+
+4. **Verification**: Run `python -m mypy agent/agent_core.py --ignore-missing-imports` to check for type errors.
+
+---
+
+### 2026-03-07 - task and plan (feature-035)
+
+**任务描述**: 请先仔细的review当前项目的所有的文件，检查是否存在什么问题，要用工业生产级的标准来进行审查，然后制定一系列的后续的优化和迭代任务，注意任务描述一定要足够的清楚和详细
+
+**执行结果**: completed
+**执行消息**: ## 代码审查完成 (feature-035)
+
+我已完成对 Agent-Loop 项目的全面代码审查，以工业生产级标准进行检查。以下是审查结果：
+
+### 审查发现的问题
+
+#### 1. 类型注解错误 (优先级 1)
+| 文件 | 问题 | 行号 |
+|------|------|------|
+| `agent_core.py` | 使用内置 `callable` 而非 `typing.Callable` | 1653 |
+| `prompt_manager.py` | 方法返回 `Any` 但声明为 `str` | 166, 181 |
+
+#### 2. 测试基础设施 (优先级 2)
+- `TestRunner` 类名与 pytest 测试发现冲突，产生警告
+- 缺少测试的模块：`prompt_manager.py`、`config_reloader.py`、`performance_monitor.py`
+
+#### 3. 代码质量问题 (优先级 3)
+- 中英文混用的 docstrings - 文档风格不一致
+- `agent_core.py` 中 `run_agent_l
