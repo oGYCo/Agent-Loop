@@ -62,11 +62,95 @@ python main.py run --iterations 3
 
 ```bash
 python main.py init                    # Initialize project structure
-python main.py run                     # Start agent loop
-python main.py run --iterations N     # Run N iterations
+python main.py run                     # Start agent loop (default: 10 iterations)
+python main.py run --iterations N      # Run N iterations
 python main.py list                    # List all tasks
-python main.py add --name "Task" --description "Desc" --priority 1
+python main.py add --name "Task" --description "Desc" --priority 1  # Add new task
 python main.py status                  # Show project status
+python main.py --project-dir /path    # Specify project directory
+```
+
+### Command Options
+
+| Command | Options | Description |
+|---------|---------|-------------|
+| `init` | | Initialize project and create config files |
+| `run` | `--iterations N` | Run agent for N iterations (default: 10) |
+| `list` | | List all tasks with status |
+| `add` | `--name`, `--description`, `--priority`, `--id` | Add new task to feature list |
+| `status` | | Show project status, git info, and task stats |
+
+### Backwards Compatibility
+
+```bash
+python main.py --init    # Equivalent to: python main.py init
+python main.py --run     # Equivalent to: python main.py run
+```
+
+## Usage Examples
+
+### Basic Workflow
+
+```bash
+# 1. Initialize the project (creates .agent/ directory with configs)
+python main.py init
+
+# 2. Check existing tasks
+python main.py list
+
+# 3. Run the agent
+python main.py run --iterations 5
+
+# 4. Check status
+python main.py status
+```
+
+### Adding New Tasks
+
+```bash
+# Add a new feature with priority (lower = higher priority)
+python main.py add --name "Add user authentication" --description "Implement login/logout" --priority 1
+
+# Add with custom ID
+python main.py add --id "feat-101" --name "New Feature" --priority 2
+```
+
+### Project Configuration
+
+Tasks are managed in `.agent/feature_list.json`:
+
+```json
+{
+  "features": [
+    {
+      "id": "self-001",
+      "name": "Task Name",
+      "description": "Task description",
+      "priority": 1,
+      "status": "pending",
+      "passes": false,
+      "verify_command": "pytest tests/",
+      "context_files": ["file1.py", "file2.py"],
+      "created_at": "2026-03-07",
+      "updated_at": "2026-03-07"
+    }
+  ]
+}
+```
+
+Task selection criteria:
+- `status` must be `"pending"`
+- `passes` must be `false`
+- Tasks are selected by priority (lower number = higher priority)
+
+### Custom Project Directory
+
+```bash
+# Run agent on a different project
+python main.py --project-dir /path/to/project run --iterations 3
+
+# Check status of a specific project
+python main.py --project-dir /path/to/project status
 ```
 
 ## Architecture

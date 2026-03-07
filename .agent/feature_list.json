@@ -295,8 +295,8 @@
       "name": "Add comprehensive tests for agent_core.py",
       "description": "为 agent_core.py 增加全面的单元测试，覆盖核心方法：initialize_session, gather_context, complete_session, execute_task, verify_task。测试各种边界情况和错误处理。",
       "priority": 2,
-      "status": "pending",
-      "passes": false,
+      "status": "completed",
+      "passes": true,
       "verify_command": "pytest tests/test_agent_core.py -v --cov=agent.agent_core",
       "context_files": [
         "agent/agent_core.py",
@@ -355,8 +355,8 @@
       "name": "Update README.md with current features",
       "description": "更新 README.md，添加项目最新功能介绍、使用方法、配置说明和示例。确保文档与代码同步。",
       "priority": 2,
-      "status": "pending",
-      "passes": false,
+      "status": "completed",
+      "passes": true,
       "verify_command": "cat README.md | head -100",
       "context_files": [
         "README.md",
