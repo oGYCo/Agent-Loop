@@ -191,16 +191,6 @@
       "updated_at": "2026-03-07"
     },
     {
-      "id": "task-017",
-      "name": "Test Task via API",
-      "description": "Testing POST /tasks endpoint",
-      "priority": 50,
-      "status": "pending",
-      "passes": false,
-      "created_at": "2026-03-08",
-      "updated_at": "2026-03-08"
-    },
-    {
       "id": "feature-015",
       "name": "WebSearch and WebFetch abilities",
       "description": "确认系统是否具有能够成功进行WebSearch和WebFetch的功能，同时，要在默认的提示词中加入这两个能力应该是在执行任务之前用来查阅任务相关的各种必要的文档信息",
