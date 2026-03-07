@@ -1,11 +1,32 @@
-# Agent-Loop
+<p align="center">
+  <img src="assets/logo.svg" alt="Agent-Loop" width="280" />
+</p>
 
-> A production-ready autonomous AI agent system powered by Claude Agent SDK with MiniMax API backend
+<h1 align="center">Agent-Loop</h1>
 
-[![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
+<p align="center">
+  <em>A production-ready autonomous AI agent system powered by Claude Agent SDK with MiniMax API backend</em>
+</p>
 
-Agent-Loop is an autonomous AI agent system that automates task execution with real-time streaming, session management, intelligent error recovery, and performance monitoring. Built on Claude Agent SDK with MiniMax API as the backend.
+<p align="center">
+  <a href="https://www.python.org/"><img src="https://img.shields.io/badge/python-3.11+-blue.svg" alt="Python 3.11+" /></a>
+  <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-green.svg" alt="License: MIT" /></a>
+  <a href="https://pypi.org/project/claude-agent-sdk/"><img src="https://img.shields.io/pypi/v/claude-agent-sdk?color=purple" alt="PyPI" /></a>
+  <a href="https://github.com/agent-loop/agent-loop/actions/workflows/test.yml"><img src="https://img.shields.io/github/actions/workflow/status/agent-loop/agent-loop/test.yml?branch=main" alt="Tests" /></a>
+  <a href="https://github.com/agent-loop/agent-loop/stargazers"><img src="https://img.shields.io/github/stars/agent-loop/agent-loop" alt="Stars" /></a>
+  <a href="https://github.com/agent-loop/agent-loop/fork"><img src="https://img.shields.io/github/forks/agent-loop/agent-loop" alt="Forks" /></a>
+</p>
+
+<p align="center">
+  <a href="https://agent-loop.dev"><strong>Documentation</strong></a> ·
+  <a href="#quick-start"><strong>Get Started</strong></a> ·
+  <a href="#cli-reference"><strong>CLI Reference</strong></a> ·
+  <a href="#configuration"><strong>Configuration</strong></a>
+</p>
+
+---
+
+Agent-Loop is an autonomous AI agent system that automates task execution with real-time streaming, session management, intelligent error recovery, and performance monitoring. Built on Claude Agent SDK with MiniMax API as the backend.</p>
 
 ## Why Agent-Loop?
 

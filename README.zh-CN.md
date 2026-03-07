@@ -1,9 +1,30 @@
-# Agent-Loop
+<p align="center">
+  <img src="assets/logo.svg" alt="Agent-Loop" width="280" />
+</p>
 
-> 基于 Claude Agent SDK 构建的生产级自主 AI Agent 系统，支持 MiniMax API 后端
+<h1 align="center">Agent-Loop</h1>
 
-[![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
+<p align="center">
+  <em>基于 Claude Agent SDK 构建的生产级自主 AI Agent 系统，支持 MiniMax API 后端</em>
+</p>
+
+<p align="center">
+  <a href="https://www.python.org/"><img src="https://img.shields.io/badge/python-3.11+-blue.svg" alt="Python 3.11+" /></a>
+  <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-green.svg" alt="License: MIT" /></a>
+  <a href="https://pypi.org/project/claude-agent-sdk/"><img src="https://img.shields.io/pypi/v/claude-agent-sdk?color=purple" alt="PyPI" /></a>
+  <a href="https://github.com/agent-loop/agent-loop/actions/workflows/test.yml"><img src="https://img.shields.io/github/actions/workflow/status/agent-loop/agent-loop/test.yml?branch=main" alt="Tests" /></a>
+  <a href="https://github.com/agent-loop/agent-loop/stargazers"><img src="https://img.shields.io/github/stars/agent-loop/agent-loop" alt="Stars" /></a>
+  <a href="https://github.com/agent-loop/agent-loop/fork"><img src="https://img.shields.io/github/forks/agent-loop/agent-loop" alt="Forks" /></a>
+</p>
+
+<p align="center">
+  <a href="https://agent-loop.dev"><strong>文档</strong></a> ·
+  <a href="#快速开始"><strong>快速开始</strong></a> ·
+  <a href="#cli-命令参考"><strong>CLI 参考</strong></a> ·
+  <a href="#配置"><strong>配置</strong></a>
+</p>
+
+---
 
 Agent-Loop 是一个自主 AI Agent 系统，通过实时流式输出、会话管理、智能错误恢复和性能监控实现任务自动化执行。基于 Claude Agent SDK 构建，使用 MiniMax API 作为后端。
 
