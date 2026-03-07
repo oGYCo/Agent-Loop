@@ -217,7 +217,26 @@
         "max_task_duration": 339.06,
         "total_task_time": 525.48
       }
+    },
+    {
+      "id": "20260307_174512",
+      "start_time": "2026-03-07T17:45:12.937044",
+      "agent_type": "coder",
+      "status": "completed",
+      "end_time": "2026-03-07T17:45:12.952905",
+      "summary": {
+        "completed": 0,
+        "errors": 0,
+        "iterations": 0,
+        "session_id": "20260307_174512"
+      },
+      "performance": {
+        "session_duration_seconds": 0.03,
+        "total_tasks": 0,
+        "session_start": "2026-03-07T17:45:12.924392",
+        "session_end": "2026-03-07T17:45:12.952802"
+      }
     }
   ],
-  "total_sessions": 23
+  "total_sessions": 24
 }
