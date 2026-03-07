@@ -48,6 +48,77 @@ Before implementing new features, always check these docs first:
 4. **Streaming Output**: https://platform.claude.com/docs/en/agent-sdk/streaming-output
 5. **Session Management**: https://platform.claude.com/docs/en/agent-sdk/sessions
 6. **File Checkpointing**: https://platform.claude.com/docs/en/agent-sdk/file-checkpointing
+
+## agent_core.py 结构分析 (self-002)
+
+### 文件概览
+- **行数**: 770 行
+- **主要功能**: 核心 Agent 逻辑，使用 Claude Agent SDK 执行任务
+
+### 核心组件
+
+#### 1. Hooks 回调 (第 27-87 行)
+- `pre_tool_hook`: 工具执行前调用，记录工具调用信息
+- `post_tool_hook`: 工具执行后调用，流式输出结果
+- `notification_hook`: 处理通知消息
+- `stop_hook`: 处理停止事件
+
+#### 2. AgentCore 类 (第 95-771 行)
+
+**初始化方法**:
+- `__init__`: 初始化 StateManager, TaskSelector, GitHelper, HumanIntervention
+
+**提示词生成**:
+- `get_system_prompt()`: 返回 Agent 系统提示词 (第 110-168 行)
+- `get_task_prompt()`: 构建任务特定提示词 (第 170-241 行)
+- `_get_verify_command()`: 获取验证命令 (第 243-247 行)
+
+**任务执行**:
+- `execute_task_with_sdk()`: 使用 Claude Agent SDK 异步执行任务 (核心方法，第 249-543 行)
+- `execute_task()`: 同步包装器 (第 545-555 行)
+- `verify_task()`: 验证任务完成度 (第 557-572 行)
+- `handle_error()`: 错误处理与人干预 (第 574-588 行)
+
+**会话管理**:
+- `initialize_session()`: 创建新会话 (第 590-620 行)
+- `gather_context()`: 收集当前任务和状态 (第 622-637 行)
+- `complete_session()`: 完成会话并提交 (第 639-657 行)
+- `extract_and_save_experience()`: 记录经验到 MEMORY.md (第 670-707 行)
+
+**主循环**:
+- `run_agent_loop()`: Agent 主循环 (第 709-770 行)
+
+### SDK 集成方式
+
+使用 `ClaudeAgentOptions` 配置:
+
+1. **模型配置**: `model`, `system_prompt`, `env` (API 密钥和基础 URL)
+2. **工具权限**: `allowed_tools` 列出所有允许的工具
+3. **流式输出**: `include_partial_messages=True`
+4. **文件检查点**: `enable_file_checkpointing=True`
+5. **权限模式**: `permission_mode="acceptEdits"`
+6. **MCP 服务器**: `mcp_servers` 配置 Playwright 和 Context7
+7. **Hooks 注册**: 通过 `hooks` 字典注册 PreToolUse, PostToolUse, Notification, Stop
+
+### 任务执行流程
+
+1. **选择任务**: TaskSelector.select_next_task()
+2. **构建提示词**: get_task_prompt() 包含项目结构、Git 状态
+3. **执行任务**: 使用 ClaudeSDKClient 异步执行
+4. **流式处理**: 遍历 receive_response() 处理消息
+   - `StreamEvent`: 实时事件 (工具调用、文本增量)
+   - `AssistantMessage`: AI 响应 (工具调用、工具结果)
+   - `UserMessage`: 工具执行结果
+   - `ResultMessage`: 最终结果
+5. **验证任务**: verify_task() 检查 Git 变更
+6. **记录经验**: extract_and_save_experience() 保存到 MEMORY.md
+
+### 关键设计模式
+
+- **异步迭代器**: 使用 `async for` 处理流式响应
+- **上下文管理器**: `async with ClaudeSDKClient()` 管理连接
+- **状态管理**: StateManager 持久化到 JSON
+- **Git 集成**: 每次会话自动提交
 7. **MCP Protocol**: https://modelcontextprotocol.io/introduction
 
 ## Key Patterns
@@ -231,6 +302,33 @@ Or via `env` parameter in ClaudeAgentOptions.
 **改进建议**:
 - [待填写]
 
+### 2026-03-07 - Run full test suite (self-014)
+
+**任务描述**: 运行完整的测试套件，确保所有测试通过，分析失败的测试并尝试修复。
+
+**执行结果**: completed
+
+**问题分析**:
+- 最初测试结果：1 failed, 93 passed, 12 errors
+- 问题1: `test_agent_core.py` 中的 patch 路径错误 - 使用了 `agent_core.GitHelper` 但实际应该是 `agent.agent_core.GitHelper`
+- 问题2: TaskSelector 导入路径错误 - 使用了 `from task_selector import` 但应该是 `from agent.task_selector import`
+- 问题3: `test_get_system_prompt` 期望中文提示词但实际代码已改为英文
+
+**修复内容**:
+- 将所有 `patch('agent_core.*')` 改为 `patch('agent.agent_core.*')`
+- 将 `from task_selector import` 改为 `from agent.task_selector import`
+- 将期望的中文字符串改为英文字符串
+
+**验证结果**:
+- 所有 106 个测试通过 ✅
+
+**学到的经验**:
+- 测试文件中的模块路径必须与实际模块路径一致，agent 目录下的模块需要使用完整的 `agent.xxx` 路径
+- 当代码更改时（如系统提示词从中文改为英文），对应的测试也需要同步更新
+
+**改进建议**:
+- 无
+
 ### 2026-03-07 - Fix MCP tool authorization (refactor-007)
 
 **任务描述**: 修复 MCP 工具授权：正确配置 allowed_tools 包含所有 MCP 工具
@@ -244,6 +342,48 @@ Or via `env` parameter in ClaudeAgentOptions.
 
 1. **更新 `allowed_tools` 配置** (`agent/agent_core.py`):
    - 添加了完整的 Playwright MCP 工具列表（包括 browser_console_messages, browser_resize, browser_select_option, 
+
+**学到的经验**:
+- [待填写]
+
+**改进建议**:
+- [待填写]
+
+### 2026-03-07 - Read and understand CLAUDE.md (self-001)
+
+**任务描述**: 读取 CLAUDE.md 文件，理解项目开发原则和架构，然后读取 README.md 了解项目概览。确保完全理解项目的开发规范。
+
+**执行结果**: completed
+**执行消息**: I have read both CLAUDE.md and README.md. Let me summarize what I've understood:
+
+## Project Summary
+
+**Agent-Loop** is a production-ready autonomous AI agent system built on Claude Agent SDK with Min
+
+**学到的经验**:
+- [待填写]
+
+**改进建议**:
+- [待填写]
+
+### 2026-03-07 - Analyze agent_core.py structure (self-002)
+
+**任务描述**: 读取 agent/agent_core.py 文件，理解核心 Agent 逻辑、SDK 集成方式和任务执行流程。
+
+**执行结果**: completed
+**执行消息**: Task completed successfully. Here's the analysis summary:
+
+## agent_core.py 结构分析总结
+
+### 文件信息
+- **路径**: `agent/agent_core.py`
+- **行数**: 770 行
+
+### 核心组件
+
+| 组件 | 行号 | 功能 |
+|------|------|------|
+| **Hook
 
 **学到的经验**:
 - [待填写]
