@@ -1,10 +1,10 @@
-# Agent Project Memory
+# Agent-Loop Memory
 
-This file stores accumulated experience and lessons learned from the AI Agent project.
+This file stores accumulated experience and lessons learned from the Agent-Loop project.
 
 ## Project Overview
 
-- **Project Name**: Long-running AI Agent System
+- **Project Name**: Agent-Loop
 - **Purpose**: Autonomous agent that executes tasks incrementally
 - **Framework**: Claude Agent SDK with MiniMax API
 - **Repository**: `/Users/ogyco/learn/agent`

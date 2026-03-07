@@ -20,7 +20,7 @@ from git_helper import GitHelper
 
 def init_project(args: argparse.Namespace) -> None:
     """初始化项目"""
-    print("Initializing agent project...")
+    print("Initializing Agent-Loop project...")
 
     state_manager = StateManager(args.project_dir if args.project_dir else None)
     git_helper = GitHelper(args.project_dir if args.project_dir else None)

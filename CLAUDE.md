@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is a **Long-running AI Agent System** built on Claude Agent SDK with MiniMax API backend. It automates task execution with session management, streaming output, and human intervention capabilities.
+**Agent-Loop** is a production-ready autonomous AI agent system built on Claude Agent SDK with MiniMax API backend. It automates task execution with real-time streaming, session management, and human intervention.
 
 ## Development Principles (Critical)
 
@@ -18,6 +18,9 @@ This is a **Long-running AI Agent System** built on Claude Agent SDK with MiniMa
 ## Common Commands
 
 ```bash
+# Install dependencies (uv)
+uv sync
+
 # Run all tests
 pytest tests/ -v
 
@@ -26,6 +29,9 @@ pytest tests/test_agent_core.py -v
 
 # Quick test with fail-fast
 pytest tests/ -x -q
+
+# Type checking
+mypy agent_core.py
 
 # Run agent
 python main.py run --iterations 3
@@ -38,9 +44,6 @@ python main.py status
 
 # Initialize project
 python main.py init
-
-# Add new task
-python main.py add --name "Task Name" --description "Description" --priority 1
 ```
 
 ## Architecture
@@ -49,8 +52,8 @@ python main.py add --name "Task Name" --description "Description" --priority 1
 
 | Module | Responsibility |
 |--------|----------------|
-| `agent_core.py` | Core agent logic, SDK integration, task execution loop |
-| `session_manager.py` | Session lifecycle, context management, checkpoints |
+| `agent_core.py` | Core agent logic, SDK integration, task execution |
+| `session_manager.py` | Session lifecycle, context management |
 | `state_manager.py` | State persistence to JSON files in `.agent/` |
 | `task_selector.py` | Priority-based task selection |
 | `human_intervention.py` | Human intervention when error threshold exceeded |
@@ -89,6 +92,7 @@ Key SDK features used:
 - `include_partial_messages=True` for streaming
 - `HookMatcher` for PreToolUse, PostToolUse hooks
 - `permission_mode="acceptEdits"` for auto-approval
+- `enable_file_checkpointing=True` for file recovery
 
 ## Important References
 

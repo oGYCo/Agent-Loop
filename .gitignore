@@ -1,8 +1,56 @@
+# Python
 __pycache__/
-.pytest_cache/
-*.pyc
-.mypy_cache/
-.playwright-mcp/
-# Python cache
 *.py[cod]
 *$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
+venv/
+ENV/
+env/
+.venv/
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+*.cover
+
+# Type checking
+.mypy_cache/
+.ruff_cache/
+dmypy.json
+.ruff.toml
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Project specific
+.agent/state.json
+.agent/session_history.json
+.agent/progress.txt
+
+# OS
+.DS_Store
+Thumbs.db

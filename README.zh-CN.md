@@ -1,80 +1,73 @@
 # Agent-Loop
 
-> A production-ready autonomous AI agent system powered by Claude Agent SDK
+> 基于 Claude Agent SDK 构建的生产级自主 AI Agent 系统
 
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
 
-Agent-Loop is an autonomous AI agent system that automates task execution with real-time visibility, session management, and intelligent error recovery. Built on Claude Agent SDK with MiniMax API backend.
+Agent-Loop 是一个自主 AI Agent 系统，通过实时可见性、会话管理和智能错误恢复实现任务自动化执行。基于 Claude Agent SDK 构建，支持 MiniMax API 后端。
 
-## Why Agent-Loop?
+## 核心特性
 
-- **Full Transparency**: Real-time streaming of AI thinking process and tool executions
-- **Resilient**: Automatic session resume and file checkpointing for failure recovery
-- **Extensible**: Powerful hook system for monitoring and custom integrations
-- **Production-Ready**: Type-safe, tested, and well-documented
+| 特性 | 描述 |
+|------|------|
+| **实时流式输出** | AI 决策过程和工具调用的实时显示 |
+| **会话管理** | 支持会话恢复、分支和检查点 |
+| **Hook 机制** | PreToolUse、PostToolUse、Notification、Stop 钩子 |
+| **人工干预** | 错误阈值超出时自动暂停 |
+| **Git 集成** | 每次会话后自动提交版本控制 |
+| **MCP 支持** | 内置 Playwright 浏览器自动化 |
 
-## Features
+## 快速开始
 
-| Feature | Description |
-|---------|-------------|
-| **Streaming Output** | Live visibility into AI decision-making and tool calls |
-| **Session Management** | Resume, fork, and checkpoint agent sessions |
-| **Hook System** | PreToolUse, PostToolUse, Notification, Stop hooks |
-| **Human-in-the-Loop** | Automatic pause when error threshold exceeded |
-| **Git Integration** | Auto-commit after each session for version control |
-| **MCP Support** | Built-in Playwright browser automation |
-
-## Quick Start
-
-### 1. Install
+### 1. 安装
 
 ```bash
-# Clone the repository
+# 克隆仓库
 git clone https://github.com/your-repo/agent-loop.git
 cd agent-loop
 
-# Install dependencies with uv
+# 使用 uv 安装依赖
 uv sync
 ```
 
-### 2. Configure
+### 2. 配置
 
 ```bash
 export ANTHROPIC_AUTH_TOKEN="your-api-token"
 export ANTHROPIC_BASE_URL="https://api.minimaxi.com/anthropic"
 ```
 
-### 3. Run
+### 3. 运行
 
 ```bash
-# Initialize project
+# 初始化项目
 python main.py init
 
-# Run agent (default: 10 iterations)
+# 运行 Agent（默认 10 次迭代）
 python main.py run
 
-# Or specify iterations
+# 指定迭代次数
 python main.py run --iterations 3
 ```
 
-## CLI Reference
+## CLI 命令
 
 ```bash
-python main.py init                    # Initialize project structure
-python main.py run                     # Start agent loop
-python main.py run --iterations N     # Run N iterations
-python main.py list                    # List all tasks
-python main.py add --name "Task" --description "Desc" --priority 1
-python main.py status                  # Show project status
+python main.py init                    # 初始化项目结构
+python main.py run                     # 启动 Agent 循环
+python main.py run --iterations N     # 运行 N 次迭代
+python main.py list                    # 列出所有任务
+python main.py add --name "任务名" --description "描述" --priority 1
+python main.py status                  # 显示项目状态
 ```
 
-## Architecture
+## 架构设计
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                        main.py                               │
-│                      CLI Entry Point                         │
+│                      CLI 入口                               │
 └──────────────────────────┬──────────────────────────────────┘
                            │
                            ▼
@@ -89,30 +82,30 @@ python main.py status                  # Show project status
 ┌─────────────────────────────────────────────────────────────┐
 │                 ClaudeSDKClient                              │
 │  ┌──────────────────────────────────────────────────────┐  │
-│  │  Streaming │ Hooks │ Sessions │ File Checkpointing  │  │
+│  │  流式输出 │ Hooks │ 会话管理 │ 文件检查点            │  │
 │  └──────────────────────────────────────────────────────┘  │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-### Core Modules
+### 核心模块
 
-| Module | Responsibility |
-|--------|----------------|
-| `agent_core.py` | Agent logic, SDK integration, task execution |
-| `session_manager.py` | Session lifecycle, context management |
-| `state_manager.py` | State persistence to JSON |
-| `task_selector.py` | Priority-based task selection |
-| `human_intervention.py` | Error threshold monitoring |
-| `git_helper.py` | Git operations wrapper |
-| `test_runner.py` | Test execution wrapper |
+| 模块 | 职责 |
+|------|------|
+| `agent_core.py` | Agent 核心逻辑，SDK 集成，任务执行 |
+| `session_manager.py` | 会话生命周期管理 |
+| `state_manager.py` | 状态持久化到 JSON |
+| `task_selector.py` | 基于优先级的任务选择 |
+| `human_intervention.py` | 错误阈值监控 |
+| `git_helper.py` | Git 操作封装 |
+| `test_runner.py` | 测试执行封装 |
 
-## SDK Usage Example
+## SDK 使用示例
 
 ```python
 from claude_agent_sdk import ClaudeSDKClient, ClaudeAgentOptions
 from claude_agent_sdk.types import StreamEvent, ResultMessage
 
-# Configure with streaming and hooks
+# 配置流式输出和 Hooks
 options = ClaudeAgentOptions(
     model="MiniMax-M2.5-highspeed",
     system_prompt="You are a helpful coding assistant.",
@@ -125,28 +118,28 @@ options = ClaudeAgentOptions(
     permission_mode="acceptEdits",
 )
 
-# Execute with streaming
+# 执行任务并获取流式输出
 async with ClaudeSDKClient(options=options) as client:
     await client.query("Write a hello world program")
     async for message in client.receive_response():
         if isinstance(message, StreamEvent):
-            # Handle streaming events
+            # 处理流式事件
             pass
         elif isinstance(message, ResultMessage):
             print(f"Session: {message.session_id}")
 ```
 
-## Task Management
+## 任务管理
 
-Tasks are defined in `.agent/feature_list.json`:
+任务定义在 `.agent/feature_list.json`：
 
 ```json
 {
   "features": [
     {
       "id": "feat-001",
-      "name": "Feature Name",
-      "description": "Feature description",
+      "name": "功能名称",
+      "description": "功能描述",
       "priority": 1,
       "status": "pending",
       "passes": false
@@ -155,30 +148,30 @@ Tasks are defined in `.agent/feature_list.json`:
 }
 ```
 
-- Lower `priority` = higher priority
-- Only `status=pending` and `passes=false` tasks are selected
+- `priority` 数值越小，优先级越高
+- 只选择 `status=pending` 且 `passes=false` 的任务
 
-## Testing
+## 测试
 
 ```bash
-# All tests
+# 运行所有测试
 pytest tests/ -v
 
-# Specific module
+# 运行特定模块
 pytest tests/test_agent_core.py -v
 
-# With coverage
+# 带覆盖率
 pytest tests/ --cov=. --cov-report=term-missing
 ```
 
-## Configuration
+## 配置
 
-### Environment Variables
+### 环境变量
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `ANTHROPIC_AUTH_TOKEN` | API token | Required |
-| `ANTHROPIC_BASE_URL` | API endpoint | `https://api.minimaxi.com/anthropic` |
+| 变量 | 描述 | 默认值 |
+|------|------|--------|
+| `ANTHROPIC_AUTH_TOKEN` | API 令牌 | 必填 |
+| `ANTHROPIC_BASE_URL` | API 端点 | `https://api.minimaxi.com/anthropic` |
 
 ### config.json
 
@@ -191,33 +184,33 @@ pytest tests/ --cov=. --cov-report=term-missing
 }
 ```
 
-## Documentation
+## 文档
 
 - [Claude Agent SDK](https://platform.claude.com/docs/en/agent-sdk/overview)
-- [Python SDK Reference](https://platform.claude.com/docs/en/agent-sdk/python)
-- [Hooks Guide](https://platform.claude.com/docs/en/agent-sdk/hooks)
-- [Streaming Output](https://platform.claude.com/docs/en/agent-sdk/streaming-output)
-- [Session Management](https://platform.claude.com/docs/en/agent-sdk/sessions)
-- [MCP Protocol](https://modelcontextprotocol.io/introduction)
+- [Python SDK 参考](https://platform.claude.com/docs/en/agent-sdk/python)
+- [Hooks 指南](https://platform.claude.com/docs/en/agent-sdk/hooks)
+- [流式输出](https://platform.claude.com/docs/en/agent-sdk/streaming-output)
+- [会话管理](https://platform.claude.com/docs/en/agent-sdk/sessions)
+- [MCP 协议](https://modelcontextprotocol.io/introduction)
 
-## Project Structure
+## 项目结构
 
 ```
 agent-loop/
-├── agent_core.py           # Core agent logic
-├── session_manager.py      # Session management
-├── state_manager.py        # State persistence
-├── task_selector.py        # Task selection
-├── human_intervention.py   # Human intervention
-├── git_helper.py           # Git operations
-├── test_runner.py          # Test execution
-├── main.py                 # CLI entry
-├── tests/                  # Unit tests
-├── pyproject.toml          # Project config (uv)
-├── README.md               # English documentation
-└── README.zh-CN.md         # Chinese documentation
+├── agent_core.py           # 核心 Agent 逻辑
+├── session_manager.py      # 会话管理
+├── state_manager.py        # 状态持久化
+├── task_selector.py        # 任务选择
+├── human_intervention.py   # 人工干预
+├── git_helper.py           # Git 操作
+├── test_runner.py          # 测试执行
+├── main.py                 # CLI 入口
+├── tests/                  # 单元测试
+├── pyproject.toml          # 项目配置 (uv)
+├── README.md               # 英文文档
+└── README.zh-CN.md        # 中文文档
 ```
 
-## License
+## 许可证
 
-MIT License - see [LICENSE](LICENSE) for details.
+MIT License - 详见 [LICENSE](LICENSE)。
