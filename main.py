@@ -146,14 +146,14 @@ def run_agent(args: argparse.Namespace, max_restarts: int = 3) -> None:
 
     project_root = args.project_dir if args.project_dir else None
 
+    # Create single StateManager instance outside the loop
+    state_manager = StateManager(project_root)
+
     for restart_count in range(max_restarts + 1):
         # 检查是否需要优雅关闭
         if _shutdown_requested:
             print("\n🛑 Shutdown requested, exiting gracefully...")
             break
-        # 检查是否需要重启
-        state_manager = StateManager(project_root)
-        state = state_manager.load_state()
 
         if restart_count > 0:
             print(f"\n{'='*50}")
