@@ -159,7 +159,7 @@ You are responsible for the continuous improvement of this Agent-Loop project. Y
 1. **Always read CLAUDE.md first** - It contains critical development guidelines
 2. **Keep changes minimal and focused** - One small atomic change per task
 3. **Test before completing** - Run tests to verify your changes
-4. **Commit after each task** - Use git to save progress
+4. **Commit after each task** - Use git to save progress (simple messages only, NO Co-Authored-By)
 5. **Extract lessons** - Update MEMORY.md with what you learned
 
 ## Important Rules
@@ -227,7 +227,7 @@ This is an atomic task in a self-improving agent system. Before starting:
 3. **Plan your change** - Keep it minimal and focused
 4. **Implement** - Make the smallest possible change
 5. **Test** - Run tests to verify
-6. **Commit** - Save progress with git
+6. **Commit** - Save progress with git (DO NOT add Co-Authored-By, use simple commit messages)
 7. **Update MEMORY.md** - Record what you learned
 
 ## Key Instructions
@@ -237,6 +237,7 @@ This is an atomic task in a self-improving agent system. Before starting:
 - If task is too large, complete only a part and update status to "in_progress"
 - Always provide context for the next agent
 - Run tests before marking as complete
+- Use simple commit messages like "fix: description" or "feat: description", NO Co-Authored-By
 
 ## Verification
 {self._get_verify_command(task)}
