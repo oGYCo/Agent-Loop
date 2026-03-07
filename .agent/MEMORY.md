@@ -202,6 +202,8 @@ Or via `env` parameter in ClaudeAgentOptions.
 
 ## Task Experience Records
 
+
+
 2026-03-07 - Add type annotations to state_manager.py (self-004)
 
 **任务描述**: 使用 mypy 检查 agent/state_manager.py 的类型错误，然后添加完整的类型注解。
@@ -374,7 +376,10 @@ Or via `env` parameter in ClaudeAgentOptions.
 
 ---
 
-### 2026-03-07 - Code review for agent_core.py (self-016)
+
+---
+
+2026-03-07 - Code review for agent_core.py (self-016)
 
 **任务描述**: 对 agent_core.py 进行全面的代码审查，检查代码质量、潜在 bug、安全问题和性能问题。审查要点：函数长度、圈复杂度、重复代码、命名规范、错误处理完整性。
 
@@ -397,9 +402,40 @@ Or via `env` parameter in ClaudeAgentOptions.
 
 ## Critical Issues
 
-### 1. Type Annotation Errors (mypy)
+
+---
+
+1. Type Annotation Errors (mypy)
 
 | Line | Error |
 |------|-------|
 | 280 | `data.get("features", [])` returns `Collection[str]`, not `Dict` |
 | 463 | Missing type annotation for `s
+
+---
+
+### 2026-03-07 - Add type annotations to agent_core.py (self-017)
+
+**任务描述**: 使用 mypy 检查 agent_core.py 的类型错误，添加完整的类型注解。确保所有函数有正确的参数和返回值类型。
+
+**执行结果**: completed
+
+**学到的经验**:
+- Hook 函数参数使用 `Any` 类型可以避免复杂的联合类型问题
+- json.load() 返回 Any，需要使用 cast() 转换
+- 从 dict 访问的元素默认为 Any，需要显式类型标注
+
+---
+
+### 2026-03-07 - Add type annotations to session_manager.py (self-018)
+
+**任务描述**: 使用 mypy 检查 agent/session_manager.py 的类型错误，添加完整的类型注解。
+
+**执行结果**: completed
+
+**学到的经验**:
+- 从 JSON 加载的字典使用 `session.get("key")` 返回 `Any`，需要使用 `cast()` 显式转换
+- 遍历 `history.get("sessions", [])` 时，需要显式声明类型 `sessions: List[Dict[str, Any]]`
+- 使用 `cast(Dict[str, Any], json.load(f))` 处理反序列化结果
+
+**改进建议**: 无
