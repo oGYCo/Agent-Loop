@@ -684,6 +684,28 @@ I've completed the config validation task (self-011). Here's what was done:
 **改进建议**:
 - [待填写]
 
+### 2026-03-07 - Review and add docstrings (self-007)
+
+**任务描述**: 检查所有核心模块的文档字符串，确保每个公共方法都有清晰的 docstring 说明其功能、参数和返回值。
+
+**执行结果**: completed
+
+**修改内容**:
+1. **git_helper.py**: 添加 Args/Returns 到 10 个方法
+2. **test_runner.py**: 添加 Args/Returns 到 4 个方法
+3. **state_manager.py**: 添加 Args/Returns 到 15 个方法
+
+**验证结果**:
+- Python 导入测试通过 ✅
+- 所有模块可以正常加载 ✅
+
+**学到的经验**:
+- 使用英文 Args/Returns 格式与项目现有的英文 docstring 风格保持一致
+- 每个方法的 docstring 应该包含：功能描述、Args 参数说明、Returns 返回值说明
+
+**改进建议**:
+- 继续为 session_manager.py, task_selector.py, human_intervention.py, agent_core.py 添加完整 docstrings
+
 ### 2026-03-07 - Add task validation (self-012)
 
 **任务描述**: 为 feature_list.json 添加验证逻辑，确保任务定义的完整性和正确性。
@@ -714,3 +736,24 @@ I've completed the config validation task (self-011). Here's what was done:
 
 **改进建议**:
 - 可以在 main.py 启动时自动调用 validate_feature_list() 确保任务列表有效
+
+### 2026-03-07 - Add task validation (self-012)
+
+**任务描述**: 为 feature_list.json 添加验证逻辑，确保任务定义的完整性和正确性。
+
+**执行结果**: completed
+**执行消息**: ## Task Completed: Add task validation (self-012)
+
+### Summary
+
+I have added validation logic for `feature_list.json` to ensure task definitions are complete and correct.
+
+### Changes Made
+
+1. **Added
+
+**学到的经验**:
+- [待填写]
+
+**改进建议**:
+- [待填写]

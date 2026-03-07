@@ -91,7 +91,7 @@
       "name": "Review and add docstrings",
       "description": "检查所有核心模块的文档字符串，确保每个公共方法都有清晰的 docstring 说明其功能、参数和返回值。",
       "priority": 3,
-      "status": "pending",
+      "status": "in_progress",
       "passes": false,
       "verify_command": "grep -r 'def.*:' agent/*.py | wc -l",
       "context_files": [
