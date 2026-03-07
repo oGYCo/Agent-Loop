@@ -75,6 +75,8 @@ python main.py prompt set <key>           # Set active prompt
 | `agent/config_reloader.py` | Configuration hot reload |
 | `agent/metrics.py` | Prometheus metrics collection and export |
 | `agent/webhook.py` | Webhook notification system |
+| `agent/email_notifier.py` | Email notification service with SMTP support |
+| `agent/console.py` | Rich console utilities for interactive CLI output |
 | `main.py` | CLI entry point |
 | `api.py` | FastAPI REST API server |
 
