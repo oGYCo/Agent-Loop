@@ -4,6 +4,83 @@ Accumulated experience and lessons learned from task execution.
 
 ---
 
+## 2026-03-07 - Standardize Error Handling (fix-012)
+
+**Task Description**: 当前项目中错误处理不一致：git_helper.py 某些方法静默返回空值；test_runner.py 返回错误消息格式不统一；session_manager.py 某些异常被捕获但不记录。
+
+**Lessons Learned:**
+
+1. **Error Handling Standardization**: Successfully added consistent logging for error handling across three modules.
+
+2. **Changes Made**:
+
+   **agent/git_helper.py**:
+   - Added `logging` import and logger setup
+   - Replaced `print()` with `logger.error()` in `init_repo()`
+   - Added `logger.warning()` for silent return cases in `get_recent_commits()`, `get_current_branch()`, and `get_diff()`
+
+   **agent/test_runner.py**:
+   - Added `logging` import and logger setup
+   - Added `logger.warning()` in `verify_feature()` for exception handling
+
+   **agent/session_manager.py**:
+   - Added try/except blocks for file operations in:
+     - `create_checkpoint()` - logs error on write failure
+     - `load_checkpoint()` - logs error on read failure, returns None
+     - `cleanup_checkpoints()` - logs warning on delete failure
+
+3. **Key Design Decisions**:
+   - Maintained backward compatibility - kept existing return value behaviors expected by tests
+   - Used `logger.error()` for failures that prevent operation completion
+   - Used `logger.warning()` for recoverable errors or expected edge cases
+   - Consistent logging pattern: log the error message before returning fallback values
+
+4. **Verification**: All 223 tests pass.
+
+5. **Commit**: Pushed to remote as `fix: standardize error handling across modules`
+
+---
+
+## 2026-03-07 - Logging Configuration (fix-011)
+
+**Task Description**: Add unified logging configuration to main.py for debugging production issues.
+
+**Lessons Learned:**
+
+1. **Centralized Logging**: Added a `_configure_logging()` function in main.py that:
+   - Configures root logger with consistent formatting
+   - Reads log level from `LOG_LEVEL` environment variable (default: INFO)
+   - Reads optional log file path from `LOG_FILE` environment variable
+   - Removes existing handlers to avoid duplicate logs on reimport
+
+2. **Log Format**: Uses structured format with:
+   - Timestamp: `%(asctime)s`
+   - Level: `%(levelname)-8s`
+   - Logger name: `%(name)s`
+   - Message: `%(message)s`
+
+3. **Environment Variables**:
+   - `LOG_LEVEL`: DEBUG, INFO, WARNING, ERROR, CRITICAL (default: INFO)
+   - `LOG_FILE`: Optional path to log file
+
+4. **Usage**:
+   ```bash
+   # Default INFO level to console
+   python main.py run
+
+   # Debug level to console
+   LOG_LEVEL=DEBUG python main.py run
+
+   # Log to file
+   LOG_FILE=.agent/agent.log python main.py run
+   ```
+
+5. **Verification**: All 223 tests pass.
+
+6. **Commit**: Pushed as `feat: add logging configuration to main.py`
+
+---
+
 ## 2026-03-07 (continued)
 
 ### Task: Refactor run_agent Loop State Management (fix-009)
@@ -298,6 +375,10 @@ Accumulated experience and lessons learned from task execution.
 
 ## Task Experience Records
 
+
+
+
+
 2026-03-07 - Add caching mechanism to prompt_manager.py (fix-008)
 
 **任务描述**: 当前 prompt_manager.py 每次调用 load_template() 都会读取文件，这对于频繁调用的场景会导致不必要的 I/O 操作。建议添加模板缓存机制，可以设置缓存过期时间或提供手动刷新方法。
@@ -322,7 +403,10 @@ Changes Made:
 
 ---
 
-### 2026-03-07 - Refactor run_agent loop state management in main.py (fix-009)
+
+---
+
+2026-03-07 - Refactor run_agent loop state management in main.py (fix-009)
 
 **任务描述**: 在 main.py:149-193 的 run_agent 函数中，每次循环都创建新的 StateManager 实例并重新加载 state，这可能导致覆盖 agent 内部的状态变更。建议在循环外部创建单个 StateManager 实例，并确保状态变更正确同步。
 
@@ -331,7 +415,10 @@ Changes Made:
 
 I've successfully refactored the `run_agent` loop state management in `main.py`. Here's what was done:
 
-### Changes Made
+
+---
+
+Changes Made
 
 **File: `main.py`**
 
@@ -343,14 +430,20 @@ I've successfully refactored the `run_agent` loop state management in `main.py`.
    - The `state = state_manager.load_state()
 ---
 
-### 2026-03-07 - Improve config validation flexibility in state_manager.py (fix-010)
+
+---
+
+2026-03-07 - Improve config validation flexibility in state_manager.py (fix-010)
 
 **任务描述**: 当前 state_manager.py 的 validate_config 对 documentation_urls 字段的验证过于严格（要求非空字典）。这在某些场景下可能导致问题。建议改进验证逻辑，允许空字典，并在注释中说明何时需要填写内容。
 
 **执行结果**: completed
 **执行消息**: Task completed successfully.
 
-### Changes Made
+
+---
+
+Changes Made
 
 **File: `agent/state_manager.py`:**
 - Removed the validation check that rejected empty dictionaries for documentation_urls
@@ -359,8 +452,59 @@ I've successfully refactored the `run_agent` loop state management in `main.py`.
 **File: `tests/test_state_manager.py`:**
 - Updated test_validate_config_empty_documentation_urls to verify that empty dictionary is now accepted
 
-### Learnings
+
+---
+
+Learnings
 
 - Made minimal, focused change to improve validation flexibility
 - Always update corresponding tests when changing validation logic
 - Added helpful comments to explain the expected usage
+
+
+---
+
+
+---
+
+2026-03-07 - Improve config validation flexibility in state_manager.py (fix-010)
+
+**任务描述**: 当前 state_manager.py 的 validate_config 对 documentation_urls 字段的验证过于严格（要求非空字典）。这在某些场景下可能导致问题。建议改进验证逻辑，允许空字典，并在注释中说明何时需要填写内容。
+
+**执行结果**: completed
+**执行消息**: ## Summary
+
+Successfully completed task **fix-010**: Improve config validation flexibility in state_manager.py
+
+
+---
+
+Changes Made
+
+1. **`agent/state_manager.py`** - Modified `validate_config()` method:
+   - Removed the validation check that rejected empty dictionaries for `documentation_urls`
+   - Added a helpful comment explaining that empty dictionary is allowed and providing examples of when to fill in documentation links
+
+2. **`tests/test_state_manager.py`** - Updated test:
+   - Modified `tes
+
+---
+
+### 2026-03-07 - Add logging configuration to the project (fix-011)
+
+**任务描述**: 当前项目中多处使用 logging.getLogger()，但没有统一的日志配置。建议在 main.py 中添加日志配置，设置日志级别、格式和处理器，以便于调试生产环境问题。
+
+**执行结果**: completed
+**执行消息**: ## Summary
+
+Successfully added logging configuration to the project:
+
+### Changes Made
+
+**main.py** - Added centralized logging configuration:
+- Added `_configure_logging()` function that initializes logging on module import
+- Configurable via environment variables:
+  - `LOG_LEVEL`: DEBUG, INFO, WARNING, ERROR, CRITICAL (default: INFO)
+  - `LOG_FILE`: Optional file path for logging
+- Consistent log format: `timestamp | level | logger name | message`
+- Supports both console and optional file outp
