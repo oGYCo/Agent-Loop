@@ -217,8 +217,8 @@ def add_feature(args: argparse.Namespace) -> None:
         "priority": args.priority or 99,
         "status": "pending",
         "passes": False,
-        "created_at": "2026-03-07",
-        "updated_at": "2026-03-07"
+        "created_at": datetime.now().strftime("%Y-%m-%d"),
+        "updated_at": datetime.now().strftime("%Y-%m-%d")
     }
 
     state_manager.add_feature(feature)
