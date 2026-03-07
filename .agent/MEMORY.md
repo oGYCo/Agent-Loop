@@ -348,6 +348,8 @@ Or via `env` parameter in ClaudeAgentOptions.
 
 
 
+
+
 2026-03-07: Task Plan Self-Review
 
 When reviewing the task plan (feature_list.json):
@@ -902,7 +904,10 @@ Changes Made
 
 ---
 
-### 2026-03-07 - Add configuration hot reload (self-030)
+
+---
+
+2026-03-07 - Add configuration hot reload (self-030)
 
 **任务描述**: 添加配置热重载功能。在不重启 agent 的情况下重新加载配置文件（config.json, feature_list.json）。使用文件监控或手动触发。
 
@@ -911,7 +916,10 @@ Changes Made
 
 Successfully implemented configuration hot reload feature (self-030):
 
-### Changes Made
+
+---
+
+Changes Made
 
 1. **Created `agent/config_reloader.py`** - New module with:
    - `ConfigReloader` class for handling configuration reloading
@@ -923,3 +931,44 @@ Successfully implemented configuration hot reload feature (self-030):
 2. **Added `reload` command to main.py**:
    ```bash
    # 
+
+---
+
+### 2026-03-07 - Add feature (feature-033)
+
+**任务描述**: 给项目增加一个能够非常方便的进行管理和自定义各种提示词的功能，以便整个项目能够适配各种不同类型的任务和工作，请先认真获取了所有必要的上下文之后再进行具体的执行
+
+**执行结果**: completed
+**执行消息**: The prompt management feature has been successfully implemented. Here's a summary:
+
+## Implementation Summary
+
+### New Module: `agent/prompt_manager.py`
+- Created a comprehensive `PromptManager` class for managing prompts
+- Supports loading/saving prompts from/to `.agent/prompts.json`
+- Provides methods: `get_active_prompt()`, `list_prompts()`, `add_prompt()`, `update_prompt()`, `delete_prompt()`, `set_active_prompt()`
+
+### New Configuration: `.agent/prompts.json`
+- Auto-created on first access
+
+
+---
+
+### 2026-03-07: Git Push After Commit
+
+Added automatic git push after commit in `git_helper.py`:
+
+1. **Modified `stage_and_commit` method**:
+   - Added optional `push` parameter (default: True)
+   - Automatically calls `push()` after successful commit
+
+2. **Added new `push` method**:
+   - Pushes commits to remote repository
+   - Handles edge cases gracefully:
+     - No remote configured: prints message and returns True (not an error)
+     - No upstream branch: prints message and returns True (not an error)
+     - Other push failures: prints error and returns False
+
+3. **Test results**: All 165 tests pass
+
+4. **Key Insight**: When implementing automatic push, always handle the case where there's no remote configured or no upstream branch - these are not errors, just cases where push cannot be performed but the commit still succeeded. 

@@ -193,7 +193,13 @@
         "session_id": "20260307_163451",
         "sdk_session_id": "04ad6b74-ed70-486a-8d93-408cc78bd131"
       }
+    },
+    {
+      "id": "20260307_173041",
+      "start_time": "2026-03-07T17:30:41.901883",
+      "agent_type": "coder",
+      "status": "started"
     }
   ],
-  "total_sessions": 22
+  "total_sessions": 23
 }
