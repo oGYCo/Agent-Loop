@@ -987,6 +987,11 @@ class AgentCore:
                         session_id = message.session_id
                         logger.info(f"Final Result (turns: {num_turns}, stop: {stop_reason}): {result_text[:500]}...")
 
+                        # 检测 API 错误（如 429 rate limit）被包装为正常结果的情况
+                        if not is_error and self._is_api_error_in_result(result_text):
+                            logger.warning(f"Detected API error in result text: {result_text[:200]}")
+                            is_error = True
+
                         # 任务完成后执行自省（仅当任务成功时）
                         if not is_error and session_id:
                             # 1. 任务计划自省
@@ -1113,6 +1118,17 @@ class AgentCore:
                 "message": error_msg
             }
 
+        # 如果检测到 API 错误，返回 error 状态以触发重试
+        if is_error and result_text and self._is_api_error_in_result(result_text):
+            return {
+                "task_id": task_id,
+                "status": "error",
+                "message": result_text[:500],
+                "is_rate_limit": "rate_limit" in result_text.lower(),
+                "session_id": session_id,
+                "tool_call_count": tool_call_count
+            }
+
         return {
             "task_id": task_id,
             "status": "completed",
@@ -1120,6 +1136,20 @@ class AgentCore:
             "session_id": session_id,
             "tool_call_count": tool_call_count
         }
+
+    @staticmethod
+    def _is_api_error_in_result(result_text: str) -> bool:
+        """检测结果文本中是否包含 API 错误信息"""
+        error_indicators = [
+            '"type":"error"',
+            'rate_limit_error',
+            'overloaded_error',
+            'api_error',
+            'authentication_error',
+            'invalid_request_error',
+        ]
+        text_lower = result_text.lower()
+        return any(indicator.lower() in text_lower for indicator in error_indicators)
 
     def execute_task(self, task: Dict[str, Any]) -> Dict[str, Any]:
         """同步包装器 - 执行任务（带重试机制）"""
@@ -1154,10 +1184,17 @@ class AgentCore:
                         if retry_count < max_retries:
                             retry_count += 1
                             retry_reasons.append(f"Attempt {retry_count}: {error_msg}")
-                            logger.warning(f"Task {task.get('id')} failed: {error_msg}. Retrying in {retry_interval}s (attempt {retry_count}/{max_retries})...")
+
+                            # 速率限制错误使用指数退避
+                            if result.get("is_rate_limit"):
+                                wait_time = retry_interval * (2 ** (retry_count - 1))  # 5s, 10s, 20s...
+                                logger.warning(f"Task {task.get('id')} hit rate limit. Waiting {wait_time}s before retry (attempt {retry_count}/{max_retries})...")
+                            else:
+                                wait_time = retry_interval
+                                logger.warning(f"Task {task.get('id')} failed: {error_msg}. Retrying in {wait_time}s (attempt {retry_count}/{max_retries})...")
 
                             # 等待后重试
-                            time_module.sleep(retry_interval)
+                            time_module.sleep(wait_time)
 
                             # 继续下一次尝试
                             continue
