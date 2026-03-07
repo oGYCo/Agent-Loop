@@ -431,3 +431,56 @@ Successfully ran the full test suite and fixed all failing tests.
 
 **改进建议**:
 - 无
+
+### 2026-03-07 - Verify project runs correctly (self-015)
+
+**任务描述**: 实际运行项目，验证 Agent 可以正常启动和执行任务。测试 init 和 list 命令。
+
+**执行结果**: completed
+**执行消息**: ## Task Complete
+
+I successfully verified that the project runs correctly by testing the `init` and `list` commands.
+
+### Verification Results
+
+| Command | Status |
+|---------|--------|
+| `python main
+
+**学到的经验**:
+- [待填写]
+
+**改进建议**:
+- [待填写]
+
+### 2026-03-07 - Add logging instead of print statements (self-003)
+
+**任务描述**: 将 agent_core.py 中的 print 语句替换为 Python logging 模块，创建统一的日志配置。
+
+**执行结果**: completed
+
+**修改内容**:
+1. 添加 `import logging` 到文件头部
+2. 创建 `setup_logging()` 函数配置日志记录器
+3. 创建模块级 `logger` 实例
+4. 将大部分 print 语句替换为 logging 调用：
+   - `logger.info()`: 任务开始/完成、会话状态
+   - `logger.debug()`: 详细调试信息
+   - `logger.error()`: 错误信息
+
+**保留的 print 语句**:
+- 流式输出（hooks 和 SDK 响应处理中的实时用户反馈）
+- 这些需要直接输出到 stdout 以提供实时反馈
+
+**验证结果**:
+- `grep -c 'import logging' agent/agent_core.py` 返回 1
+- Python 导入测试通过
+
+**学到的经验**:
+- 日志模块应该保留流式输出使用 print，因为这些是面向用户的实时反馈
+- 使用适当的日志级别：info 用于一般状态，debug 用于详细调试，error 用于错误
+- logging 支持格式化输出，比 print 更灵活
+
+**改进建议**:
+- 可以考虑将日志配置移到单独的配置模块中，实现更统一的日志管理
+- 可以添加日志文件输出而非仅控制台输出

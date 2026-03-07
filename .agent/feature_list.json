@@ -34,8 +34,8 @@
       "name": "Add logging instead of print statements",
       "description": "将 agent_core.py 中的 print 语句替换为 Python logging 模块。创建统一的日志配置。",
       "priority": 2,
-      "status": "pending",
-      "passes": false,
+      "status": "completed",
+      "passes": true,
       "verify_command": "grep -c 'import logging' agent/agent_core.py",
       "context_files": [
         "agent/agent_core.py",
