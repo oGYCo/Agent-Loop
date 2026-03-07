@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
 from pydantic import BaseModel
 from pathlib import Path
 
@@ -24,6 +24,7 @@ from agent.state_manager import StateManager
 from agent.task_selector import TaskSelector
 from agent.session_manager import SessionManager
 from agent.git_helper import GitHelper
+from agent.metrics import get_prometheus_metrics, get_metrics_content_type, get_metrics_collector
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -379,6 +380,40 @@ def get_sessions() -> SessionResponse:
 def health_check() -> Dict[str, str]:
     """Health check endpoint"""
     return {"status": "healthy", "service": "agent-loop-api"}
+
+
+@app.get("/metrics")
+def metrics():
+    """Prometheus metrics endpoint
+
+    Returns metrics in Prometheus text format including:
+    - Task completion counts (success/error)
+    - Session duration histograms
+    - Error counts by type
+    - API call counts
+    - Agent status
+    """
+    metrics_collector = get_metrics_collector()
+
+    # Update metrics from current state
+    try:
+        state_manager = StateManager()
+        task_selector = TaskSelector(state_manager)
+
+        # Update task metrics
+        metrics_collector.set_tasks_pending(task_selector.get_pending_count())
+        metrics_collector.set_tasks_total(task_selector.get_total_count())
+
+        # Update API metrics
+        metrics_collector.increment_api_call("/metrics")
+    except Exception:
+        pass  # Metrics should not break the endpoint
+
+    # Return Prometheus format
+    return Response(
+        content=get_prometheus_metrics(),
+        media_type=get_metrics_content_type()
+    )
 
 
 @app.post("/webhook/test")
