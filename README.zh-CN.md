@@ -11,10 +11,7 @@
 <p align="center">
   <a href="https://www.python.org/"><img src="https://img.shields.io/badge/python-3.11+-blue.svg" alt="Python 3.11+" /></a>
   <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-green.svg" alt="License: MIT" /></a>
-  <a href="https://pypi.org/project/claude-agent-sdk/"><img src="https://img.shields.io/pypi/v/claude-agent-sdk?color=purple" alt="PyPI" /></a>
-  <a href="https://github.com/agent-loop/agent-loop/actions/workflows/test.yml"><img src="https://img.shields.io/github/actions/workflow/status/agent-loop/agent-loop/test.yml?branch=main" alt="Tests" /></a>
-  <a href="https://github.com/agent-loop/agent-loop/stargazers"><img src="https://img.shields.io/github/stars/agent-loop/agent-loop" alt="Stars" /></a>
-  <a href="https://github.com/agent-loop/agent-loop/fork"><img src="https://img.shields.io/github/forks/agent-loop/agent-loop" alt="Forks" /></a>
+  <a href="https://github.com/oGYCo/agent-loop/stargazers"><img src="https://img.shields.io/github/stars/oGYCo/agent-loop" alt="Stars" /></a>
 </p>
 
 <p align="center">
