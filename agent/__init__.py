@@ -3,7 +3,7 @@
 A production-ready autonomous AI agent system built on Claude Agent SDK.
 """
 
-__version__ = "0.1.0"
+__version__ = "1.0.0"
 
 from .agent_core import AgentCore
 from .state_manager import StateManager
