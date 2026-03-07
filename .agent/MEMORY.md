@@ -390,3 +390,44 @@ Or via `env` parameter in ClaudeAgentOptions.
 
 **改进建议**:
 - [待填写]
+
+### 2026-03-07 - Run full test suite (self-014)
+
+**任务描述**: 运行完整的测试套件，确保所有测试通过。分析失败的测试并尝试修复。
+
+**执行结果**: completed
+**执行消息**: ## Summary
+
+Successfully ran the full test suite and fixed all failing tests.
+
+### Test Results
+- **Before fix**: 1 failed, 93 passed, 12 errors
+- **After fix**: **106 passed**, 2 warnings
+
+### Issues
+
+**学到的经验**:
+- [待填写]
+
+**改进建议**:
+- [待填写]
+
+### 2026-03-07 - Verify project runs correctly (self-015)
+
+**任务描述**: 实际运行项目，验证 Agent 可以正常启动和执行任务。测试 init 和 list 命令。
+
+**执行结果**: completed
+
+**验证结果**:
+- `python main.py list` - 成功列出所有任务 ✅
+- `python main.py init` - 成功初始化项目 ✅
+- `python main.py status` - 成功显示状态信息 ✅
+
+**学到的经验**:
+- 项目 CLI 结构完整，支持子命令：init, run, list, add, status
+- main.py 使用 argparse 子命令模式实现 CLI
+- 任务列表使用 feature_list.json 存储，格式包含 id, name, description, priority, status, passes 等字段
+- 命令验证比运行完整测试更快用于基本验证
+
+**改进建议**:
+- 无

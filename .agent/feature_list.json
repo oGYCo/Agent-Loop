@@ -5,10 +5,13 @@
       "name": "Read and understand CLAUDE.md",
       "description": "读取 CLAUDE.md 文件，理解项目开发原则和架构，然后读取 README.md 了解项目概览。确保完全理解项目的开发规范。",
       "priority": 1,
-      "status": "pending",
-      "passes": false,
+      "status": "completed",
+      "passes": true,
       "verify_command": "cat CLAUDE.md | head -50",
-      "context_files": ["CLAUDE.md", "README.md"],
+      "context_files": [
+        "CLAUDE.md",
+        "README.md"
+      ],
       "created_at": "2026-03-07",
       "updated_at": "2026-03-07"
     },
@@ -17,10 +20,12 @@
       "name": "Analyze agent_core.py structure",
       "description": "读取 agent/agent_core.py 文件，理解核心 Agent 逻辑、SDK 集成方式和任务执行流程。",
       "priority": 1,
-      "status": "pending",
-      "passes": false,
+      "status": "completed",
+      "passes": true,
       "verify_command": "wc -l agent/agent_core.py",
-      "context_files": ["agent/agent_core.py"],
+      "context_files": [
+        "agent/agent_core.py"
+      ],
       "created_at": "2026-03-07",
       "updated_at": "2026-03-07"
     },
@@ -32,7 +37,10 @@
       "status": "pending",
       "passes": false,
       "verify_command": "grep -c 'import logging' agent/agent_core.py",
-      "context_files": ["agent/agent_core.py", "agent/state_manager.py"],
+      "context_files": [
+        "agent/agent_core.py",
+        "agent/state_manager.py"
+      ],
       "created_at": "2026-03-07",
       "updated_at": "2026-03-07"
     },
@@ -44,7 +52,9 @@
       "status": "pending",
       "passes": false,
       "verify_command": "python -m mypy agent/state_manager.py",
-      "context_files": ["agent/state_manager.py"],
+      "context_files": [
+        "agent/state_manager.py"
+      ],
       "created_at": "2026-03-07",
       "updated_at": "2026-03-07"
     },
@@ -56,7 +66,9 @@
       "status": "pending",
       "passes": false,
       "verify_command": "python -m mypy agent/task_selector.py",
-      "context_files": ["agent/task_selector.py"],
+      "context_files": [
+        "agent/task_selector.py"
+      ],
       "created_at": "2026-03-07",
       "updated_at": "2026-03-07"
     },
@@ -68,7 +80,9 @@
       "status": "pending",
       "passes": false,
       "verify_command": "python -m mypy agent/git_helper.py",
-      "context_files": ["agent/git_helper.py"],
+      "context_files": [
+        "agent/git_helper.py"
+      ],
       "created_at": "2026-03-07",
       "updated_at": "2026-03-07"
     },
@@ -80,7 +94,11 @@
       "status": "pending",
       "passes": false,
       "verify_command": "grep -r 'def.*:' agent/*.py | wc -l",
-      "context_files": ["agent/agent_core.py", "agent/state_manager.py", "agent/task_selector.py"],
+      "context_files": [
+        "agent/agent_core.py",
+        "agent/state_manager.py",
+        "agent/task_selector.py"
+      ],
       "created_at": "2026-03-07",
       "updated_at": "2026-03-07"
     },
@@ -92,7 +110,10 @@
       "status": "pending",
       "passes": false,
       "verify_command": "grep -c 'raise.*Error' agent/*.py",
-      "context_files": ["agent/agent_core.py", "agent/state_manager.py"],
+      "context_files": [
+        "agent/agent_core.py",
+        "agent/state_manager.py"
+      ],
       "created_at": "2026-03-07",
       "updated_at": "2026-03-07"
     },
@@ -104,7 +125,10 @@
       "status": "pending",
       "passes": false,
       "verify_command": "pytest tests/test_state_manager.py -v",
-      "context_files": ["agent/state_manager.py", "tests/test_state_manager.py"],
+      "context_files": [
+        "agent/state_manager.py",
+        "tests/test_state_manager.py"
+      ],
       "created_at": "2026-03-07",
       "updated_at": "2026-03-07"
     },
@@ -116,7 +140,10 @@
       "status": "pending",
       "passes": false,
       "verify_command": "pytest tests/test_task_selector.py -v",
-      "context_files": ["agent/task_selector.py", "tests/test_task_selector.py"],
+      "context_files": [
+        "agent/task_selector.py",
+        "tests/test_task_selector.py"
+      ],
       "created_at": "2026-03-07",
       "updated_at": "2026-03-07"
     },
@@ -128,7 +155,10 @@
       "status": "pending",
       "passes": false,
       "verify_command": "python -c \"import json; json.load(open('.agent/config.json'))\"",
-      "context_files": ["agent/state_manager.py", ".agent/config.json"],
+      "context_files": [
+        "agent/state_manager.py",
+        ".agent/config.json"
+      ],
       "created_at": "2026-03-07",
       "updated_at": "2026-03-07"
     },
@@ -140,7 +170,10 @@
       "status": "pending",
       "passes": false,
       "verify_command": "python -c \"import json; json.load(open('.agent/feature_list.json'))\"",
-      "context_files": ["agent/task_selector.py", ".agent/feature_list.json"],
+      "context_files": [
+        "agent/task_selector.py",
+        ".agent/feature_list.json"
+      ],
       "created_at": "2026-03-07",
       "updated_at": "2026-03-07"
     },
@@ -152,7 +185,9 @@
       "status": "pending",
       "passes": false,
       "verify_command": "python main.py --help",
-      "context_files": ["main.py"],
+      "context_files": [
+        "main.py"
+      ],
       "created_at": "2026-03-07",
       "updated_at": "2026-03-07"
     },
@@ -161,10 +196,12 @@
       "name": "Run full test suite",
       "description": "运行完整的测试套件，确保所有测试通过。分析失败的测试并尝试修复。",
       "priority": 1,
-      "status": "pending",
-      "passes": false,
+      "status": "completed",
+      "passes": true,
       "verify_command": "pytest tests/ -v",
-      "context_files": ["tests/"],
+      "context_files": [
+        "tests/"
+      ],
       "created_at": "2026-03-07",
       "updated_at": "2026-03-07"
     },
@@ -173,10 +210,13 @@
       "name": "Verify project runs correctly",
       "description": "实际运行项目，验证 Agent 可以正常启动和执行任务。测试 init 和 list 命令。",
       "priority": 1,
-      "status": "pending",
-      "passes": false,
+      "status": "completed",
+      "passes": true,
       "verify_command": "python main.py list",
-      "context_files": ["main.py", "agent/"],
+      "context_files": [
+        "main.py",
+        "agent/"
+      ],
       "created_at": "2026-03-07",
       "updated_at": "2026-03-07"
     }
