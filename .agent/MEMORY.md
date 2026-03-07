@@ -4,6 +4,63 @@ Accumulated experience and lessons learned from task execution.
 
 ---
 
+## 2026-03-08 - 添加缺失的类型注解 (feature-024)
+
+**任务描述**: 为关键函数和类添加类型注解：1) 检查agent模块中的函数签名 2) 添加返回类型注解 3) 确保与项目要求一致 (Python 3.11+)。运行mypy检查类型错误。
+
+**Lessons Learned:**
+
+1. **修复的类型错误**:
+   - `agent_core.py`: 为 `_get_webhook_notifier()` 添加返回类型 `WebhookNotifier | None`
+   - `prompt_manager.py`: 修复缓存类型 `dict[str, dict[str, str | float]]`，添加 cast() 调用
+   - `performance_monitor.py`: 修复 contextmanager 返回类型为 `Generator[PerformanceMonitor, None, None]`
+   - `webhook.py`: 为 data 字典添加显式 `Dict[str, Any]` 类型注解
+   - `email_notifier.py`: 为 data 字典添加显式 `Dict[str, Any]` 类型注解
+   - `config_reloader.py`: 添加 `type: ignore[valid-type]` 解决 watchdog Observer 类型问题
+
+2. **关键技巧**:
+   - 使用 `TYPE_CHECKING` 避免循环导入
+   - 使用 `type: ignore` 注释处理第三方库的类型问题
+   - 使用 `cast()` 处理复杂的类型收窄
+   - Dict[str, Any] 需要显式注解来处理异构值
+
+3. **验证结果**:
+   - agent 模块现在没有 mypy 错误（只有 notes）
+   - 剩余错误在 api.py（不在 agent 模块范围内）
+   - 提交: `fix: add type annotations to agent module`
+
+---
+
+## 2026-03-08 - 添加API端点测试 (feature-023)
+
+**任务描述**: 为api.py添加完整的单元测试和集成测试：1) 测试所有REST端点 2) 测试WebSocket连接 3) 测试API密钥认证 4) 测试错误处理。确保API的稳定性和可靠性。
+
+**Lessons Learned:**
+
+1. **测试覆盖范围**:
+   - REST端点测试：/status, /tasks, /sessions, /health, /metrics, /run, /webhook/test, /email/test
+   - WebSocket测试：连接管理、广播、断开处理
+   - API密钥认证：enabled/disabled状态、有效/无效密钥
+   - 错误处理：无效任务ID、空列表、状态过滤等
+   - 单元测试：ConnectionManager, load_api_keys, get_api_key
+
+2. **测试方法**:
+   - 使用FastAPI的TestClient进行HTTP端点测试
+   - 使用unittest.mock进行依赖注入和模拟
+   - 使用pytest-asyncio进行异步WebSocket测试
+
+3. **关键发现**:
+   - api.py中的AgentCore、get_webhook_notifier、get_email_notifier是在函数内部导入的，需要patch正确的模块路径
+   - async函数测试需要返回coroutine对象
+   - FastAPI响应会包含charset，需要用`in`而不是`==`来检查content-type
+   - API认证在disabled时返回"no-auth"作为默认key
+
+4. **测试结果**: 51个测试全部通过
+
+5. **Commit**: feat: add comprehensive API tests
+
+---
+
 ## 2026-03-08 - 清理过时的analysis_report.md (feature-021)
 
 **任务描述**: 分析并清理analysis_report.md文件：1) 移除已修复的问题标记 2) 更新仍存在的问题 3) 或者考虑删除该文件，因为问题已在代码中修复或在其他文档中记录。
@@ -716,6 +773,10 @@ Accumulated experience and lessons learned from task execution.
 ## Task Experience Records
 
 
+
+
+
+
 2026-03-08 - API密钥认证 (feature-013)
 
 **任务描述**: 为API服务添加API Key认证机制，支持配置多个密钥，实现基本的访问控制。
@@ -1044,7 +1105,10 @@ Code Review Findings (Production-Grade Perspective)
 
 ---
 
-### 2026-03-08 - 清理过时的analysis_report.md (feature-021)
+
+---
+
+2026-03-08 - 清理过时的analysis_report.md (feature-021)
 
 **任务描述**: 分析并清理analysis_report.md文件：1) 移除已修复的问题标记 2) 更新仍存在的问题 3) 或者考虑删除该文件，因为问题已在代码中修复或在其他文档中记录。
 
@@ -1078,7 +1142,10 @@ Code Review Findings (Production-Grade Perspective)
 
 ---
 
-### 2026-03-08 - 更新NEW_FEATURES_ANALYSIS.md (feature-022)
+
+---
+
+2026-03-08 - 更新NEW_FEATURES_ANALYSIS.md (feature-022)
 
 **任务描述**: 更新NEW_FEATURES_ANALYSIS.md文件，将已实现的功能从待实现列表中移除，并添加新的功能建议。确保文档反映项目的当前状态。
 
@@ -1126,3 +1193,67 @@ Code Review Findings (Production-Grade Perspective)
 **学到的经验**:
 - 文档需要与代码保持同步更新
 - 使用统一的状态标记（✅ 已实现 / ⭐ 待实现）便于追踪
+
+---
+
+
+---
+
+2026-03-08 - 更新NEW_FEATURES_ANALYSIS.md (feature-022)
+
+**任务描述**: 更新NEW_FEATURES_ANALYSIS.md文件，将已实现的功能从待实现列表中移除，并添加新的功能建议。确保文档反映项目的当前状态。
+
+**执行结果**: completed
+**执行消息**: 任务已完成！我已更新 `NEW_FEATURES_ANALYSIS.md` 文件，反映项目的当前状态。
+
+## 完成的更新
+
+
+---
+
+已实现的功能 (从待实现列表中移除)
+
+1. ✅ **REST API** - FastAPI服务，提供HTTP API控制Agent
+2. ✅ **WebSocket实时推送** - 实时推送任务进度、日志、告警
+3. ✅ **Webhook通知** - 任务状态变更时调用外部HTTP回调
+4. ✅ **邮件通知** - 支持SMTP/TLS，HTML模板邮件
+5. ✅ **Web Dashboard** - 实时仪表板展示任务进度、Agent状态
+6. ✅ **Grafana仪表板** - `dashboards/agent-loop-dashboard.json`
+7. ✅ **Prometheus指标导出** - `/metrics` 端点
+8. ✅ **API密钥认证** - 支持配置API密钥访问控制
+
+
+---
+
+新增的待实现功能建议
+
+基于项目当前状态，更新了以下优先事项：
+
+**中优先级 (P1)**:
+- Slack/Discord集成
+
+
+**学到的经验**:
+- 任务已完成！我已更新 `NEW_FEATURES_ANALYSIS.md` 文件，反映项目的当前状态。
+
+---
+
+### 2026-03-08 - 添加API端点测试 (feature-023)
+
+**任务描述**: 为api.py添加完整的单元测试和集成测试：1) 测试所有REST端点 2) 测试WebSocket连接 3) 测试API密钥认证 4) 测试错误处理。确保API的稳定性和可靠性。
+
+**执行结果**: completed
+**执行消息**: ## Task Complete ✓
+
+I have successfully added comprehensive unit tests for the API in `api.py`. Here's a summary:
+
+### Tests Created: 51 test cases in `tests/test_api.py`
+
+**REST Endpoint Tests:**
+- `/health` - Health check endpoint
+- `/status` - Agent status with various scenarios
+- `/tasks` - CRUD operations on tasks (list, create, get, update, filter, sort)
+- `/sessions` - Session history
+- `/run` - Agent execution
+- `/metrics` - Prometheus metrics
+- `/webhook/test` & `/email/test` - Notifica

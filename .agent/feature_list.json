@@ -326,11 +326,12 @@
       "name": "添加API端点测试",
       "description": "为api.py添加完整的单元测试和集成测试：1) 测试所有REST端点 2) 测试WebSocket连接 3) 测试API密钥认证 4) 测试错误处理。确保API的稳定性和可靠性。",
       "priority": 5,
-      "status": "pending",
-      "passes": false,
+      "status": "completed",
+      "passes": true,
       "context_files": [
         "api.py",
-        "tests/test_state_manager.py"
+        "tests/test_state_manager.py",
+        "tests/test_api.py"
       ],
       "verify_command": "pytest tests/test_api.py -v",
       "created_at": "2026-03-08",
@@ -341,8 +342,8 @@
       "name": "添加缺失的类型注解",
       "description": "为关键函数和类添加类型注解：1) 检查agent模块中的函数签名 2) 添加返回类型注解 3) 确保与项目要求一致 (Python 3.11+)。运行mypy检查类型错误。",
       "priority": 6,
-      "status": "pending",
-      "passes": false,
+      "status": "completed",
+      "passes": true,
       "context_files": [
         "agent/*.py",
         "main.py",
@@ -414,6 +415,6 @@
       "verify_command": "定期审查和更新文档",
       "created_at": "2026-03-08",
       "updated_at": "2026-03-08"
-    }
+    },
   ]
 }
