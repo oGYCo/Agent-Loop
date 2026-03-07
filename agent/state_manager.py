@@ -13,13 +13,17 @@ from typing import Any, Optional, cast
 class ConfigValidationError(Exception):
     """配置验证错误"""
 
-    pass
+    def __init__(self, message: str = "Configuration validation failed") -> None:
+        self.message = message
+        super().__init__(self.message)
 
 
 class FeatureListValidationError(Exception):
     """功能列表验证错误"""
 
-    pass
+    def __init__(self, message: str = "Feature list validation failed") -> None:
+        self.message = message
+        super().__init__(self.message)
 
 
 class StateManager:

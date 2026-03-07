@@ -90,7 +90,8 @@ class GitHelper:
             )
             return result.stdout.strip()
         except Exception as e:
-            return f"Error getting status: {e}"
+            error_msg = str(e) if str(e) else f"Unexpected error: {type(e).__name__}"
+            return f"Error getting status: {error_msg}"
 
     def has_changes(self) -> bool:
         """Check if there are uncommitted changes.

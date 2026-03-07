@@ -446,6 +446,12 @@ This is an atomic task in a self-improving agent system. Before starting:
 ## Verification
 {self._get_verify_command(task)}
 
+## Post-Task Actions
+After completing this task, you MUST:
+1. Review and update feature_list.json - check if any pending tasks need priority adjustments, removal, or new tasks added based on the work just completed
+2. Update MEMORY.md - extract key learnings from this task and add to .agent/MEMORY.md
+3. Consider if CLAUDE.md needs updates - if you discovered important patterns or insights, add them to CLAUDE.md
+
 Start by reading CLAUDE.md and the relevant source files for this task."""
 
         return prompt
@@ -674,6 +680,288 @@ Start by reading CLAUDE.md and the relevant source files for this task."""
 
         if added_count > 0:
             logger.info(f"Auto-planned {added_count} new tasks based on project context")
+
+    def review_task_plan(self, completed_task: Optional[Dict[str, Any]] = None) -> None:
+        """审查并更新任务计划
+
+        每完成一个任务后调用此方法，检查：
+        1. 后续任务是否需要调整优先级
+        2. 是否有任务变得过时（不再需要）
+        3. 是否需要新增任务（基于完成的任务）
+        4. 是否有任务变成阻塞状态（依赖未完成的前置任务）
+
+        Args:
+            completed_task: 刚完成的任务信息
+        """
+        import re
+
+        logger.info("Reviewing task plan...")
+
+        data = self.state_manager.load_feature_list()
+        features = data.get("features", [])
+        today = datetime.now().strftime('%Y-%m-%d')
+
+        changes_made = []
+
+        # 1. 检查过时任务 - 已完成相关任务后，某些任务可能不再需要
+        # 例如：类型注解任务完成后，"修复mypy错误"类的任务就过时了
+        obsolete_patterns = [
+            (r"mypy.*error", r"type.*annotation", "已添加类型注解后mypy错误任务可能过时"),
+            (r"fix.*test", r"test.*pass", "测试通过后修复测试的任务可能过时"),
+        ]
+
+        for feature in features:
+            if feature.get("status") != "pending":
+                continue
+
+            desc = feature.get("description", "").lower()
+            name = feature.get("name", "").lower()
+
+            # 检查是否有过时任务的迹象
+            for pattern_pair in obsolete_patterns:
+                if re.search(pattern_pair[0], desc) or re.search(pattern_pair[0], name):
+                    # 检查是否有对应的已完成任务
+                    for completed in features:
+                        if completed.get("status") == "completed":
+                            completed_desc = completed.get("description", "").lower()
+                            if re.search(pattern_pair[1], completed_desc):
+                                # 标记为过时（降低优先级或添加说明）
+                                if feature.get("priority", 99) < 90:
+                                    old_priority = feature.get("priority")
+                                    feature["priority"] = min(90, old_priority + 10)
+                                    changes_made.append(f"任务 {feature['id']} 优先级调整: {old_priority} -> {feature['priority']} (相关任务已完成)")
+
+        # 2. 调整优先级 - 根据系统当前状态
+        # 统计已完成/待办比例，调整各类任务优先级
+        completed_count = sum(1 for f in features if f.get("status") == "completed")
+        pending_count = sum(1 for f in features if f.get("status") == "pending")
+
+        # 如果待办太多，提高测试相关任务的优先级
+        if pending_count > 15:
+            for feature in features:
+                if feature.get("status") == "pending":
+                    desc = feature.get("description", "").lower()
+                    if "test" in desc and feature.get("priority", 99) > 5:
+                        old_priority = feature.get("priority")
+                        feature["priority"] = max(1, old_priority - 2)
+                        changes_made.append(f"任务 {feature['id']} 优先级调整: {old_priority} -> {feature['priority']} (待办积压)")
+
+        # 3. 检查阻塞任务 - 某些任务可能依赖已失败的任务
+        for feature in features:
+            if feature.get("status") == "pending":
+                desc = feature.get("description", "")
+                # 检查是否有依赖失败任务的迹象
+                if "fix" in desc.lower() and "failed" in desc.lower():
+                    # 查找对应的失败任务
+                    failed_id_match = re.search(r'([a-z]+-\d+)', desc)
+                    if failed_id_match:
+                        failed_id = failed_id_match.group(1)
+                        # 查找该任务是否仍然是失败状态
+                        target_found = False
+                        for target in features:
+                            if target.get("id") == failed_id and target.get("status") == "failed":
+                                target_found = True
+                                break
+                        if not target_found:
+                            # 失败任务已修复或删除，标记此任务也完成
+                            feature["status"] = "completed"
+                            feature["passes"] = True
+                            changes_made.append(f"任务 {feature['id']} 自动标记完成 (依赖任务已解决)")
+
+        # 4. 清理重复任务
+        seen_ids: set[str] = set()
+        duplicates: list[str] = []
+        for feature in features:
+            fid = feature.get("id", "")
+            if fid in seen_ids:
+                duplicates.append(fid)
+            seen_ids.add(fid)
+
+        if duplicates:
+            # 删除重复任务（保留第一个）
+            id_counts: dict[str, int] = {}
+            to_remove: list[int] = []
+            for i, feature in enumerate(features):
+                fid = feature.get("id", "")
+                if fid in id_counts:
+                    if id_counts[fid] > 0:
+                        to_remove.append(i)
+                        id_counts[fid] += 1
+                else:
+                    id_counts[fid] = 1
+
+            # 从后往前删除（保持索引不变）
+            for i in reversed(to_remove):
+                removed = features.pop(i)
+                changes_made.append(f"删除重复任务: {removed.get('id')}")
+
+        # 保存更改
+        if changes_made:
+            data["features"] = features
+            self.state_manager.save_feature_list(data)
+            logger.info(f"Task plan reviewed. Changes: {len(changes_made)}")
+            for change in changes_made:
+                logger.info(f"  - {change}")
+        else:
+            logger.info("Task plan review: no changes needed")
+
+    def refine_memory(self, force: bool = False) -> None:
+        """提炼并优化 MEMORY.md
+
+        定期清理 MEMORY.md，移除：
+        1. 重复的任务记录
+        2. 过时的经验（被后续记录覆盖）
+        3. 冗余的空行和格式问题
+        4. 保留最精华的内容
+
+        Args:
+            force: 是否强制执行（即使未到清理周期）
+        """
+        import re
+
+        memory_file = self.state_manager.agent_dir / "MEMORY.md"
+
+        if not memory_file.exists():
+            logger.warning("MEMORY.md not found, skipping refinement")
+            return
+
+        with open(memory_file, "r", encoding="utf-8") as f:
+            content = f.read()
+
+        original_lines = len(content.split('\n'))
+        refined_content = content
+
+        # 1. 清理重复的空行（3个以上空行 -> 2个）
+        refined_content = re.sub(r'\n{4,}', '\n\n\n', refined_content)
+
+        # 2. 清理任务记录中的重复内容
+        # 识别 "Task Experience Records" 部分
+        if "## Task Experience Records" in refined_content:
+            parts = refined_content.split("## Task Experience Records")
+            static_content = parts[0]
+            task_records = parts[1] if len(parts) > 1 else ""
+
+            # 解析并去重任务记录
+            seen_entries: dict[str, str] = {}
+            cleaned_records: list[str] = []
+
+            # 按 ### 分割任务记录
+            entries = re.split(r'\n### ', task_records)
+            for entry in entries:
+                if not entry.strip():
+                    continue
+
+                # 提取任务ID作为去重键
+                id_match = re.match(r'\d{4}-\d{2}-\d{2} - .+ \((\w+)\)', entry)
+                if id_match:
+                    task_id = id_match.group(1)
+                    # 如果已存在且新内容更短（精简版），则跳过
+                    if task_id in seen_entries:
+                        # 保留内容更丰富的那一个
+                        if len(entry) > len(seen_entries[task_id]):
+                            seen_entries[task_id] = entry
+                    else:
+                        seen_entries[task_id] = entry
+
+            # 重建任务记录部分 - 按日期排序（最新的在前）
+            def get_sort_key(x: str) -> str:
+                match = re.match(r'(\d{4}-\d{2}-\d{2})', x)
+                return match.group(1) if match else "1900-01-01"
+
+            sorted_records = sorted(seen_entries.values(), key=get_sort_key, reverse=True)
+
+            # 限制保留最近的任务记录（最多30条）
+            if len(sorted_records) > 30:
+                sorted_records = sorted_records[:30]
+
+            task_records_cleaned = "\n\n---\n\n### ".join(sorted_records)
+            refined_content = static_content + "## Task Experience Records\n\n" + task_records_cleaned
+
+        # 3. 清理 "---" 分隔符过多的情况
+        refined_content = re.sub(r'\n---\n---\n', '\n---\n', refined_content)
+
+        # 4. 清理行尾多余空格
+        refined_content = re.sub(r' +\n', '\n', refined_content)
+
+        # 保存
+        if refined_content != content:
+            with open(memory_file, "w", encoding="utf-8") as f:
+                f.write(refined_content)
+
+            new_lines = len(refined_content.split('\n'))
+            logger.info(f"MEMORY.md refined: {original_lines} -> {new_lines} lines ({original_lines - new_lines} lines removed)")
+        else:
+            logger.info("MEMORY.md refinement: no changes needed")
+
+    def refine_claude_md(self, force: bool = False) -> None:
+        """提炼并优化 CLAUDE.md
+
+        清理 CLAUDE.md 中的：
+        1. 重复的章节
+        2. 过时的 Lessons Learned
+        3. 冗余的格式
+
+        Args:
+            force: 是否强制执行
+        """
+        import re
+
+        claude_md_path = Path(self.project_root) / "CLAUDE.md"
+
+        if not claude_md_path.exists():
+            logger.warning("CLAUDE.md not found, skipping refinement")
+            return
+
+        with open(claude_md_path, "r", encoding="utf-8") as f:
+            content = f.read()
+
+        original_lines = len(content.split('\n'))
+        refined_content = content
+
+        # 1. 清理重复的空行
+        refined_content = re.sub(r'\n{4,}', '\n\n\n', refined_content)
+
+        # 2. 清理 "Lessons Learned" 部分的重复条目
+        if "## Lessons Learned" in refined_content:
+            parts = refined_content.split("## Lessons Learned")
+            before_lessons = parts[0]
+            lessons_section = parts[1] if len(parts) > 1 else ""
+
+            # 提取并去重 lessons
+            seen_lessons: set[int] = set()
+            unique_lessons: list[str] = []
+
+            # 按 ### 分割
+            lesson_entries = re.split(r'\n### ', lessons_section)
+            for entry in lesson_entries:
+                if not entry.strip():
+                    continue
+
+                # 提取内容哈希去重
+                content_hash = hash(entry.strip()[:200])  # 用前200字符作为哈希
+                if content_hash not in seen_lessons:
+                    seen_lessons.add(content_hash)
+                    unique_lessons.append(entry)
+
+            # 限制保留最近的 lessons（最多20条）
+            if len(unique_lessons) > 20:
+                unique_lessons = unique_lessons[:20]
+
+            lessons_cleaned = "\n\n### ".join(unique_lessons)
+            refined_content = before_lessons + "## Lessons Learned\n\n### " + lessons_cleaned
+
+        # 3. 清理行尾多余空格
+        refined_content = re.sub(r' +\n', '\n', refined_content)
+
+        # 保存
+        if refined_content != content:
+            with open(claude_md_path, "w", encoding="utf-8") as f:
+                f.write(refined_content)
+
+            new_lines = len(refined_content.split('\n'))
+            logger.info(f"CLAUDE.md refined: {original_lines} -> {new_lines} lines ({original_lines - new_lines} lines removed)")
+        else:
+            logger.info("CLAUDE.md refinement: no changes needed")
 
     async def execute_task_with_sdk(self, task: Dict[str, Any]) -> Dict[str, Any]:
         """使用 Claude Agent SDK 执行任务"""
@@ -957,10 +1245,11 @@ Start by reading CLAUDE.md and the relevant source files for this task."""
             }
         except Exception as e:
             logger.error(f"SDK execution error: {e}")
+            error_msg = str(e) if str(e) else f"Unexpected error occurred: {type(e).__name__}"
             return {
                 "task_id": task_id,
                 "status": "error",
-                "message": str(e)
+                "message": error_msg
             }
 
         return {
@@ -977,10 +1266,11 @@ Start by reading CLAUDE.md and the relevant source files for this task."""
             return asyncio.run(self.execute_task_with_sdk(task))
         except Exception as e:
             logger.error(f"Error in execute_task: {e}")
+            error_msg = str(e) if str(e) else f"Task execution failed: {type(e).__name__}"
             return {
                 "task_id": task.get("id"),
                 "status": "error",
-                "message": str(e)
+                "message": error_msg
             }
 
     def verify_task(self, task: Dict[str, Any]) -> bool:
@@ -1291,6 +1581,18 @@ Start by reading CLAUDE.md and the relevant source files for this task."""
                 # 自主制定后续计划
                 self._auto_plan_next_steps()
 
+                # 审查并更新任务计划（任务完成后的自我调整）
+                if verified:
+                    self.review_task_plan(task)
+
+                # 定期提炼 MEMORY.md（每5次迭代或强制时）
+                if summary["iterations"] > 0 and summary["iterations"] % 5 == 0:
+                    self.refine_memory(force=False)
+
+                # 定期提炼 CLAUDE.md（每10次迭代或强制时）
+                if summary["iterations"] > 0 and summary["iterations"] % 10 == 0:
+                    self.refine_claude_md(force=False)
+
                 # 检测代码变更并尝试热更新
                 if self.needs_reload():
                     logger.info("Code changes detected, attempting hot reload...")
@@ -1302,8 +1604,9 @@ Start by reading CLAUDE.md and the relevant source files for this task."""
                         break
 
             except Exception as e:
-                logger.error(f"Error executing task: {e}")
-                self.handle_error(str(e), task)
+                error_msg = str(e) if str(e) else f"Unexpected error: {type(e).__name__}"
+                logger.error(f"Error executing task: {error_msg}")
+                self.handle_error(error_msg, task)
                 summary["errors"] += 1
 
             summary["iterations"] += 1

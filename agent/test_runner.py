@@ -52,7 +52,8 @@ class TestRunner:
         except subprocess.TimeoutExpired:
             return False, "Test execution timed out after 5 minutes"
         except Exception as e:
-            return False, f"Test execution failed: {str(e)}"
+            error_msg = str(e) if str(e) else f"Unexpected error: {type(e).__name__}"
+            return False, f"Test execution failed: {error_msg}"
 
     def run_test_for_feature(self, feature_id: str) -> Tuple[bool, str]:
         """Run tests for a specific feature.
