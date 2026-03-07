@@ -5,8 +5,11 @@
 
 import subprocess
 import os
+import logging
 from pathlib import Path
 from typing import Optional
+
+logger = logging.getLogger(__name__)
 
 
 class GitHelper:
@@ -69,7 +72,7 @@ class GitHelper:
                 )
             return True
         except subprocess.CalledProcessError as e:
-            print(f"Failed to init git repo: {e}")
+            logger.error(f"Failed to init git repo: {e}")
             return False
 
     def get_status(self) -> str:
@@ -122,7 +125,8 @@ class GitHelper:
                 text=True
             )
             return result.stdout.strip().split("\n")
-        except Exception:
+        except Exception as e:
+            logger.warning(f"Failed to get recent commits: {e}")
             return []
 
     def get_current_branch(self) -> str:
@@ -142,7 +146,8 @@ class GitHelper:
                 text=True
             )
             return result.stdout.strip() or "main"
-        except Exception:
+        except Exception as e:
+            logger.warning(f"Failed to get current branch: {e}")
             return "main"
 
     def create_branch(self, branch_name: str) -> bool:
@@ -215,5 +220,6 @@ class GitHelper:
                 text=True
             )
             return result.stdout
-        except Exception:
+        except Exception as e:
+            logger.warning(f"Failed to get diff: {e}")
             return ""

@@ -129,8 +129,11 @@ class SessionManager:
             "data": data
         }
 
-        with open(checkpoint_file, "w") as f:
-            json.dump(checkpoint, f, indent=2)
+        try:
+            with open(checkpoint_file, "w") as f:
+                json.dump(checkpoint, f, indent=2)
+        except Exception as e:
+            logger.error(f"Failed to create checkpoint for session {session_id}: {e}")
 
     def load_checkpoint(self, session_id: str) -> Optional[Dict[str, Any]]:
         """加载会话检查点"""
@@ -139,8 +142,12 @@ class SessionManager:
         if not checkpoint_file.exists():
             return None
 
-        with open(checkpoint_file, "r") as f:
-            return cast(Dict[str, Any], json.load(f))
+        try:
+            with open(checkpoint_file, "r") as f:
+                return cast(Dict[str, Any], json.load(f))
+        except Exception as e:
+            logger.error(f"Failed to load checkpoint for session {session_id}: {e}")
+            return None
 
     def cleanup_checkpoints(self, keep_latest: int = 3) -> None:
         """清理旧检查点"""
@@ -155,7 +162,10 @@ class SessionManager:
 
         # 删除旧的检查点
         for checkpoint in checkpoints[keep_latest:]:
-            checkpoint.unlink()
+            try:
+                checkpoint.unlink()
+            except Exception as e:
+                logger.warning(f"Failed to delete checkpoint {checkpoint}: {e}")
 
     def manage_context(self, messages: List[Dict[str, Any]], force_summarize: bool = False) -> List[Dict[str, Any]]:
         """管理上下文

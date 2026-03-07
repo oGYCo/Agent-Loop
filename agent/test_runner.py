@@ -5,10 +5,13 @@
 
 import shlex
 import subprocess
+import logging
 from pathlib import Path
 from typing import Tuple, Optional, Dict, Any
 
 from .state_manager import StateManager
+
+logger = logging.getLogger(__name__)
 
 
 class AgentTestRunner:
@@ -100,7 +103,8 @@ class AgentTestRunner:
                     timeout=60
                 )
                 return result.returncode == 0
-            except Exception:
+            except Exception as e:
+                logger.warning(f"Feature verification failed for {feature.get('id')}: {e}")
                 return False
 
         # 没有 verify_command 时返回 False，不自动运行测试
