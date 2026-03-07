@@ -264,9 +264,17 @@ Or via `env` parameter in ClaudeAgentOptions.
 - `re.findall()` returns `list[str]`, annotate explicitly when needed
 - Use `Any` for SDK hook inputs to avoid complex union type issues with HookMatcher
 
+### Unused Import Detection
+- Manually check imports by searching for usage patterns (e.g., `os\.`, `Path\(`)
+- Common unused imports: `os`, `Path`, `json` (if only used in one place but not needed)
+- Unused variables: Check if assigned but never used (e.g., `project_root`, `test_pattern`)
+- Use `python -m py_compile` to verify syntax after changes
+
 ---
 
 ## Task Experience Records
+
+
 
 
 
@@ -663,7 +671,10 @@ Changes Made
 
 ---
 
-### 2026-03-07 - Add graceful shutdown handling (self-027)
+
+---
+
+2026-03-07 - Add graceful shutdown handling (self-027)
 
 **任务描述**: 为 agent 添加优雅关闭机制。处理 SIGINT/SIGTERM 信号，确保正在执行的任务能够安全完成或保存状态后再退出。
 
@@ -672,7 +683,10 @@ Changes Made
 
 I've successfully implemented graceful shutdown handling for the Agent-Loop project. Here's what was done:
 
-### Changes Made
+
+---
+
+Changes Made
 
 1. **main.py** - Added signal handling:
    - Imported `signal` module
@@ -685,7 +699,10 @@ I've successfully implemented graceful shutdown handling for the Agent-Loop proj
    - Added optional `shutdown_flag` parameter to `run_agent_loop()`
    - Loop checks flag at start of each iteration
 
-### 2026-03-07: Improving CLI Help with argparse
+
+---
+
+2026-03-07: Improving CLI Help with argparse
 
 When improving CLI help in main.py:
 
@@ -700,3 +717,22 @@ When improving CLI help in main.py:
 5. **Add useful options**: Consider what options users actually need (e.g., `--max-restarts`, `--filter`, `--verbose`).
 
 6. **Maintain backward compatibility**: Keep deprecated flags (like `--init`/`--run`) but mark them as deprecated.
+
+---
+
+### 2026-03-07 - Improve main.py CLI help (self-013)
+
+**任务描述**: 改进 main.py 的命令行参数解析，添加更好的帮助信息和子命令支持。
+
+**执行结果**: completed
+**执行消息**: ## Summary
+
+I've successfully improved the main.py CLI help with better argument parsing and subcommand support. Here's what was done:
+
+### Changes Made to `main.py`:
+1. **Added version support** - Added `__version__` variable and `--version` flag
+2. **Improved main help** - Added descriptive `description` and `epilog` with usage examples
+3. **Added new options per subcommand**:
+   - `run`: Added `--max-restarts` option (default: 3)
+   - `list`: Added `--filter` option (all/pending/completed)
+  

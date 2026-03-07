@@ -340,8 +340,8 @@
       "name": "Optimize imports and remove unused code",
       "description": "审查所有模块的导入语句，移除未使用的导入。检查并删除未使用的函数、变量和常量。使用 isort 优化导入顺序。",
       "priority": 3,
-      "status": "pending",
-      "passes": false,
+      "status": "completed",
+      "passes": true,
       "verify_command": "python -m py_compile agent/*.py main.py",
       "context_files": [
         "agent/",
