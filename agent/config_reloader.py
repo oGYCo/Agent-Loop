@@ -8,7 +8,7 @@ import os
 import time
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, cast
+from typing import Any, Callable, Dict, List, cast
 
 from watchdog.events import FileSystemEventHandler, FileModifiedEvent
 from watchdog.observers import Observer
@@ -28,7 +28,7 @@ class ConfigReloader:
     - feature_list.json
     """
 
-    def __init__(self, agent_dir: Optional[str] = None) -> None:
+    def __init__(self, agent_dir: str | None = None) -> None:
         """初始化配置重载器。
 
         Args:
@@ -38,8 +38,8 @@ class ConfigReloader:
         self.agent_dir = self.state_manager.agent_dir
 
         # 缓存配置和文件修改时间
-        self._config_cache: Optional[Dict[str, Any]] = None
-        self._feature_list_cache: Optional[Dict[str, Any]] = None
+        self._config_cache: Dict[str, Any] | None = None
+        self._feature_list_cache: Dict[str, Any] | None = None
         self._config_mtime: float = 0.0
         self._feature_list_mtime: float = 0.0
         self._last_reload_time: float = 0.0
@@ -258,8 +258,8 @@ class ConfigWatcher:
         self.reloader = reloader
         self.interval = interval
         self._running = False
-        self._observer: Optional[Observer] = None
-        self._async_watcher_task: Optional[asyncio.Task[None]] = None
+        self._observer: Observer | None = None
+        self._async_watcher_task: asyncio.Task[None] | None = None
 
     def start(self) -> None:
         """启动监控（阻塞方法，使用 watchdog Observer）。
@@ -321,7 +321,7 @@ class ConfigWatcher:
             self._async_watcher_task = None
 
 
-def reload_config(agent_dir: Optional[str] = None, force: bool = False) -> Dict[str, Any]:
+def reload_config(agent_dir: str | None = None, force: bool = False) -> Dict[str, Any]:
     """便捷函数：重载配置。
 
     Args:

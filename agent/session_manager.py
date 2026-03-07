@@ -6,7 +6,7 @@
 import json
 import logging
 from datetime import datetime
-from typing import Optional, List, Dict, Any, cast
+from typing import List, Dict, Any, cast
 from pathlib import Path
 
 from .state_manager import StateManager
@@ -46,7 +46,7 @@ def count_tokens(text: str) -> int:
 class SessionManager:
     """会话管理器"""
 
-    def __init__(self, state_manager: Optional[StateManager] = None) -> None:
+    def __init__(self, state_manager: StateManager | None = None) -> None:
         self.state_manager = state_manager or StateManager()
         self.config = self.state_manager.load_config()
         self.context_limit = self.config.get("context_window_limit", 100000)
@@ -108,7 +108,7 @@ class SessionManager:
 
         return False
 
-    def get_session_summary(self, session_id: str) -> Optional[Dict[str, Any]]:
+    def get_session_summary(self, session_id: str) -> Dict[str, Any] | None:
         """获取会话摘要"""
         history = self.state_manager.load_session_history()
         sessions: List[Dict[str, Any]] = history.get("sessions", [])
@@ -135,7 +135,7 @@ class SessionManager:
         except Exception as e:
             logger.error(f"Failed to create checkpoint for session {session_id}: {e}")
 
-    def load_checkpoint(self, session_id: str) -> Optional[Dict[str, Any]]:
+    def load_checkpoint(self, session_id: str) -> Dict[str, Any] | None:
         """加载会话检查点"""
         checkpoint_file = self.state_manager.agent_dir / f"checkpoint_{session_id}.json"
 

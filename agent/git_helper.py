@@ -7,7 +7,6 @@ import subprocess
 import os
 import logging
 from pathlib import Path
-from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -15,7 +14,7 @@ logger = logging.getLogger(__name__)
 class GitHelper:
     """Git操作辅助类"""
 
-    def __init__(self, project_root: Optional[str] = None) -> None:
+    def __init__(self, project_root: str | None = None) -> None:
         """Initialize GitHelper.
 
         Args:
@@ -196,7 +195,7 @@ class GitHelper:
         except subprocess.CalledProcessError:
             return False
 
-    def get_diff(self, target: Optional[str] = None) -> str:
+    def get_diff(self, target: str | None = None) -> str:
         """Get git diff output.
 
         Args:

@@ -300,7 +300,7 @@ def cleanup_checkpoints(self, keep_latest: int = 3) -> None:
 
 **问题描述**:
 ```python
-_global_monitor: Optional[PerformanceMonitor] = None
+_global_monitor: PerformanceMonitor | None = None
 
 def get_monitor() -> PerformanceMonitor:
     global _global_monitor
@@ -351,12 +351,12 @@ def get_monitor() -> PerformanceMonitor:
 **问题描述**:
 某些方法使用混合类型注解风格:
 ```python
-def method(self, arg: str) -> Optional[Dict[str, Any]]:
+def method(self, arg: str) -> Dict[str, Any] | None:
 ```
 
-这本身没问题，但项目中有些地方使用 `Optional[]`，有些使用 `| None`，不够统一。
+~~这本身没问题，但项目中有些地方使用 `Optional[]`，有些使用 `| None`，不够统一。~~
 
-**建议**: 选择一种风格并统一（建议使用 Python 3.11+ 的 `| None` 语法）。
+**已修复**: 统一使用 Python 3.11+ 的 `| None` 语法。
 
 ---
 

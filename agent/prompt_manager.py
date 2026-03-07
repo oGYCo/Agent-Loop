@@ -12,7 +12,7 @@ import re
 import time
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Optional, cast
+from typing import Any, cast
 
 
 class PromptValidationError(Exception):
@@ -446,7 +446,7 @@ class PromptManager:
         - claude_md_cleanup: Project documentation optimization
     """
 
-    def __init__(self, agent_dir: Optional[str] = None, cache_ttl: Optional[int] = None) -> None:
+    def __init__(self, agent_dir: str | None = None, cache_ttl: int | None = None) -> None:
         """Initialize PromptManager.
 
         Args:
@@ -462,7 +462,7 @@ class PromptManager:
 
         # Template cache: {name: {"content": str, "timestamp": float}}
         self._template_cache: dict[str, dict[str, Any]] = {}
-        self._cache_ttl: Optional[int] = cache_ttl  # None = disabled, 0 = never expire, >0 = TTL in seconds
+        self._cache_ttl: int | None = cache_ttl  # None = disabled, 0 = never expire, >0 = TTL in seconds
 
     # ============================================================
     # Template Operations
@@ -513,7 +513,7 @@ class PromptManager:
 
         return content
 
-    def _get_cached_template(self, name: str) -> Optional[str]:
+    def _get_cached_template(self, name: str) -> str | None:
         """Get a cached template if valid.
 
         Args:
@@ -661,7 +661,7 @@ class PromptManager:
 
         return created
 
-    def get_builtin_template(self, name: str) -> Optional[str]:
+    def get_builtin_template(self, name: str) -> str | None:
         """Get a built-in template by name (ignoring user overrides).
 
         Args:
@@ -777,18 +777,18 @@ class PromptManager:
 
         return result
 
-    def get_prompt(self, key: str) -> Optional[dict[str, Any]]:
+    def get_prompt(self, key: str) -> dict[str, Any] | None:
         """Get a specific prompt by its key.
 
         Args:
             key: The key of the prompt to retrieve.
 
         Returns:
-            Optional[dict[str, Any]]: The prompt dict if found, None otherwise.
+            dict[str, Any] | None: The prompt dict if found, None otherwise.
         """
         data = self.load_prompts()
         prompts = data.get("prompts", {})
-        return cast(Optional[dict[str, Any]], prompts.get(key))
+        return cast(dict[str, Any] | None, prompts.get(key))
 
     def add_prompt(self, key: str, name: str, description: str, system_prompt: str) -> bool:
         """Add a new prompt.
@@ -893,7 +893,7 @@ class PromptManager:
         self.save_prompts(data)
         return True
 
-    def validate_prompts(self, data: Optional[dict[str, Any]] = None) -> dict[str, Any]:
+    def validate_prompts(self, data: dict[str, Any] | None = None) -> dict[str, Any]:
         """Validate prompts configuration.
 
         Args:

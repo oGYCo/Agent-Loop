@@ -6,7 +6,7 @@
 import asyncio
 import json
 from datetime import datetime
-from typing import Optional, Dict, Any, Callable
+from typing import Dict, Any, Callable
 
 from .state_manager import StateManager
 
@@ -14,7 +14,7 @@ from .state_manager import StateManager
 class HumanIntervention:
     """人工干预处理器"""
 
-    def __init__(self, state_manager: Optional[StateManager] = None) -> None:
+    def __init__(self, state_manager: StateManager | None = None) -> None:
         self.state_manager = state_manager or StateManager()
         self.config = self.state_manager.load_config()
         self.max_errors = self.config.get("max_errors_before_intervention", 3)
@@ -22,8 +22,8 @@ class HumanIntervention:
     def should_intervene(
         self,
         error_count: int,
-        error_type: Optional[str] = None,
-        task_id: Optional[str] = None
+        error_type: str | None = None,
+        task_id: str | None = None
     ) -> bool:
         """判断是否需要人工干预
 
@@ -52,8 +52,8 @@ class HumanIntervention:
     def request_intervention(
         self,
         reason: str,
-        context: Optional[Dict[str, Any]] = None,
-        task_id: Optional[str] = None
+        context: Dict[str, Any] | None = None,
+        task_id: str | None = None
     ) -> Dict[str, Any]:
         """请求人工干预
 
@@ -90,7 +90,7 @@ class HumanIntervention:
         with open(request_file, "w") as f:
             json.dump(requests, f, indent=2)
 
-    def check_and_notify(self, state: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    def check_and_notify(self, state: Dict[str, Any]) -> Dict[str, Any] | None:
         """检查状态并发送通知
 
         Returns:
@@ -111,7 +111,7 @@ class HumanIntervention:
     def wait_for_human(
         self,
         request: Dict[str, Any],
-        input_callback: Optional[Callable[[str], str]] = None
+        input_callback: Callable[[str], str] | None = None
     ) -> bool:
         """等待人类响应
 

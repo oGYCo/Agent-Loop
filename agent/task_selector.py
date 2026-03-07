@@ -3,7 +3,7 @@
 从功能列表选取下一任务
 """
 
-from typing import Any, Optional, cast
+from typing import Any, cast
 
 from .state_manager import StateManager
 
@@ -18,10 +18,10 @@ class TaskSelector:
     FeatureType = dict[str, Any]
     FeatureListType = dict[str, Any]
 
-    def __init__(self, state_manager: Optional[StateManager] = None) -> None:
+    def __init__(self, state_manager: StateManager | None = None) -> None:
         self.state_manager = state_manager or StateManager()
 
-    def select_next_task(self) -> Optional[dict[str, Any]]:
+    def select_next_task(self) -> dict[str, Any] | None:
         """选择下一个要执行的任务
 
         优先级规则：

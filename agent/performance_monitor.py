@@ -8,7 +8,7 @@ import logging
 import resource
 import threading
 from datetime import datetime
-from typing import Optional, Dict, Any, List
+from typing import Dict, Any, List
 from contextlib import contextmanager
 from functools import wraps
 
@@ -21,8 +21,8 @@ class PerformanceMetrics:
 
     def __init__(self) -> None:
         self.task_timings: List[Dict[str, Any]] = []
-        self.session_start: Optional[float] = None
-        self.session_end: Optional[float] = None
+        self.session_start: float | None = None
+        self.session_end: float | None = None
 
     def start_session(self) -> None:
         """开始会话计时"""
@@ -52,7 +52,7 @@ class PerformanceMetrics:
         perf_logger.info(f"Session completed: {stats}")
         return stats
 
-    def record_task(self, task_id: str, task_name: str, duration: float, status: str, error: Optional[str] = None) -> None:
+    def record_task(self, task_id: str, task_name: str, duration: float, status: str, error: str | None = None) -> None:
         """记录任务执行信息"""
         task_info = {
             "task_id": task_id,
@@ -78,7 +78,7 @@ class PerformanceMonitor:
         self._operation_stack: List[Dict[str, Any]] = []
 
     @contextmanager
-    def track_operation(self, operation_name: str, task_id: Optional[str] = None):
+    def track_operation(self, operation_name: str, task_id: str | None = None):
         """上下文管理器：跟踪操作性能
 
         Args:
@@ -181,7 +181,7 @@ class PerformanceMonitor:
 
 
 # 全局性能监控器实例（线程安全）
-_global_monitor: Optional[PerformanceMonitor] = None
+_global_monitor: PerformanceMonitor | None = None
 _global_monitor_lock = threading.Lock()
 
 

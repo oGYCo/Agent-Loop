@@ -6,7 +6,7 @@
 import json
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Optional, cast
+from typing import Any, cast
 
 
 class ConfigValidationError(Exception):
@@ -28,7 +28,7 @@ class FeatureListValidationError(Exception):
 class StateManager:
     """状态管理器"""
 
-    def __init__(self, agent_dir: Optional[str] = None) -> None:
+    def __init__(self, agent_dir: str | None = None) -> None:
         """Initialize StateManager.
 
         Args:
@@ -67,14 +67,14 @@ class StateManager:
         with open(self.feature_list_path, "w", encoding="utf-8") as f:
             json.dump(data, f, indent=2, ensure_ascii=False)
 
-    def get_feature(self, feature_id: str) -> Optional[dict[str, Any]]:
+    def get_feature(self, feature_id: str) -> dict[str, Any] | None:
         """Get a specific feature by its ID.
 
         Args:
             feature_id: The ID of the feature to retrieve.
 
         Returns:
-            Optional[dict[str, Any]]: The feature dict if found, None otherwise.
+            dict[str, Any] | None: The feature dict if found, None otherwise.
         """
         data = self.load_feature_list()
         for feature in data.get("features", []):
@@ -296,7 +296,7 @@ class StateManager:
 
     # ========== Config Validation ==========
 
-    def validate_config(self, config: Optional[dict[str, Any]] = None) -> dict[str, Any]:
+    def validate_config(self, config: dict[str, Any] | None = None) -> dict[str, Any]:
         """验证配置完整性
 
         Args:
@@ -364,7 +364,7 @@ class StateManager:
     # ========== Feature List Validation ==========
 
     def validate_feature_list(
-        self, data: Optional[dict[str, Any]] = None
+        self, data: dict[str, Any] | None = None
     ) -> dict[str, Any]:
         """验证 feature_list.json 完整性
 

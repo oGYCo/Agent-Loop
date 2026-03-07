@@ -10,7 +10,7 @@ import sys
 import logging
 from datetime import datetime
 from pathlib import Path
-from typing import Optional, Dict, Any, List, cast, Callable
+from typing import Dict, Any, List, cast, Callable
 
 from claude_agent_sdk import (
     query,
@@ -146,7 +146,7 @@ logger = setup_logging("agent_core")
 class AgentCore:
     """核心Agent逻辑 - 使用 Claude Agent SDK"""
 
-    def __init__(self, project_root: Optional[str] = None) -> None:
+    def __init__(self, project_root: str | None = None) -> None:
         # 解决嵌套 Claude Code 会话问题
         if "CLAUDECODE" in os.environ:
             del os.environ["CLAUDECODE"]
@@ -160,7 +160,7 @@ class AgentCore:
         self.project_root = project_root or str(Path(__file__).parent.parent)
 
         # 缓存 CLAUDE.md 内容
-        self._claude_md_cache: Optional[str] = None
+        self._claude_md_cache: str | None = None
 
         # 迭代计数器，用于决定何时执行文档清理
         self._iteration_count: int = 0
@@ -468,7 +468,7 @@ class AgentCore:
         self._claude_md_cache = None
         logger.info(f"CLAUDE.md updated with insights from task {task.get('id')}")
 
-    def _extract_insight_from_result(self, task: Dict[str, Any], result: Dict[str, Any]) -> Optional[str]:
+    def _extract_insight_from_result(self, task: Dict[str, Any], result: Dict[str, Any]) -> str | None:
         """从执行结果中提取有价值的见解"""
         import re
 
@@ -1138,7 +1138,7 @@ class AgentCore:
             # 重试记录
             retry_count = 0
             retry_reasons: List[str] = []
-            result: Optional[Dict[str, Any]] = None
+            result: Dict[str, Any] | None = None
 
             # 尝试执行任务
             while retry_count <= max_retries:
@@ -1228,7 +1228,7 @@ class AgentCore:
             logger.info(f"Task {task_id} - no changes detected")
             return False
 
-    def handle_error(self, error: str, task: Optional[Dict[str, Any]] = None) -> None:
+    def handle_error(self, error: str, task: Dict[str, Any] | None = None) -> None:
         """处理错误"""
         state = self.state_manager.load_state()
         error_count = state.get("error_count", 0) + 1
@@ -1296,7 +1296,7 @@ class AgentCore:
             "total_count": self.task_selector.get_total_count()
         }
 
-    def complete_session(self, summary: Optional[Dict[str, Any]] = None) -> None:
+    def complete_session(self, summary: Dict[str, Any] | None = None) -> None:
         """完成会话"""
         # 结束性能监控
         perf_stats = self.perf_monitor.metrics.end_session()
@@ -1467,8 +1467,8 @@ class AgentCore:
     def run_agent_loop(
         self,
         max_iterations: int = 10,
-        resume_session_id: Optional[str] = None,
-        shutdown_flag: Optional[Callable[[], bool]] = None
+        resume_session_id: str | None = None,
+        shutdown_flag: Callable[[], bool] | None = None
     ) -> Dict[str, Any]:
         """运行Agent循环
 

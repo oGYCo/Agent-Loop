@@ -7,7 +7,7 @@ import shlex
 import subprocess
 import logging
 from pathlib import Path
-from typing import Tuple, Optional, Dict, Any
+from typing import Tuple, Dict, Any
 
 from .state_manager import StateManager
 
@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 class AgentTestRunner:
     """测试运行器"""
 
-    def __init__(self, state_manager: Optional[StateManager] = None) -> None:
+    def __init__(self, state_manager: StateManager | None = None) -> None:
         """Initialize TestRunner.
 
         Args:
@@ -26,7 +26,7 @@ class AgentTestRunner:
         self.state_manager = state_manager or StateManager()
         self.config = self.state_manager.load_config()
 
-    def run_tests(self, test_command: Optional[str] = None) -> Tuple[bool, str]:
+    def run_tests(self, test_command: str | None = None) -> Tuple[bool, str]:
         """Run tests and return the result.
 
         Args:
