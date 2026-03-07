@@ -13,15 +13,28 @@ class GitHelper:
     """Git操作辅助类"""
 
     def __init__(self, project_root: Optional[str] = None) -> None:
+        """Initialize GitHelper.
+
+        Args:
+            project_root: Path to the project root directory. Defaults to parent of agent package.
+        """
         self.project_root = Path(project_root) if project_root else Path(__file__).parent.parent
         self.git_dir = self.project_root / ".git"
 
     def is_git_repo(self) -> bool:
-        """检查是否为git仓库"""
+        """Check if the project is a git repository.
+
+        Returns:
+            bool: True if .git directory exists, False otherwise.
+        """
         return self.git_dir.exists()
 
     def init_repo(self) -> bool:
-        """初始化git仓库"""
+        """Initialize a git repository in the project root.
+
+        Returns:
+            bool: True if initialization succeeded or repo already exists, False on failure.
+        """
         if self.is_git_repo():
             return True
 
@@ -60,7 +73,11 @@ class GitHelper:
             return False
 
     def get_status(self) -> str:
-        """获取git状态"""
+        """Get git status in porcelain format.
+
+        Returns:
+            str: Git status output in short format, or an error message if not a repo.
+        """
         if not self.is_git_repo():
             return "Not a git repository"
 
@@ -76,12 +93,23 @@ class GitHelper:
             return f"Error getting status: {e}"
 
     def has_changes(self) -> bool:
-        """检查是否有未提交的更改"""
+        """Check if there are uncommitted changes.
+
+        Returns:
+            bool: True if there are uncommitted changes, False otherwise.
+        """
         status = self.get_status()
         return bool(status)
 
     def stage_and_commit(self, message: str) -> bool:
-        """暂存并提交更改"""
+        """Stage all changes and commit with the given message.
+
+        Args:
+            message: The commit message.
+
+        Returns:
+            bool: True if commit succeeded, False otherwise.
+        """
         if not self.is_git_repo():
             print("Not a git repository, initializing...")
             if not self.init_repo():
@@ -118,7 +146,14 @@ class GitHelper:
             return False
 
     def get_recent_commits(self, count: int = 5) -> list[str]:
-        """获取最近的提交记录"""
+        """Get recent commit messages.
+
+        Args:
+            count: Number of recent commits to retrieve (default: 5).
+
+        Returns:
+            list[str]: List of recent commit messages, or empty list if not a repo.
+        """
         if not self.is_git_repo():
             return []
 
@@ -134,7 +169,11 @@ class GitHelper:
             return []
 
     def get_current_branch(self) -> str:
-        """获取当前分支"""
+        """Get the current branch name.
+
+        Returns:
+            str: Current branch name, or "main" if not a repo or on detached HEAD.
+        """
         if not self.is_git_repo():
             return "main"
 
@@ -150,7 +189,14 @@ class GitHelper:
             return "main"
 
     def create_branch(self, branch_name: str) -> bool:
-        """创建新分支"""
+        """Create and switch to a new branch.
+
+        Args:
+            branch_name: Name of the new branch to create.
+
+        Returns:
+            bool: True if branch creation succeeded, False otherwise.
+        """
         if not self.is_git_repo():
             return False
 
@@ -166,7 +212,14 @@ class GitHelper:
             return False
 
     def checkout_branch(self, branch_name: str) -> bool:
-        """切换分支"""
+        """Switch to an existing branch.
+
+        Args:
+            branch_name: Name of the branch to checkout.
+
+        Returns:
+            bool: True if checkout succeeded, False otherwise.
+        """
         if not self.is_git_repo():
             return False
 
@@ -182,7 +235,14 @@ class GitHelper:
             return False
 
     def get_diff(self, target: Optional[str] = None) -> str:
-        """获取差异"""
+        """Get git diff output.
+
+        Args:
+            target: Optional target to diff against (e.g., branch name, commit hash).
+
+        Returns:
+            str: Git diff output, or empty string if not a repo.
+        """
         if not self.is_git_repo():
             return ""
 

@@ -15,14 +15,22 @@ class TestRunner:
     """测试运行器"""
 
     def __init__(self, state_manager: Optional[StateManager] = None) -> None:
+        """Initialize TestRunner.
+
+        Args:
+            state_manager: Optional StateManager instance. Creates a new one if not provided.
+        """
         self.state_manager = state_manager or StateManager()
         self.config = self.state_manager.load_config()
 
     def run_tests(self, test_command: Optional[str] = None) -> Tuple[bool, str]:
-        """运行测试并返回结果
+        """Run tests and return the result.
+
+        Args:
+            test_command: Optional test command to run. Uses config default if not provided.
 
         Returns:
-            (success: bool, output: str)
+            Tuple[bool, str]: A tuple of (success, output) where success is True if tests passed.
         """
         test_command = test_command or self.config.get("test_command", "pytest")
 
@@ -47,9 +55,13 @@ class TestRunner:
             return False, f"Test execution failed: {str(e)}"
 
     def run_test_for_feature(self, feature_id: str) -> Tuple[bool, str]:
-        """为特定功能运行测试
+        """Run tests for a specific feature.
 
-        根据 feature_id 查找对应的测试
+        Args:
+            feature_id: The ID of the feature to run tests for.
+
+        Returns:
+            Tuple[bool, str]: A tuple of (success, output).
         """
         feature = self.state_manager.get_feature(feature_id)
         if not feature:
@@ -68,9 +80,13 @@ class TestRunner:
         return success, output
 
     def verify_feature(self, feature: Dict[str, Any]) -> bool:
-        """验证功能是否完成
+        """Verify if a feature is complete based on its verification rules.
 
-        根据功能的验证规则进行验证
+        Args:
+            feature: The feature dictionary containing verification configuration.
+
+        Returns:
+            bool: True if the feature passed verification, False otherwise.
         """
         feature_id = feature.get("id")
 

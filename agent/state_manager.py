@@ -26,6 +26,11 @@ class StateManager:
     """状态管理器"""
 
     def __init__(self, agent_dir: Optional[str] = None) -> None:
+        """Initialize StateManager.
+
+        Args:
+            agent_dir: Optional path to the .agent directory. Auto-detects if not provided.
+        """
         if agent_dir is None:
             # __file__ is agent/state_manager.py, go up two levels to project root
             agent_dir = str(Path(__file__).parent.parent / ".agent")
@@ -39,7 +44,11 @@ class StateManager:
     # ========== Feature List 操作 ==========
 
     def load_feature_list(self) -> dict[str, Any]:
-        """加载功能列表"""
+        """Load the feature list from feature_list.json.
+
+        Returns:
+            dict[str, Any]: The feature list data, or empty dict if file doesn't exist.
+        """
         if not self.feature_list_path.exists():
             return {"features": []}
 
@@ -47,12 +56,23 @@ class StateManager:
             return cast(dict[str, Any], json.load(f))
 
     def save_feature_list(self, data: dict[str, Any]) -> None:
-        """保存功能列表"""
+        """Save the feature list to feature_list.json.
+
+        Args:
+            data: The feature list data to save.
+        """
         with open(self.feature_list_path, "w", encoding="utf-8") as f:
             json.dump(data, f, indent=2, ensure_ascii=False)
 
     def get_feature(self, feature_id: str) -> Optional[dict[str, Any]]:
-        """获取指定功能"""
+        """Get a specific feature by its ID.
+
+        Args:
+            feature_id: The ID of the feature to retrieve.
+
+        Returns:
+            Optional[dict[str, Any]]: The feature dict if found, None otherwise.
+        """
         data = self.load_feature_list()
         for feature in data.get("features", []):
             if feature.get("id") == feature_id:
@@ -60,7 +80,15 @@ class StateManager:
         return None
 
     def update_feature(self, feature_id: str, updates: dict[str, Any]) -> bool:
-        """更新功能状态（仅允许修改 passes 字段）"""
+        """Update a feature's status. Only 'passes' and 'status' fields can be modified.
+
+        Args:
+            feature_id: The ID of the feature to update.
+            updates: Dict containing 'passes' and/or 'status' fields to update.
+
+        Returns:
+            bool: True if feature was found and updated, False otherwise.
+        """
         data = self.load_feature_list()
         updated = False
 
@@ -79,7 +107,11 @@ class StateManager:
         return updated
 
     def add_feature(self, feature: dict[str, Any]) -> None:
-        """添加新功能"""
+        """Add a new feature to the feature list.
+
+        Args:
+            feature: The feature dictionary to add.
+        """
         data = self.load_feature_list()
         data["features"].append(feature)
         self.save_feature_list(data)
@@ -87,24 +119,41 @@ class StateManager:
     # ========== Progress 操作 ==========
 
     def load_progress(self) -> str:
-        """加载进度记录"""
+        """Load progress records from progress.txt.
+
+        Returns:
+            str: The progress content, or empty string if file doesn't exist.
+        """
         if not self.progress_path.exists():
             return ""
         with open(self.progress_path, "r", encoding="utf-8") as f:
             return f.read()
 
     def save_progress(self, content: str) -> None:
-        """保存进度记录"""
+        """Save progress records to progress.txt.
+
+        Args:
+            content: The progress content to save.
+        """
         with open(self.progress_path, "w", encoding="utf-8") as f:
             f.write(content)
 
     def append_progress(self, entry: str) -> None:
-        """追加进度记录"""
+        """Append a new entry to progress.txt.
+
+        Args:
+            entry: The progress entry to append.
+        """
         with open(self.progress_path, "a", encoding="utf-8") as f:
             f.write(entry + "\n")
 
     def update_progress_summary(self, total: int, completed: int) -> None:
-        """更新进度摘要"""
+        """Update the progress summary in progress.txt.
+
+        Args:
+            total: Total number of features.
+            completed: Number of completed features.
+        """
         data = self.load_feature_list()
         lines = []
 
@@ -132,7 +181,11 @@ class StateManager:
     # ========== State 操作 ==========
 
     def load_state(self) -> dict[str, Any]:
-        """加载当前状态"""
+        """Load the current state from state.json.
+
+        Returns:
+            dict[str, Any]: The current state data, or default state if file doesn't exist.
+        """
         if not self.state_path.exists():
             return {
                 "current_session": {
@@ -150,12 +203,20 @@ class StateManager:
             return cast(dict[str, Any], json.load(f))
 
     def save_state(self, state: dict[str, Any]) -> None:
-        """保存当前状态"""
+        """Save the current state to state.json.
+
+        Args:
+            state: The state dictionary to save.
+        """
         with open(self.state_path, "w", encoding="utf-8") as f:
             json.dump(state, f, indent=2, ensure_ascii=False)
 
     def update_state(self, updates: dict[str, Any]) -> None:
-        """更新状态"""
+        """Update specific fields in the current state.
+
+        Args:
+            updates: Dictionary of fields to update.
+        """
         state = self.load_state()
         state.update(updates)
         self.save_state(state)
@@ -163,7 +224,11 @@ class StateManager:
     # ========== Session History 操作 ==========
 
     def load_session_history(self) -> dict[str, Any]:
-        """加载会话历史"""
+        """Load session history from session_history.json.
+
+        Returns:
+            dict[str, Any]: The session history data, or default empty history if file doesn't exist.
+        """
         if not self.session_history_path.exists():
             return {"sessions": [], "total_sessions": 0}
 
@@ -171,12 +236,20 @@ class StateManager:
             return cast(dict[str, Any], json.load(f))
 
     def save_session_history(self, data: dict[str, Any]) -> None:
-        """保存会话历史"""
+        """Save session history to session_history.json.
+
+        Args:
+            data: The session history data to save.
+        """
         with open(self.session_history_path, "w", encoding="utf-8") as f:
             json.dump(data, f, indent=2, ensure_ascii=False)
 
     def add_session(self, session: dict[str, Any]) -> None:
-        """添加会话记录"""
+        """Add a new session record to session history.
+
+        Args:
+            session: The session dictionary to add.
+        """
         data = self.load_session_history()
         data["sessions"].append(session)
         data["total_sessions"] = len(data["sessions"])
@@ -185,7 +258,11 @@ class StateManager:
     # ========== Config 操作 ==========
 
     def load_config(self) -> dict[str, Any]:
-        """加载配置"""
+        """Load configuration from config.json.
+
+        Returns:
+            dict[str, Any]: The config data, or empty dict if file doesn't exist.
+        """
         if not self.config_path.exists():
             return {}
 
@@ -193,12 +270,24 @@ class StateManager:
             return cast(dict[str, Any], json.load(f))
 
     def save_config(self, config: dict[str, Any]) -> None:
-        """保存配置"""
+        """Save configuration to config.json.
+
+        Args:
+            config: The config dictionary to save.
+        """
         with open(self.config_path, "w", encoding="utf-8") as f:
             json.dump(config, f, indent=2, ensure_ascii=False)
 
     def get_config(self, key: str, default: Any = None) -> Any:
-        """获取配置项"""
+        """Get a specific configuration value.
+
+        Args:
+            key: The configuration key to retrieve.
+            default: Default value if key is not found.
+
+        Returns:
+            Any: The configuration value, or default if not found.
+        """
         config = self.load_config()
         return config.get(key, default)
 
