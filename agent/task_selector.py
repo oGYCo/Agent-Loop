@@ -3,13 +3,17 @@
 从功能列表选取下一任务
 """
 
-from typing import Optional, Any
+from typing import Any, Optional, cast
 
 from .state_manager import StateManager
 
 
 class TaskSelector:
     """任务选择器"""
+
+    # 任务特征类型定义
+    FeatureType = dict[str, Any]
+    FeatureListType = dict[str, Any]
 
     def __init__(self, state_manager: Optional[StateManager] = None) -> None:
         self.state_manager = state_manager or StateManager()
@@ -22,11 +26,11 @@ class TaskSelector:
         2. 按 priority 字段升序排列（数字越小优先级越高）
         3. 返回优先级最高的任务
         """
-        data = self.state_manager.load_feature_list()
-        features = data.get("features", [])
+        data: dict[str, Any] = self.state_manager.load_feature_list()
+        features: list[dict[str, Any]] = cast(list[dict[str, Any]], data.get("features", []))
 
         # 过滤出 pending 且未通过的任务
-        pending_tasks = [
+        pending_tasks: list[dict[str, Any]] = [
             f for f in features
             if f.get("status") == "pending" and not f.get("passes", False)
         ]
@@ -41,8 +45,8 @@ class TaskSelector:
 
     def get_pending_count(self) -> int:
         """获取待完成任务数量"""
-        data = self.state_manager.load_feature_list()
-        features = data.get("features", [])
+        data: dict[str, Any] = self.state_manager.load_feature_list()
+        features: list[dict[str, Any]] = cast(list[dict[str, Any]], data.get("features", []))
         return sum(
             1 for f in features
             if f.get("status") == "pending" and not f.get("passes", False)
@@ -50,8 +54,8 @@ class TaskSelector:
 
     def get_completed_count(self) -> int:
         """获取已完成任务数量"""
-        data = self.state_manager.load_feature_list()
-        features = data.get("features", [])
+        data: dict[str, Any] = self.state_manager.load_feature_list()
+        features: list[dict[str, Any]] = cast(list[dict[str, Any]], data.get("features", []))
         return sum(
             1 for f in features
             if f.get("status") == "completed" or f.get("passes", False)
@@ -59,8 +63,9 @@ class TaskSelector:
 
     def get_total_count(self) -> int:
         """获取总任务数量"""
-        data = self.state_manager.load_feature_list()
-        return len(data.get("features", []))
+        data: dict[str, Any] = self.state_manager.load_feature_list()
+        features: list[dict[str, Any]] = cast(list[dict[str, Any]], data.get("features", []))
+        return len(features)
 
     def mark_task_completed(self, task_id: str) -> bool:
         """标记任务为完成"""
