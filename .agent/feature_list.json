@@ -122,8 +122,8 @@
       "name": "Add more unit tests for state_manager",
       "description": "增加 agent/state_manager.py 的单元测试覆盖率，测试边界情况和错误处理。",
       "priority": 2,
-      "status": "pending",
-      "passes": false,
+      "status": "completed",
+      "passes": true,
       "verify_command": "pytest tests/test_state_manager.py -v",
       "context_files": [
         "agent/state_manager.py",

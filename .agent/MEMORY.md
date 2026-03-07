@@ -399,4 +399,22 @@ I completed the self-review task with the following analysis and actions:
 2. **Priority adjustments for test tasks** (from priority 3 to 2):
    - self-009: Add more unit tests for state_manager
    - self-010: Add more unit tests for task_selector
+
+### 2026-03-07: Adding Unit Tests for state_manager
+
+When adding comprehensive unit tests for `state_manager.py`:
+
+1. **Test coverage areas added**:
+   - Validation tests for `validate_config`: missing fields, invalid types, invalid values, empty documentation_urls
+   - Validation tests for `validate_feature_list`: missing features key, invalid types, empty list, missing fields, invalid priority/status, duplicate IDs
+   - Error handling tests: corrupted JSON files (verifies JSONDecodeError is raised)
+   - Boundary condition tests: empty strings, new file creation, multiple sessions
+   - Partial update tests: updating only passes or only status field
+
+2. **Test patterns**:
+   - Use `pytest.raises(Exception)` to verify exception behavior for error conditions
+   - Test file-based validation by passing None to load from file
+   - Verify partial updates don't modify unrelated fields
+
+3. **Results**: Increased test coverage from 20 to 46 tests, all passing.
  
