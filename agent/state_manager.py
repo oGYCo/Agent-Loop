@@ -16,6 +16,12 @@ class ConfigValidationError(Exception):
     pass
 
 
+class FeatureListValidationError(Exception):
+    """功能列表验证错误"""
+
+    pass
+
+
 class StateManager:
     """状态管理器"""
 
@@ -264,3 +270,113 @@ class StateManager:
             raise ConfigValidationError("\n".join(errors))
 
         return config
+
+    # ========== Feature List Validation ==========
+
+    def validate_feature_list(
+        self, data: Optional[dict[str, Any]] = None
+    ) -> dict[str, Any]:
+        """验证 feature_list.json 完整性
+
+        Args:
+            data: 要验证的 feature_list 数据，如果为 None 则从文件加载
+
+        Returns:
+            验证通过的特征列表字典
+
+        Raises:
+            FeatureListValidationError: 特征列表验证失败
+        """
+        if data is None:
+            data = self.load_feature_list()
+
+        errors: list[str] = []
+
+        # 检查顶层结构
+        if "features" not in data:
+            errors.append("Missing required key: 'features'")
+            raise FeatureListValidationError("\n".join(errors))
+
+        if not isinstance(data["features"], list):
+            errors.append("'features' must be a list")
+            raise FeatureListValidationError("\n".join(errors))
+
+        features = data["features"]
+
+        if not features:
+            errors.append("'features' list cannot be empty")
+
+        # 检查重复的 ID
+        seen_ids: set[str] = set()
+
+        # 定义每个 feature 的必填字段
+        required_fields = {
+            "id": str,
+            "name": str,
+            "description": str,
+            "priority": int,
+            "status": str,
+            "passes": bool,
+            "created_at": str,
+            "updated_at": str,
+        }
+
+        # 定义允许的 status 值
+        valid_statuses = {"pending", "completed", "failed", "in_progress"}
+
+        for idx, feature in enumerate(features):
+            feature_id = feature.get("id", f"index_{idx}")
+
+            # 检查必填字段
+            for field, expected_type in required_fields.items():
+                if field not in feature:
+                    errors.append(
+                        f"Feature '{feature_id}': Missing required field: '{field}'"
+                    )
+                elif not isinstance(feature[field], expected_type):
+                    actual_type = type(feature[field]).__name__
+                    expected_type_name = expected_type.__name__
+                    errors.append(
+                        f"Feature '{feature_id}': Invalid type for '{field}': "
+                        f"expected {expected_type_name}, got {actual_type}"
+                    )
+
+            # 检查 priority 为正整数
+            if "priority" in feature and isinstance(feature["priority"], int):
+                if feature["priority"] <= 0:
+                    errors.append(
+                        f"Feature '{feature_id}': priority must be a positive integer"
+                    )
+
+            # 检查 status 为有效值
+            if "status" in feature and isinstance(feature["status"], str):
+                if feature["status"] not in valid_statuses:
+                    errors.append(
+                        f"Feature '{feature_id}': status must be one of "
+                        f"{valid_statuses}, got '{feature['status']}'"
+                    )
+
+            # 检查 context_files 如果存在，必须是列表
+            if "context_files" in feature:
+                if not isinstance(feature["context_files"], list):
+                    errors.append(
+                        f"Feature '{feature_id}': context_files must be a list"
+                    )
+
+            # 检查 verify_command 如果存在，必须是字符串
+            if "verify_command" in feature:
+                if not isinstance(feature["verify_command"], str):
+                    errors.append(
+                        f"Feature '{feature_id}': verify_command must be a string"
+                    )
+
+            # 检查重复 ID
+            if "id" in feature and isinstance(feature["id"], str):
+                if feature["id"] in seen_ids:
+                    errors.append(f"Duplicate feature ID: '{feature['id']}'")
+                seen_ids.add(feature["id"])
+
+        if errors:
+            raise FeatureListValidationError("\n".join(errors))
+
+        return data

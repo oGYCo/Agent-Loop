@@ -167,9 +167,9 @@
       "name": "Add task validation",
       "description": "为 feature_list.json 添加验证逻辑，确保任务定义的完整性和正确性。",
       "priority": 2,
-      "status": "pending",
-      "passes": false,
-      "verify_command": "python -c \"import json; json.load(open('.agent/feature_list.json'))\"",
+      "status": "completed",
+      "passes": true,
+      "verify_command": "python -c \"from agent.state_manager import StateManager; StateManager().validate_feature_list()\"",
       "context_files": [
         "agent/task_selector.py",
         ".agent/feature_list.json"
