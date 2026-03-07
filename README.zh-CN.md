@@ -49,6 +49,7 @@ Agent-Loop 是一个自主 AI Agent 系统，通过实时流式输出、会话�
 | **配置热重载**   | 支持手动或文件监控方式重新加载配置                    |
 | **优雅关闭**     | 安全处理 SIGINT/SIGTERM 信号                          |
 | **自动审查**     | 任务完成后自动进行任务计划审查                        |
+| **可定制提示词** | 基于模板的提示词系统，支持 `{{variable}}` 变量替换    |
 
 ## 快速开始
 
@@ -96,6 +97,19 @@ python main.py list                         # 列出所有任务
 python main.py status                       # 显示项目状态
 python main.py add "任务名称" -d "描述" -p 1 # 添加新任务
 
+# 提示词管理
+python main.py prompt list                  # 列出所有提示词预设
+python main.py prompt show <key>            # 显示提示词详情
+python main.py prompt set <key>             # 设置活跃提示词
+python main.py prompt add <key> -n "名称"   # 添加新的提示词预设
+python main.py prompt delete <key>          # 删除提示词预设
+
+# 模板管理
+python main.py template list                # 列出所有模板
+python main.py template show <name>         # 显示模板内容
+python main.py template scaffold            # 导出所有模板到 .agent/prompt_templates/
+python main.py template reset <name>        # 重置模板为内置默认值
+
 # 选项
 python main.py --project-dir /path          # 指定项目目录
 python main.py --help                       # 显示帮助信息
@@ -110,6 +124,8 @@ python main.py --help                       # 显示帮助信息
 | `list`   |          | 列出所有任务及其状态和优先级      |
 | `status` |          | 显示项目状态、Git 信息和任务统计  |
 | `add`    |          | 添加新任务到功能列表              |
+| `prompt` |          | 管理提示词预设 (list/show/set/add/delete) |
+| `template` |        | 管理提示词模板 (list/show/scaffold/reset) |
 
 ### Add 命令选项
 
@@ -162,6 +178,7 @@ python main.py add "新功能"
 | 模块                     | 职责                                   |
 | ------------------------ | -------------------------------------- |
 | `agent_core.py`          | Agent 核心逻辑，SDK 集成，任务执行     |
+| `prompt_manager.py`      | 模板引擎、提示词预设、用户可覆盖模板   |
 | `session_manager.py`     | 会话生命周期管理，上下文管理，历史记录 |
 | `state_manager.py`       | 状态持久化到 JSON，配置验证            |
 | `task_selector.py`       | 基于优先级的任务选择                   |
@@ -243,7 +260,7 @@ python main.py --project-dir /path/to/project list
 
 ```json
 {
-  "project_name": "agent-loop",
+  "project_name": "my-project",
   "project_type": "generic",
   "test_command": "pytest",
   "test_pattern": "test_*.py",
@@ -255,19 +272,28 @@ python main.py --project-dir /path/to/project list
   },
   "context_window_limit": 100000,
   "model": "MiniMax-M2.5-highspeed",
-  "session_type": "coder"
+  "session_type": "coder",
+  "context_files": ["README.md", "CLAUDE.md"],
+  "verify_command": "pytest tests/ -x -q",
+  "allowed_tools": ["Read", "Write", "Edit", "Bash", "Glob", "Grep", "MultiEdit"],
+  "mcp_servers": []
 }
 ```
 
 ### 配置选项
 
-| 选项                             | 类型   | 描述                     |
-| -------------------------------- | ------ | ------------------------ |
-| `max_errors_before_intervention` | 整数   | 触发人工干预前的错误次数 |
-| `retry.max_retries`              | 整数   | 任务失败后的最大重试次数 |
-| `retry.retry_interval`           | 整数   | 重试间隔秒数             |
-| `context_window_limit`           | 整数   | 上下文窗口的 Token 限制  |
-| `model`                          | 字符串 | 使用的模型名称           |
+| 选项                             | 类型       | 描述                       |
+| -------------------------------- | ---------- | -------------------------- |
+| `project_name`                   | 字符串     | 提示词模板中使用的项目名称 |
+| `max_errors_before_intervention` | 整数       | 触发人工干预前的错误次数   |
+| `retry.max_retries`              | 整数       | 任务失败后的最大重试次数   |
+| `retry.retry_interval`           | 整数       | 重试间隔秒数               |
+| `context_window_limit`           | 整数       | 上下文窗口的 Token 限制    |
+| `model`                          | 字符串     | 使用的模型名称             |
+| `context_files`                  | 字符串数组 | 系统提示中包含的上下文文件 |
+| `verify_command`                 | 字符串     | 任务完成后的验证命令       |
+| `allowed_tools`                  | 字符串数组 | Agent 允许使用的 SDK 工具  |
+| `mcp_servers`                    | 对象数组   | MCP 服务器配置             |
 
 ## SDK 使用示例
 
@@ -299,6 +325,59 @@ async with ClaudeSDKClient(options=options) as client:
             print(f"Completed: {message.session_id}")
 ```
 
+## 提示词定制
+
+Agent-Loop 使用基于模板的提示词系统。所有提示词支持 `{{variable}}` 变量替换，并可完全自定义。
+
+### 模板解析顺序
+
+1. **用户覆盖**：`.agent/prompt_templates/<name>.md`（最高优先级）
+2. **内置默认**：内嵌在源代码中（兜底）
+
+### 可用模板
+
+| 模板                | 描述                                   |
+| ------------------- | -------------------------------------- |
+| `system`            | 主系统提示（身份、工具、工作流）       |
+| `task`              | 带项目上下文的任务执行提示             |
+| `self_review`       | 任务完成后的计划审查提示               |
+| `memory_cleanup`    | MEMORY.md 清理建议提示                 |
+| `claude_md_cleanup` | CLAUDE.md 清理建议提示                 |
+
+### 系统提示变体
+
+| 变体         | 描述                             |
+| ------------ | -------------------------------- |
+| `default`    | 通用型自主 Agent                 |
+| `coder`      | 专注软件开发                     |
+| `researcher` | 专注研究和文档                   |
+| `reviewer`   | 专注代码审查和质量保证           |
+
+通过 config.json 中的 `session_type` 设置变体。
+
+### 自定义模板
+
+```bash
+# 导出所有模板到 .agent/prompt_templates/
+python main.py template scaffold
+
+# 编辑任意模板文件，例如：
+# .agent/prompt_templates/system.md
+# .agent/prompt_templates/task.md
+
+# 模板中可用的变量：
+# {{project_name}}       - 来自 config.json
+# {{project_structure}}  - 自动扫描的项目目录树
+# {{task_name}}          - 当前任务名称
+# {{task_description}}   - 当前任务描述
+# {{context_files_list}} - config 中 context_files 列出的文件
+# {{current_date}}       - 今天的日期
+# {{feature_list_path}}  - feature_list.json 的路径
+
+# 重置模板为内置默认值
+python main.py template reset system
+```
+
 ## 测试
 
 ```bash
@@ -322,6 +401,7 @@ agent-loop/
 ├── agent/                      # 核心包
 │   ├── __init__.py
 │   ├── agent_core.py           # 核心 Agent 逻辑
+│   ├── prompt_manager.py       # 模板引擎和提示词管理
 │   ├── session_manager.py      # 会话管理
 │   ├── state_manager.py        # 状态持久化
 │   ├── task_selector.py        # 任务选择
@@ -342,9 +422,14 @@ agent-loop/
 └── .agent/                    # 配置目录
     ├── config.json             # 项目配置
     ├── feature_list.json       # 任务列表
+    ├── prompts.json            # 提示词预设
     ├── state.json              # 当前状态
     ├── session_history.json    # 会话历史
-    └── MEMORY.md              # 经验积累
+    ├── MEMORY.md               # 经验积累
+    └── prompt_templates/       # 用户可自定义的提示词模板
+        ├── system.md
+        ├── task.md
+        └── ...
 ```
 
 ## 文档链接

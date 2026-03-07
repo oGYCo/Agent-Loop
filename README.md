@@ -48,6 +48,7 @@ Agent-Loop is an autonomous AI agent system that automates task execution with r
 | **Config Hot Reload**      | Reload configuration without restart (manual or file watch)     |
 | **Graceful Shutdown**      | Handle SIGINT/SIGTERM signals safely                            |
 | **Self-Review**            | Automatic task plan review after each task completion           |
+| **Customizable Prompts**   | Template-based prompt system with `{{variable}}` substitution   |
 
 ## Quick Start
 
@@ -95,6 +96,19 @@ python main.py list                         # List all tasks
 python main.py status                       # Show project status
 python main.py add "Task Name" -d "Desc" -p 1  # Add new task
 
+# Prompt management
+python main.py prompt list                  # List all prompt presets
+python main.py prompt show <key>            # Show prompt details
+python main.py prompt set <key>             # Set active prompt
+python main.py prompt add <key> -n "Name"   # Add new prompt preset
+python main.py prompt delete <key>          # Delete a prompt preset
+
+# Template management
+python main.py template list                # List all templates
+python main.py template show <name>         # Show template content
+python main.py template scaffold            # Export all templates to .agent/prompt_templates/
+python main.py template reset <name>        # Reset template to built-in default
+
 # Options
 python main.py --project-dir /path          # Specify project directory
 python main.py --help                       # Show help message
@@ -109,6 +123,8 @@ python main.py --help                       # Show help message
 | `list`   |          | List all tasks with status and priority       |
 | `status` |          | Show project status, git info, and task stats |
 | `add`    |          | Add new task to feature list                  |
+| `prompt` |          | Manage prompt presets (list/show/set/add/delete) |
+| `template` |        | Manage prompt templates (list/show/scaffold/reset) |
 
 ### Add Command Options
 
@@ -161,6 +177,7 @@ python main.py add "New Feature"
 | Module                   | Responsibility                                       |
 | ------------------------ | ---------------------------------------------------- |
 | `agent_core.py`          | Core agent logic, SDK integration, task execution    |
+| `prompt_manager.py`      | Template engine, prompt presets, user-overridable templates |
 | `session_manager.py`     | Session lifecycle, context management, history       |
 | `state_manager.py`       | State persistence to JSON, config validation         |
 | `task_selector.py`       | Priority-based task selection                        |
@@ -242,7 +259,7 @@ python main.py --project-dir /path/to/project list
 
 ```json
 {
-  "project_name": "agent-loop",
+  "project_name": "my-project",
   "project_type": "generic",
   "test_command": "pytest",
   "test_pattern": "test_*.py",
@@ -254,19 +271,28 @@ python main.py --project-dir /path/to/project list
   },
   "context_window_limit": 100000,
   "model": "MiniMax-M2.5-highspeed",
-  "session_type": "coder"
+  "session_type": "coder",
+  "context_files": ["README.md", "CLAUDE.md"],
+  "verify_command": "pytest tests/ -x -q",
+  "allowed_tools": ["Read", "Write", "Edit", "Bash", "Glob", "Grep", "MultiEdit"],
+  "mcp_servers": []
 }
 ```
 
 ### Configuration Options
 
-| Option                           | Type   | Description                                 |
-| -------------------------------- | ------ | ------------------------------------------- |
-| `max_errors_before_intervention` | int    | Errors before triggering human intervention |
-| `retry.max_retries`              | int    | Maximum retry attempts for failed tasks     |
-| `retry.retry_interval`           | int    | Seconds between retry attempts              |
-| `context_window_limit`           | int    | Token limit for context window              |
-| `model`                          | string | Model name to use                           |
+| Option                           | Type     | Description                                 |
+| -------------------------------- | -------- | ------------------------------------------- |
+| `project_name`                   | string   | Project name used in prompt templates       |
+| `max_errors_before_intervention` | int      | Errors before triggering human intervention |
+| `retry.max_retries`              | int      | Maximum retry attempts for failed tasks     |
+| `retry.retry_interval`           | int      | Seconds between retry attempts              |
+| `context_window_limit`           | int      | Token limit for context window              |
+| `model`                          | string   | Model name to use                           |
+| `context_files`                  | string[] | Files to include in system prompt context   |
+| `verify_command`                 | string   | Command to verify task completion           |
+| `allowed_tools`                  | string[] | SDK tools the agent is allowed to use       |
+| `mcp_servers`                    | object[] | MCP server configurations                   |
 
 ## SDK Usage
 
@@ -298,6 +324,59 @@ async with ClaudeSDKClient(options=options) as client:
             print(f"Completed: {message.session_id}")
 ```
 
+## Prompt Customization
+
+Agent-Loop uses a template-based prompt system. All prompts support `{{variable}}` substitution and can be fully customized.
+
+### Template Resolution Order
+
+1. **User override**: `.agent/prompt_templates/<name>.md` (highest priority)
+2. **Built-in default**: Embedded in source code (fallback)
+
+### Available Templates
+
+| Template            | Description                                    |
+| ------------------- | ---------------------------------------------- |
+| `system`            | Main system prompt (identity, tools, workflow) |
+| `task`              | Task execution prompt with project context     |
+| `self_review`       | Post-task plan review prompt                   |
+| `memory_cleanup`    | MEMORY.md cleanup suggestions prompt           |
+| `claude_md_cleanup` | CLAUDE.md cleanup suggestions prompt           |
+
+### System Prompt Variants
+
+| Variant      | Description                                        |
+| ------------ | -------------------------------------------------- |
+| `default`    | General-purpose autonomous agent                   |
+| `coder`      | Software development focused                       |
+| `researcher` | Research and documentation focused                 |
+| `reviewer`   | Code review and quality assurance focused          |
+
+Set the variant via `session_type` in config.json.
+
+### Customizing Templates
+
+```bash
+# Export all templates to .agent/prompt_templates/
+python main.py template scaffold
+
+# Edit any template file, e.g.:
+# .agent/prompt_templates/system.md
+# .agent/prompt_templates/task.md
+
+# Available variables in templates:
+# {{project_name}}       - From config.json
+# {{project_structure}}  - Auto-scanned project tree
+# {{task_name}}          - Current task name
+# {{task_description}}   - Current task description
+# {{context_files_list}} - Files listed in config context_files
+# {{current_date}}       - Today's date
+# {{feature_list_path}}  - Path to feature_list.json
+
+# Reset a template to built-in default
+python main.py template reset system
+```
+
 ## Testing
 
 ```bash
@@ -321,6 +400,7 @@ agent-loop/
 ├── agent/                      # Core package
 │   ├── __init__.py
 │   ├── agent_core.py           # Core agent logic
+│   ├── prompt_manager.py       # Template engine & prompt management
 │   ├── session_manager.py      # Session management
 │   ├── state_manager.py        # State persistence
 │   ├── task_selector.py        # Task selection
@@ -341,9 +421,14 @@ agent-loop/
 └── .agent/                    # Configuration directory
     ├── config.json             # Project configuration
     ├── feature_list.json       # Task list
+    ├── prompts.json            # Prompt presets
     ├── state.json              # Current state
     ├── session_history.json    # Session history
-    └── MEMORY.md              # Accumulated experience
+    ├── MEMORY.md               # Accumulated experience
+    └── prompt_templates/       # User-customizable prompt templates
+        ├── system.md
+        ├── task.md
+        └── ...
 ```
 
 ## Documentation Links

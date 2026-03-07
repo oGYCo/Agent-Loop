@@ -44,6 +44,16 @@ python main.py status
 
 # Initialize project
 python main.py init
+
+# Template management
+python main.py template list              # List all prompt templates
+python main.py template show <name>       # Show template content
+python main.py template scaffold          # Export templates to .agent/prompt_templates/
+python main.py template reset <name>      # Reset template to built-in default
+
+# Prompt preset management
+python main.py prompt list                # List prompt presets
+python main.py prompt set <key>           # Set active prompt
 ```
 
 ## Architecture
@@ -53,6 +63,7 @@ python main.py init
 | Module | Responsibility |
 |--------|----------------|
 | `agent/agent_core.py` | Core agent logic, SDK integration, task execution |
+| `agent/prompt_manager.py` | Template engine, prompt presets, user-overridable prompt templates |
 | `agent/session_manager.py` | Session lifecycle, context management |
 | `agent/state_manager.py` | State persistence to JSON files in `.agent/` |
 | `agent/task_selector.py` | Priority-based task selection |
@@ -73,12 +84,22 @@ main.py → AgentCore.run_agent_loop()
 
 ### Configuration (`.agent/`)
 
-- `config.json` - Model, API, documentation URLs
+- `config.json` - Model, API, tools, context_files, verify_command, mcp_servers
 - `feature_list.json` - Task list with priorities
-- `prompts.json` - Prompt templates for different task types
+- `prompts.json` - Named prompt presets (active prompt selection)
+- `prompt_templates/` - User-overridable prompt templates (`.md` files)
 - `state.json` - Current session state
 - `session_history.json` - Completed sessions
 - `MEMORY.md` - Accumulated experience
+
+### Prompt Template System
+
+All prompts use a template engine with `{{variable}}` substitution:
+- **Template resolution**: User override (`.agent/prompt_templates/<name>.md`) → Built-in defaults
+- **Available templates**: `system`, `task`, `self_review`, `memory_cleanup`, `claude_md_cleanup`
+- **System prompt variants**: `default`, `coder`, `researcher`, `reviewer` (set via `session_type` in config)
+- **Key variables**: `{{project_name}}`, `{{project_structure}}`, `{{task_name}}`, `{{task_description}}`, `{{context_files_list}}`
+- **Config-driven SDK options**: `allowed_tools`, `mcp_servers`, `verify_command`, `context_files` all read from config.json
 
 ### SDK Integration Pattern
 
