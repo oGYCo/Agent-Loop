@@ -92,8 +92,8 @@
       "name": "Add caching mechanism to prompt_manager.py",
       "description": "当前 prompt_manager.py 每次调用 load_template() 都会读取文件，这对于频繁调用的场景会导致不必要的 I/O 操作。建议添加模板缓存机制，可以设置缓存过期时间或提供手动刷新方法。",
       "priority": 9,
-      "status": "pending",
-      "passes": false,
+      "status": "completed",
+      "passes": true,
       "context": "读取 agent/prompt_manager.py 文件，找到 load_template 方法。添加一个模板缓存字典（_template_cache），在加载模板时检查缓存，只有缓存不存在或需要刷新时才读取文件。",
       "created_at": "2026-03-07 21:00:00",
       "updated_at": "2026-03-07"
@@ -103,8 +103,8 @@
       "name": "Refactor run_agent loop state management in main.py",
       "description": "在 main.py:149-193 的 run_agent 函数中，每次循环都创建新的 StateManager 实例并重新加载 state，这可能导致覆盖 agent 内部的状态变更。建议在循环外部创建单个 StateManager 实例，并确保状态变更正确同步。",
       "priority": 10,
-      "status": "pending",
-      "passes": false,
+      "status": "completed",
+      "passes": true,
       "context": "读取 main.py 文件，找到 run_agent 函数（约第149-193行）。重构状态管理逻辑：在循环外部创建 StateManager 实例，将状态同步逻辑提取为独立方法。",
       "created_at": "2026-03-07 21:00:00",
       "updated_at": "2026-03-07"
