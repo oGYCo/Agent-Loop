@@ -173,7 +173,27 @@
       "start_time": "2026-03-07T16:08:06.865859",
       "agent_type": "coder",
       "status": "started"
+    },
+    {
+      "id": "20260307_161921",
+      "start_time": "2026-03-07T16:19:21.173342",
+      "agent_type": "coder",
+      "status": "started"
+    },
+    {
+      "id": "20260307_163451",
+      "start_time": "2026-03-07T16:34:51.443897",
+      "agent_type": "coder",
+      "status": "completed",
+      "end_time": "2026-03-07T17:19:51.813383",
+      "summary": {
+        "completed": 7,
+        "errors": 0,
+        "iterations": 7,
+        "session_id": "20260307_163451",
+        "sdk_session_id": "04ad6b74-ed70-486a-8d93-408cc78bd131"
+      }
     }
   ],
-  "total_sessions": 20
+  "total_sessions": 22
 }

@@ -321,6 +321,8 @@ Or via `env` parameter in ClaudeAgentOptions.
 
 
 
+
+
 2026-03-07: Task Plan Self-Review
 
 When reviewing the task plan (feature_list.json):
@@ -806,7 +808,10 @@ Changes Made
 
 ---
 
-### 2026-03-07 - Add configuration hot reload (self-030)
+
+---
+
+2026-03-07 - Add configuration hot reload (self-030)
 
 **任务描述**: 添加配置热重载功能。在不重启 agent 的情况下重新加载配置文件（config.json, feature_list.json）。使用文件监控或手动触发。
 
@@ -847,7 +852,10 @@ Changes Made
 
 ---
 
-### 2026-03-07 - Add performance monitoring (self-028)
+
+---
+
+2026-03-07 - Add performance monitoring (self-028)
 
 **任务描述**: 添加性能监控功能，跟踪任务执行时间、会话时长、系统资源使用等指标。添加日志记录关键性能数据。
 
@@ -856,10 +864,37 @@ Changes Made
 
 ## Summary
 
-### Changes Made
+
+---
+
+Changes Made
 
 1. **Created `agent/performance_monitor.py`** - A new performance monitoring module with:
    - `PerformanceMetrics` class: Collects task timings and session statistics
    - `PerformanceMonitor` class: Provides context manager and decorator for tracking operations
    - Uses Python's built-in `resource` module for system metrics (CPU time, memory usage)
    - Logs performance
+
+---
+
+### 2026-03-07 - Add configuration hot reload (self-030)
+
+**任务描述**: 添加配置热重载功能。在不重启 agent 的情况下重新加载配置文件（config.json, feature_list.json）。使用文件监控或手动触发。
+
+**执行结果**: completed
+**执行消息**: ## Summary
+
+Successfully implemented configuration hot reload feature (self-030):
+
+### Changes Made
+
+1. **Created `agent/config_reloader.py`** - New module with:
+   - `ConfigReloader` class for handling configuration reloading
+   - `ConfigWatcher` class for optional file watching (polling-based)
+   - File modification time tracking for change detection
+   - Callback support for reload notifications
+   - No external dependencies required
+
+2. **Added `reload` command to main.py**:
+   ```bash
+   # 

@@ -30,6 +30,7 @@ class TestTestRunner:
     @pytest.fixture
     def test_runner(self, state_manager):
         """Create TestRunner with test state manager"""
+        state_manager.save_config({"test_command": "echo done"})
         return TestRunner(state_manager)
 
     def test_run_tests_custom_command(self, test_runner):

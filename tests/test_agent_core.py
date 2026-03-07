@@ -184,12 +184,13 @@ class TestAgentCore:
     @patch('agent.agent_core.asyncio')
     def test_execute_task(self, mock_asyncio, agent_core):
         """Test execute task (synchronous wrapper)"""
-        # Mock the async execution
-        mock_asyncio.run = Mock(return_value={
+        # Mock the async execution - use Mock with side_effect to close coroutine
+        mock_run = Mock(side_effect=lambda coro: coro.close() or {
             "task_id": "feature-001",
             "status": "completed",
             "message": "Done"
         })
+        mock_asyncio.run = mock_run
 
         task = {"id": "feature-001", "name": "Test"}
         result = agent_core.execute_task(task)
@@ -458,11 +459,14 @@ class TestAgentCore:
     @patch('agent.agent_core.asyncio')
     def test_execute_task_with_failed_result(self, mock_asyncio, agent_core):
         """Test execute task with failed result"""
-        mock_asyncio.run = Mock(return_value={
-            "task_id": "feature-001",
-            "status": "failed",
-            "error": "Task failed"
-        })
+        def mock_run(coro):
+            coro.close()
+            return {
+                "task_id": "feature-001",
+                "status": "failed",
+                "error": "Task failed"
+            }
+        mock_asyncio.run = mock_run
 
         task = {"id": "feature-001", "name": "Test"}
         result = agent_core.execute_task(task)
@@ -472,11 +476,14 @@ class TestAgentCore:
     @patch('agent.agent_core.asyncio')
     def test_execute_task_with_error_result(self, mock_asyncio, agent_core):
         """Test execute task with error in result"""
-        mock_asyncio.run = Mock(return_value={
-            "task_id": "feature-001",
-            "status": "error",
-            "message": "Error occurred"
-        })
+        def mock_run(coro):
+            coro.close()
+            return {
+                "task_id": "feature-001",
+                "status": "error",
+                "message": "Error occurred"
+            }
+        mock_asyncio.run = mock_run
 
         task = {"id": "feature-001", "name": "Test"}
         result = agent_core.execute_task(task)
@@ -486,10 +493,13 @@ class TestAgentCore:
     @patch('agent.agent_core.asyncio')
     def test_execute_task_preserves_task_info(self, mock_asyncio, agent_core):
         """Test that execute_task preserves task information"""
-        mock_asyncio.run = Mock(return_value={
-            "task_id": "feature-001",
-            "status": "completed"
-        })
+        def mock_run(coro):
+            coro.close()
+            return {
+                "task_id": "feature-001",
+                "status": "completed"
+            }
+        mock_asyncio.run = mock_run
 
         task = {
             "id": "feature-001",

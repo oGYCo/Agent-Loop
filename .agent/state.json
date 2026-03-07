@@ -1,10 +1,10 @@
 {
   "current_session": {
-    "id": "20260307_160806",
-    "start_time": "2026-03-07T16:08:06.848851",
+    "id": "20260307_163451",
+    "start_time": "2026-03-07T16:34:51.427445",
     "agent_type": "coder"
   },
-  "current_task": "self-review-20260307161341",
+  "current_task": "self-030",
   "error_count": 0,
   "last_error": null,
   "context_used": 0
