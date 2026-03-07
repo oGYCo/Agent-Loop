@@ -2,8 +2,6 @@
   <img src="assets/logo.svg" alt="Agent-Loop" width="280" />
 </p>
 
-<h1 align="center">Agent-Loop</h1>
-
 <p align="center">
   <em>基于 Claude Agent SDK 构建的生产级自主 AI Agent 系统，支持 MiniMax API 后端</em>
 </p>

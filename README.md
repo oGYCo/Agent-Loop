@@ -2,8 +2,6 @@
   <img src="assets/logo.svg" alt="Agent-Loop" width="280" />
 </p>
 
-<h1 align="center">Agent-Loop</h1>
-
 <p align="center">
   <em>A production-ready autonomous AI agent system powered by Claude Agent SDK with MiniMax API backend</em>
 </p>
