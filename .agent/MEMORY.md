@@ -229,6 +229,8 @@ Or via `env` parameter in ClaudeAgentOptions.
 
 
 
+
+
 2026-03-07 - Add type annotations to state_manager.py (self-004)
 
 **任务描述**: 使用 mypy 检查 agent/state_manager.py 的类型错误，然后添加完整的类型注解。
@@ -595,7 +597,10 @@ Verification
 
 ---
 
-### 2026-03-07 - Add comprehensive tests for agent_core.py (self-021)
+
+---
+
+2026-03-07 - Add comprehensive tests for agent_core.py (self-021)
 
 **任务描述**: 为 agent_core.py 增加全面的单元测试，覆盖核心方法：initialize_session, gather_context, complete_session, execute_task, verify_task。测试各种边界情况和错误处理。
 
@@ -604,7 +609,10 @@ Verification
 
 Successfully added comprehensive unit tests for `agent_core.py`. Here's what was accomplished:
 
-### Tests Added (24 new test cases)
+
+---
+
+Tests Added (24 new test cases)
 
 **initialize_session edge cases:**
 - `test_initialize_session_with_existing_session` - Tests session creation/reuse
@@ -616,7 +624,10 @@ Successfully added comprehensive unit tests for `agent_core.py`. Here's what was
 
 ---
 
-### 2026-03-07 - Update README.md with current features (self-025)
+
+---
+
+2026-03-07 - Update README.md with current features (self-025)
 
 **任务描述**: 更新 README.md，添加项目最新功能介绍、使用方法、配置说明和示例。确保文档与代码同步。
 
@@ -629,3 +640,56 @@ Successfully added comprehensive unit tests for `agent_core.py`. Here's what was
 - 项目结构图和架构说明有助于理解系统设计
 
 **改进建议**: 无
+
+---
+
+### 2026-03-07 - Update README.md with current features (self-025)
+
+**任务描述**: 更新 README.md，添加项目最新功能介绍、使用方法、配置说明和示例。确保文档与代码同步。
+
+**执行结果**: completed
+**执行消息**: ## Summary
+
+I've successfully completed the task **self-025: Update README.md with current features**. Here's what was done:
+
+### Changes Made
+
+1. **Updated README.md** with:
+   - Complete CLI Reference with all commands (`init`, `run`, `list`, `add`, `status`)
+   - Command Options table with detailed descriptions
+   - Backwards Compatibility section for legacy flags (`--init`, `--run`)
+   - New **Usage Examples** section with:
+     - Basic workflow example
+     - Adding new tasks example
+
+---
+
+### 2026-03-07 - Code review for all core modules (self-029)
+
+**任务描述**: 对所有核心模块进行代码审查，包括：state_manager, task_selector, git_helper, session_manager, human_intervention。检查代码质量、一致性和潜在问题。
+
+**执行结果**: completed
+
+**代码审查结果**:
+
+| Module | Status | Issues |
+|--------|--------|--------|
+| state_manager.py | ✅ Good | Minor: Mixed language comments, no file I/O error handling |
+| task_selector.py | ⚠️ Fixed | Fixed: Boolean comparison improved to use `is True` |
+| git_helper.py | ✅ Good | Minor: Import order (subprocess before os), print vs logging |
+| session_manager.py | ✅ Good | Minor: Summary uses "system" role, no JSON error handling |
+| human_intervention.py | ✅ Good | Medium: Uses `exit(1)` not library-friendly, blocking input() |
+
+**修复内容**:
+- 在 `task_selector.py` 的 `get_completed_count` 方法中使用 `is True` 进行更严格的布尔比较
+- 添加英文 docstring 保持代码风格一致
+
+**学到的经验**:
+- 使用 `is True` 而非 `== True` 进行布尔比较更加安全，避免truthy值问题
+- mypy 类型检查通过是代码质量的重要指标
+- 所有测试通过是功能正确性的保障
+
+**改进建议**:
+- human_intervention.py 中的 `exit(1)` 应改为抛出异常
+- 考虑使用 logging 替代 print 语句
+- 为文件 I/O 操作添加错误处理
