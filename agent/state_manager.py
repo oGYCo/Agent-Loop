@@ -83,11 +83,11 @@ class StateManager:
         return None
 
     def update_feature(self, feature_id: str, updates: dict[str, Any]) -> bool:
-        """Update a feature's status. Only 'passes' and 'status' fields can be modified.
+        """Update a feature's status. Only 'passes', 'status', and 'priority' fields can be modified.
 
         Args:
             feature_id: The ID of the feature to update.
-            updates: Dict containing 'passes' and/or 'status' fields to update.
+            updates: Dict containing 'passes', 'status', and/or 'priority' fields to update.
 
         Returns:
             bool: True if feature was found and updated, False otherwise.
@@ -97,11 +97,13 @@ class StateManager:
 
         for feature in data.get("features", []):
             if feature.get("id") == feature_id:
-                # 只允许修改 passes 字段
+                # 只允许修改 passes, status, priority 字段
                 if "passes" in updates:
                     feature["passes"] = updates["passes"]
                 if "status" in updates:
                     feature["status"] = updates["status"]
+                if "priority" in updates:
+                    feature["priority"] = updates["priority"]
                 feature["updated_at"] = datetime.now().strftime("%Y-%m-%d")
                 updated = True
 

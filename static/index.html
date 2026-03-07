@@ -19,7 +19,7 @@
         }
 
         .container {
-            max-width: 1400px;
+            max-width: 1600px;
             margin: 0 auto;
             padding: 20px;
         }
@@ -36,6 +36,38 @@
         header h1 {
             font-size: 24px;
             color: #4fc3f7;
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .view-toggle {
+            display: flex;
+            background: #16213e;
+            border-radius: 6px;
+            overflow: hidden;
+        }
+
+        .view-toggle button {
+            padding: 8px 16px;
+            border: none;
+            background: transparent;
+            color: #888;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+
+        .view-toggle button.active {
+            background: #4fc3f7;
+            color: #000;
+        }
+
+        .view-toggle button:hover:not(.active) {
+            background: #333;
         }
 
         .status-indicator {
@@ -116,8 +148,9 @@
             transition: width 0.3s ease;
         }
 
+        /* Task List View */
         .task-list {
-            max-height: 400px;
+            max-height: 500px;
             overflow-y: auto;
         }
 
@@ -128,6 +161,13 @@
             background: #1a1a2e;
             border-radius: 6px;
             margin-bottom: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .task-item:hover {
+            background: #252542;
+            transform: translateX(4px);
         }
 
         .task-priority {
@@ -141,6 +181,7 @@
             font-size: 12px;
             font-weight: 600;
             margin-right: 12px;
+            flex-shrink: 0;
         }
 
         .task-priority.high {
@@ -157,17 +198,23 @@
 
         .task-info {
             flex: 1;
+            min-width: 0;
         }
 
         .task-name {
             font-size: 14px;
             font-weight: 500;
             margin-bottom: 4px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
         .task-desc {
-            font-size: 12px;
-            color: #888;
+            font-size: 12px color: #888;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
         .task-status {
@@ -175,6 +222,8 @@
             border-radius: 12px;
             font-size: 11px;
             font-weight: 500;
+            margin-left: 12px;
+            flex-shrink: 0;
         }
 
         .task-status.pending {
@@ -195,6 +244,142 @@
         .task-status.failed {
             background: #f44336;
             color: #fff;
+        }
+
+        /* Kanban Board View */
+        .board-view {
+            display: none;
+            gap: 16px;
+            overflow-x: auto;
+            padding-bottom: 16px;
+        }
+
+        .board-view.active {
+            display: flex;
+        }
+
+        .list-view {
+            display: block;
+        }
+
+        .list-view.hidden {
+            display: none;
+        }
+
+        .board-column {
+            min-width: 280px;
+            max-width: 320px;
+            background: #16213e;
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            max-height: 600px;
+        }
+
+        .board-column-header {
+            padding: 16px;
+            border-bottom: 1px solid #333;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .board-column-title {
+            font-size: 14px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .board-column-count {
+            background: #333;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 12px;
+            color: #888;
+        }
+
+        .board-column-content {
+            padding: 12px;
+            flex: 1;
+            overflow-y: auto;
+            min-height: 200px;
+        }
+
+        .board-column-content.drag-over {
+            background: rgba(79, 195, 247, 0.1);
+            border: 2px dashed #4fc3f7;
+            border-radius: 4px;
+        }
+
+        .board-task {
+            background: #1a1a2e;
+            border-radius: 6px;
+            padding: 12px;
+            margin-bottom: 8px;
+            cursor: grab;
+            transition: all 0.2s;
+        }
+
+        .board-task:hover {
+            background: #252542;
+        }
+
+        .board-task.dragging {
+            opacity: 0.5;
+            cursor: grabbing;
+        }
+
+        .board-task-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+
+        .board-task-priority {
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #333;
+            border-radius: 50%;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .board-task-priority.high {
+            background: #f44336;
+        }
+
+        .board-task-priority.medium {
+            background: #ff9800;
+        }
+
+        .board-task-priority.low {
+            background: #4caf50;
+        }
+
+        .board-task-id {
+            font-size: 11px;
+            color: #666;
+        }
+
+        .board-task-name {
+            font-size: 13px;
+            font-weight: 500;
+            margin-bottom: 4px;
+        }
+
+        .board-task-desc {
+            font-size: 11px;
+            color: #888;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
         }
 
         .log-container {
@@ -276,9 +461,138 @@
             gap: 12px;
         }
 
+        /* Task Detail Modal */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .modal {
+            background: #16213e;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 600px;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+        }
+
+        .modal-header {
+            padding: 20px;
+            border-bottom: 1px solid #333;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .modal-header h3 {
+            font-size: 18px;
+            color: #4fc3f7;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            color: #888;
+            font-size: 24px;
+            cursor: pointer;
+            padding: 0;
+            line-height: 1;
+        }
+
+        .modal-close:hover {
+            color: #fff;
+        }
+
+        .modal-body {
+            padding: 20px;
+        }
+
+        .modal-field {
+            margin-bottom: 16px;
+        }
+
+        .modal-label {
+            font-size: 12px;
+            color: #888;
+            margin-bottom: 4px;
+        }
+
+        .modal-value {
+            font-size: 14px;
+            color: #eee;
+        }
+
+        .modal-actions {
+            padding: 16px 20px;
+            border-top: 1px solid #333;
+            display: flex;
+            gap: 12px;
+            justify-content: flex-end;
+        }
+
+        .btn-secondary {
+            background: #333;
+            color: #eee;
+        }
+
+        .btn-secondary:hover {
+            background: #444;
+        }
+
+        .btn-danger {
+            background: #f44336;
+            color: #fff;
+        }
+
+        .btn-danger:hover {
+            background: #d32f2f;
+        }
+
+        .status-select {
+            background: #1a1a2e;
+            color: #eee;
+            border: 1px solid #333;
+            border-radius: 4px;
+            padding: 8px 12px;
+            font-size: 14px;
+            width: 100%;
+        }
+
+        .priority-input {
+            background: #1a1a2e;
+            color: #eee;
+            border: 1px solid #333;
+            border-radius: 4px;
+            padding: 8px 12px;
+            font-size: 14px;
+            width: 80px;
+        }
+
         @media (max-width: 768px) {
             .grid {
                 grid-template-columns: 1fr;
+            }
+
+            .board-view {
+                flex-direction: column;
+            }
+
+            .board-column {
+                max-width: 100%;
+                min-width: auto;
             }
         }
     </style>
@@ -287,9 +601,15 @@
     <div class="container">
         <header>
             <h1>Agent-Loop Dashboard</h1>
-            <div class="status-indicator">
-                <div class="status-dot" id="ws-status"></div>
-                <span id="ws-text">Connecting...</span>
+            <div class="header-actions">
+                <div class="view-toggle">
+                    <button id="view-list" class="active" onclick="switchView('list')">列表</button>
+                    <button id="view-board" onclick="switchView('board')">看板</button>
+                </div>
+                <div class="status-indicator">
+                    <div class="status-dot" id="ws-status"></div>
+                    <span id="ws-text">Connecting...</span>
+                </div>
             </div>
         </header>
 
@@ -336,15 +656,61 @@
                 </div>
             </div>
 
-            <!-- Task List Panel -->
+            <!-- Task Panel -->
             <div class="panel">
-                <h2>Task List</h2>
+                <h2>Tasks</h2>
                 <div class="actions" style="margin-bottom: 16px;">
                     <button class="btn btn-primary" onclick="loadTasks()">Refresh</button>
                 </div>
-                <div class="task-list" id="task-list">
+
+                <!-- List View -->
+                <div class="task-list list-view" id="task-list">
                     <div style="text-align: center; padding: 40px; color: #666;">
                         Loading tasks...
+                    </div>
+                </div>
+
+                <!-- Board View -->
+                <div class="board-view" id="task-board">
+                    <div class="board-column" data-status="pending">
+                        <div class="board-column-header">
+                            <div class="board-column-title">
+                                <span style="color: #888;">&#9679;</span> Pending
+                            </div>
+                            <span class="board-column-count" id="count-pending">0</span>
+                        </div>
+                        <div class="board-column-content" data-status="pending" ondrop="drop(event)" ondragover="allowDrop(event)" ondragleave="dragLeave(event)">
+                        </div>
+                    </div>
+                    <div class="board-column" data-status="in_progress">
+                        <div class="board-column-header">
+                            <div class="board-column-title">
+                                <span style="color: #ff9800;">&#9679;</span> In Progress
+                            </div>
+                            <span class="board-column-count" id="count-in_progress">0</span>
+                        </div>
+                        <div class="board-column-content" data-status="in_progress" ondrop="drop(event)" ondragover="allowDrop(event)" ondragleave="dragLeave(event)">
+                        </div>
+                    </div>
+                    <div class="board-column" data-status="completed">
+                        <div class="board-column-header">
+                            <div class="board-column-title">
+                                <span style="color: #4caf50;">&#9679;</span> Completed
+                            </div>
+                            <span class="board-column-count" id="count-completed">0</span>
+                        </div>
+                        <div class="board-column-content" data-status="completed" ondrop="drop(event)" ondragover="allowDrop(event)" ondragleave="dragLeave(event)">
+                        </div>
+                    </div>
+                    <div class="board-column" data-status="failed">
+                        <div class="board-column-header">
+                            <div class="board-column-title">
+                                <span style="color: #f44336;">&#9679;</span> Failed
+                            </div>
+                            <span class="board-column-count" id="count-failed">0</span>
+                        </div>
+                        <div class="board-column-content" data-status="failed" ondrop="drop(event)" ondragover="allowDrop(event)" ondragleave="dragLeave(event)">
+                        </div>
                     </div>
                 </div>
             </div>
@@ -361,9 +727,68 @@
         </div>
     </div>
 
+    <!-- Task Detail Modal -->
+    <div class="modal-overlay" id="task-modal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>Task Details</h3>
+                <button class="modal-close" onclick="closeModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="modal-field">
+                    <div class="modal-label">ID</div>
+                    <div class="modal-value" id="modal-task-id"></div>
+                </div>
+                <div class="modal-field">
+                    <div class="modal-label">Name</div>
+                    <div class="modal-value" id="modal-task-name"></div>
+                </div>
+                <div class="modal-field">
+                    <div class="modal-label">Description</div>
+                    <div class="modal-value" id="modal-task-desc"></div>
+                </div>
+                <div class="modal-field">
+                    <div class="modal-label">Status</div>
+                    <select class="status-select" id="modal-task-status" onchange="updateTaskField('status', this.value)">
+                        <option value="pending">Pending</option>
+                        <option value="in_progress">In Progress</option>
+                        <option value="completed">Completed</option>
+                        <option value="failed">Failed</option>
+                    </select>
+                </div>
+                <div class="modal-field">
+                    <div class="modal-label">Priority (1=highest)</div>
+                    <input type="number" class="priority-input" id="modal-task-priority" min="1" max="99" onchange="updateTaskField('priority', parseInt(this.value))">
+                </div>
+                <div class="modal-field">
+                    <div class="modal-label">Verified</div>
+                    <div class="modal-value" id="modal-task-passes"></div>
+                </div>
+                <div class="modal-field">
+                    <div class="modal-label">Created</div>
+                    <div class="modal-value" id="modal-task-created"></div>
+                </div>
+                <div class="modal-field">
+                    <div class="modal-label">Updated</div>
+                    <div class="modal-value" id="modal-task-updated"></div>
+                </div>
+                <div class="modal-field">
+                    <div class="modal-label">Verify Command</div>
+                    <div class="modal-value" id="modal-task-verify"></div>
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-danger" onclick="deleteTask()">Delete</button>
+                <button class="btn btn-secondary" onclick="closeModal()">Close</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         let ws = null;
         let reconnectTimer = null;
+        let currentTaskId = null;
+        let tasks = [];
 
         // Connect to WebSocket
         function connectWebSocket() {
@@ -502,39 +927,247 @@
         async function loadTasks() {
             try {
                 const response = await fetch('/tasks');
-                const tasks = await response.json();
+                tasks = await response.json();
 
-                const taskList = document.getElementById('task-list');
-
-                if (tasks.length === 0) {
-                    taskList.innerHTML = `
-                        <div style="text-align: center; padding: 40px; color: #666;">
-                            No tasks found
-                        </div>
-                    `;
-                    return;
-                }
-
-                taskList.innerHTML = tasks.map(task => {
-                    const priorityClass = task.priority <= 3 ? 'high' : (task.priority <= 6 ? 'medium' : 'low');
-
-                    return `
-                        <div class="task-item">
-                            <div class="task-priority ${priorityClass}">${task.priority}</div>
-                            <div class="task-info">
-                                <div class="task-name">${escapeHtml(task.name)}</div>
-                                <div class="task-desc">${escapeHtml(task.description || '')}</div>
-                            </div>
-                            <div class="task-status ${task.status}">${task.status}</div>
-                        </div>
-                    `;
-                }).join('');
+                renderListView();
+                renderBoardView();
 
                 addLog('info', `Loaded ${tasks.length} tasks`);
             } catch (e) {
                 addLog('error', `Failed to load tasks: ${e.message}`);
             }
         }
+
+        // Render list view
+        function renderListView() {
+            const taskList = document.getElementById('task-list');
+
+            if (tasks.length === 0) {
+                taskList.innerHTML = `
+                    <div style="text-align: center; padding: 40px; color: #666;">
+                        No tasks found
+                    </div>
+                `;
+                return;
+            }
+
+            taskList.innerHTML = tasks.map(task => {
+                const priorityClass = task.priority <= 3 ? 'high' : (task.priority <= 6 ? 'medium' : 'low');
+
+                return `
+                    <div class="task-item" onclick="openTaskModal('${task.id}')">
+                        <div class="task-priority ${priorityClass}">${task.priority}</div>
+                        <div class="task-info">
+                            <div class="task-name">${escapeHtml(task.name)}</div>
+                            <div class="task-desc">${escapeHtml(task.description || '')}</div>
+                        </div>
+                        <div class="task-status ${task.status}">${task.status}</div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Render board view
+        function renderBoardView() {
+            const columns = {
+                pending: document.querySelector('.board-column-content[data-status="pending"]'),
+                in_progress: document.querySelector('.board-column-content[data-status="in_progress"]'),
+                completed: document.querySelector('.board-column-content[data-status="completed"]'),
+                failed: document.querySelector('.board-column-content[data-status="failed"]')
+            };
+
+            const counts = { pending: 0, in_progress: 0, completed: 0, failed: 0 };
+
+            // Clear columns
+            Object.values(columns).forEach(col => col.innerHTML = '');
+
+            // Sort tasks by priority within each status
+            const sortedTasks = [...tasks].sort((a, b) => a.priority - b.priority);
+
+            sortedTasks.forEach(task => {
+                const status = task.status || 'pending';
+                const col = columns[status];
+                if (col) {
+                    const priorityClass = task.priority <= 3 ? 'high' : (task.priority <= 6 ? 'medium' : 'low');
+
+                    const taskEl = document.createElement('div');
+                    taskEl.className = 'board-task';
+                    taskEl.draggable = true;
+                    taskEl.dataset.taskId = task.id;
+                    taskEl.dataset.priority = task.priority;
+
+                    taskEl.innerHTML = `
+                        <div class="board-task-header">
+                            <div class="board-task-priority ${priorityClass}">${task.priority}</div>
+                            <div class="board-task-id">${task.id}</div>
+                        </div>
+                        <div class="board-task-name">${escapeHtml(task.name)}</div>
+                        <div class="board-task-desc">${escapeHtml(task.description || '')}</div>
+                    `;
+
+                    // Drag events
+                    taskEl.addEventListener('dragstart', dragStart);
+                    taskEl.addEventListener('dragend', dragEnd);
+                    taskEl.addEventListener('click', () => openTaskModal(task.id));
+
+                    col.appendChild(taskEl);
+                    counts[status] = (counts[status] || 0) + 1;
+                }
+            });
+
+            // Update counts
+            document.getElementById('count-pending').textContent = counts.pending;
+            document.getElementById('count-in_progress').textContent = counts.in_progress;
+            document.getElementById('count-completed').textContent = counts.completed;
+            document.getElementById('count-failed').textContent = counts.failed;
+        }
+
+        // Drag and drop functions
+        let draggedTask = null;
+
+        function dragStart(e) {
+            draggedTask = e.target;
+            e.target.classList.add('dragging');
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/plain', e.target.dataset.taskId);
+        }
+
+        function dragEnd(e) {
+            e.target.classList.remove('dragging');
+            document.querySelectorAll('.board-column-content').forEach(col => {
+                col.classList.remove('drag-over');
+            });
+        }
+
+        function allowDrop(e) {
+            e.preventDefault();
+            const column = e.target.closest('.board-column-content');
+            if (column) {
+                column.classList.add('drag-over');
+            }
+        }
+
+        function dragLeave(e) {
+            const column = e.target.closest('.board-column-content');
+            if (column) {
+                column.classList.remove('drag-over');
+            }
+        }
+
+        async function drop(e) {
+            e.preventDefault();
+            const column = e.target.closest('.board-column-content');
+            if (!column || !draggedTask) return;
+
+            column.classList.remove('drag-over');
+
+            const taskId = draggedTask.dataset.taskId;
+            const newStatus = column.dataset.status;
+
+            try {
+                // Update task status via API
+                const response = await fetch(`/tasks/${taskId}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ status: newStatus })
+                });
+
+                if (response.ok) {
+                    addLog('info', `Moved task ${taskId} to ${newStatus}`);
+                    loadTasks();
+                } else {
+                    addLog('error', `Failed to update task: ${response.statusText}`);
+                }
+            } catch (e) {
+                addLog('error', `Failed to update task: ${e.message}`);
+            }
+
+            draggedTask = null;
+        }
+
+        // View switching
+        function switchView(view) {
+            document.getElementById('view-list').classList.toggle('active', view === 'list');
+            document.getElementById('view-board').classList.toggle('active', view === 'board');
+
+            document.getElementById('task-list').classList.toggle('hidden', view !== 'list');
+            document.getElementById('task-board').classList.toggle('active', view === 'board');
+        }
+
+        // Modal functions
+        async function openTaskModal(taskId) {
+            currentTaskId = taskId;
+            const task = tasks.find(t => t.id === taskId);
+
+            if (!task) {
+                // Try to fetch from API
+                try {
+                    const response = await fetch(`/tasks/${taskId}`);
+                    if (response.ok) {
+                        task = await response.json();
+                    }
+                } catch (e) {
+                    console.error('Failed to fetch task:', e);
+                }
+            }
+
+            if (!task) return;
+
+            document.getElementById('modal-task-id').textContent = task.id;
+            document.getElementById('modal-task-name').textContent = task.name;
+            document.getElementById('modal-task-desc').textContent = task.description || '-';
+            document.getElementById('modal-task-status').value = task.status;
+            document.getElementById('modal-task-priority').value = task.priority;
+            document.getElementById('modal-task-passes').textContent = task.passes ? 'Yes' : 'No';
+            document.getElementById('modal-task-created').textContent = task.created_at;
+            document.getElementById('modal-task-updated').textContent = task.updated_at;
+            document.getElementById('modal-task-verify').textContent = task.verify_command || '-';
+
+            document.getElementById('task-modal').classList.add('active');
+        }
+
+        function closeModal() {
+            document.getElementById('task-modal').classList.remove('active');
+            currentTaskId = null;
+        }
+
+        async function updateTaskField(field, value) {
+            if (!currentTaskId) return;
+
+            try {
+                const response = await fetch(`/tasks/${currentTaskId}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ [field]: value })
+                });
+
+                if (response.ok) {
+                    addLog('info', `Updated task ${currentTaskId}: ${field} = ${value}`);
+                    loadTasks();
+                } else {
+                    addLog('error', `Failed to update task: ${response.statusText}`);
+                }
+            } catch (e) {
+                addLog('error', `Failed to update task: ${e.message}`);
+            }
+        }
+
+        async function deleteTask() {
+            if (!currentTaskId) return;
+
+            if (!confirm('Are you sure you want to delete this task?')) return;
+
+            // Note: Would need a DELETE endpoint - for now just close modal
+            addLog('warning', 'Delete not implemented - use CLI or API directly');
+            closeModal();
+        }
+
+        // Close modal on outside click
+        document.getElementById('task-modal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeModal();
+            }
+        });
 
         // Update status display from WebSocket
         function updateStatusDisplay(data) {

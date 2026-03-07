@@ -225,6 +225,15 @@ class TaskResponse(BaseModel):
     passes: bool
     created_at: str
     updated_at: str
+    verify_command: Optional[str] = None
+    context_files: Optional[List[str]] = None
+
+
+class TaskUpdate(BaseModel):
+    """Task update request model"""
+    priority: Optional[int] = None
+    status: Optional[str] = None
+    passes: Optional[bool] = None
 
 
 class StatusResponse(BaseModel):
@@ -372,6 +381,75 @@ def create_task(task: TaskCreate, api_key: str = Depends(get_api_key)) -> TaskRe
         )
     except Exception as e:
         logger.error(f"Error creating task: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/tasks/{task_id}", response_model=TaskResponse)
+def get_task(task_id: str, api_key: str = Depends(get_api_key)) -> TaskResponse:
+    """Get a single task by ID"""
+    try:
+        state_manager = StateManager()
+        feature = state_manager.get_feature(task_id)
+
+        if not feature:
+            raise HTTPException(status_code=404, detail=f"Task {task_id} not found")
+
+        return TaskResponse(
+            id=feature.get("id", ""),
+            name=feature.get("name", ""),
+            description=feature.get("description", ""),
+            priority=feature.get("priority", 99),
+            status=feature.get("status", "pending"),
+            passes=feature.get("passes", False),
+            created_at=feature.get("created_at", ""),
+            updated_at=feature.get("updated_at", ""),
+            verify_command=feature.get("verify_command"),
+            context_files=feature.get("context_files")
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting task: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.patch("/tasks/{task_id}", response_model=TaskResponse)
+def update_task(task_id: str, updates: TaskUpdate, api_key: str = Depends(get_api_key)) -> TaskResponse:
+    """Update a task (priority, status, or passes)"""
+    try:
+        state_manager = StateManager()
+
+        # Convert Pydantic model to dict, excluding None values
+        update_dict = updates.model_dump(exclude_unset=True)
+
+        if not update_dict:
+            raise HTTPException(status_code=400, detail="No fields to update")
+
+        # Update the feature
+        success = state_manager.update_feature(task_id, update_dict)
+
+        if not success:
+            raise HTTPException(status_code=404, detail=f"Task {task_id} not found")
+
+        # Get updated feature
+        feature = state_manager.get_feature(task_id)
+
+        return TaskResponse(
+            id=feature.get("id", ""),
+            name=feature.get("name", ""),
+            description=feature.get("description", ""),
+            priority=feature.get("priority", 99),
+            status=feature.get("status", "pending"),
+            passes=feature.get("passes", False),
+            created_at=feature.get("created_at", ""),
+            updated_at=feature.get("updated_at", ""),
+            verify_command=feature.get("verify_command"),
+            context_files=feature.get("context_files")
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error updating task: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
