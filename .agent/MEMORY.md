@@ -4,6 +4,56 @@ Accumulated experience and lessons learned from task execution.
 
 ---
 
+## 2026-03-08 - Email Notification Service (feature-007)
+
+**Task Description**: 实现邮件通知功能，支持SMTP配置，任务状态变更时发送邮件通知。需要设计通知模板和配置结构。
+
+**Lessons Learned:**
+
+1. **Email Implementation**:
+   - Created new `agent/email_notifier.py` module with `EmailNotifier` class
+   - Uses `aiosmtplib` for async SMTP support
+   - Supports three event types: `task_completed`, `task_failed`, `human_intervention`
+   - Configurable via `email` section in config.json
+
+2. **Configuration**:
+   - Added email configuration to `.agent/config.json`:
+     ```json
+     "email": {
+       "enabled": false,
+       "smtp_host": "smtp.gmail.com",
+       "smtp_port": 587,
+       "smtp_user": "",
+       "smtp_password": "",
+       "use_tls": true,
+       "from_name": "Agent-Loop",
+       "from_email": "agent-loop@example.com",
+       "to_emails": [],
+       "events": ["task_completed", "task_failed", "human_intervention"],
+       "timeout": 30
+     }
+     ```
+   - Password can also be set via `SMTP_PASSWORD` environment variable
+
+3. **HTML Email Templates**:
+   - Created HTML templates with inline CSS for each event type
+   - task_completed: Green theme, shows task name, duration, timestamp
+   - task_failed: Red theme, shows error message and retry count
+   - human_intervention: Orange/warning theme, shows intervention reason
+
+4. **Testing**:
+   - Created `tests/test_email_notifier.py` with 25 test cases
+   - All tests pass (25/25)
+   - Tests cover: configuration, event filtering, template rendering, email sending, errors
+
+5. **Verification**:
+   - All 273 tests pass (248 existing + 25 new)
+   - Module exports in `agent/__init__.py` alongside webhook notifier
+
+6. **Commit**: Pushed as `feat: add email notification service with SMTP support`
+
+---
+
 ## 2026-03-08 - Grafana Dashboard Template (feature-012)
 
 **Task Description**: 创建Grafana仪表板JSON模板，包含预置面板：任务统计、性能指标、会话历史、错误分析。配合Prometheus指标使用。
@@ -490,6 +540,8 @@ Accumulated experience and lessons learned from task execution.
 
 
 
+
+
 2026-03-08 - API密钥认证 (feature-013)
 
 **任务描述**: 为API服务添加API Key认证机制，支持配置多个密钥，实现基本的访问控制。
@@ -608,7 +660,10 @@ Changes Made
 
 ---
 
-### 2026-03-08 - 交互式CLI (Rich库) (feature-009)
+
+---
+
+2026-03-08 - 交互式CLI (Rich库) (feature-009)
 
 **任务描述**: 使用rich库改进CLI输出：彩色日志、进度条、表格显示任务列表、状态面板。需要阅读main.py了解当前CLI结构。
 
@@ -617,7 +672,10 @@ Changes Made
 
 ## Summary
 
-### Changes Made
+
+---
+
+Changes Made
 
 1. **Added Rich dependency** (`pyproject.toml`):
    - Added `rich>=13.0.0` to dependencies
@@ -626,3 +684,41 @@ Changes Made
    - `print_success()`, `print_error()`, `print_warning()`, `print_info()` - Colored status messages
    - `print_task_table()` - Rich table for task list
    - `print_status_panel()` - Status panel wi
+
+---
+
+### 2026-03-08 - Grafana仪表板模板 (feature-012)
+
+**任务描述**: 创建Grafana仪表板JSON模板，包含预置面板：任务统计、性能指标、会话历史、错误分析。配合Prometheus指标使用。
+
+**执行结果**: completed
+**执行消息**: ## 任务完成 ✓
+
+我已成功创建 **Grafana仪表板JSON模板** (feature-012)。
+
+### 创建的文件
+
+- `dashboards/agent-loop-dashboard.json` - Grafana仪表板模板
+
+### 仪表板包含的预置面板
+
+1. **任务统计 (Task Statistics)**
+   - 总任务数 (Total Tasks)
+   - 待处理任务 (Pending Tasks)
+   - 任务完成趋势图 (Task Completion Trend)
+   - 任务完成统计表格
+
+2. **性能指标 (Performance Metrics)**
+   - 任务执行时间 P50/P90/P99
+   - API 调用延迟
+   - 会话持续时间 P50
+   - 活跃会话数
+   - 迭代计数
+
+3. **会话历史 (Session History)**
+   - 会话创建趋势
+   - 会话持续时间分布 (P50/P90/P99)
+
+4. **错误分析 (Error Analysis)**
+   - 总错误数
+   - 错误增
