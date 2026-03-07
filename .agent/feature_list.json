@@ -137,8 +137,8 @@
       "name": "Add more unit tests for task_selector",
       "description": "增加 agent/task_selector.py 的单元测试覆盖率，测试优先级选择逻辑。",
       "priority": 2,
-      "status": "pending",
-      "passes": false,
+      "status": "completed",
+      "passes": true,
       "verify_command": "pytest tests/test_task_selector.py -v",
       "context_files": [
         "agent/task_selector.py",

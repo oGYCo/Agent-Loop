@@ -233,6 +233,8 @@ Or via `env` parameter in ClaudeAgentOptions.
 
 
 
+
+
 2026-03-07: Task Plan Self-Review
 
 When reviewing the task plan (feature_list.json):
@@ -359,7 +361,10 @@ Analysis Results
 
 ---
 
-### 2026-03-07 - Self-review: Optimize task plan (self-review-20260307160905)
+
+---
+
+2026-03-07 - Self-review: Optimize task plan (self-review-20260307160905)
 
 **任务描述**: 请仔细审查当前任务计划。
 
@@ -385,14 +390,20 @@ Analysis Results
 
 I completed the self-review task with the following analysis and actions:
 
-### Analysis Results
+
+---
+
+Analysis Results
 
 **Current Status:**
 - Completed: 23 tasks
 - Pending: 10 tasks
 - Failed: 0 tasks
 
-### Changes Made
+
+---
+
+Changes Made
 
 1. **Removed obsolete task**: Deleted completed self-review task (self-review-20260307160526) to keep the list clean
 
@@ -400,7 +411,10 @@ I completed the self-review task with the following analysis and actions:
    - self-009: Add more unit tests for state_manager
    - self-010: Add more unit tests for task_selector
 
-### 2026-03-07: Adding Unit Tests for state_manager
+
+---
+
+2026-03-07: Adding Unit Tests for state_manager
 
 When adding comprehensive unit tests for `state_manager.py`:
 
@@ -418,3 +432,63 @@ When adding comprehensive unit tests for `state_manager.py`:
 
 3. **Results**: Increased test coverage from 20 to 46 tests, all passing.
  
+
+---
+
+### 2026-03-07 - Add more unit tests for state_manager (self-009)
+
+**任务描述**: 增加 agent/state_manager.py 的单元测试覆盖率，测试边界情况和错误处理。
+
+**执行结果**: completed
+**执行消息**: ## Summary
+
+Successfully completed task `self-009`: Add more unit tests for state_manager.
+
+### Changes Made
+- Added **26 new tests** to `tests/test_state_manager.py`, increasing test count from 20 to 46 tests
+- All tests pass
+
+### Test Categories Added
+1. **Validation Tests for `validate_config`** (5 tests):
+   - Valid config success case
+   - Missing required fields
+   - Invalid field types
+   - Invalid values (e.g., max_errors <= 0)
+   - Empty documentation_urls
+
+2. **Validation Tests for `va
+
+---
+
+### 2026-03-07 - Add more unit tests for task_selector (self-010)
+
+**任务描述**: 增加 agent/task_selector.py 的单元测试覆盖率，测试优先级选择逻辑。
+
+**执行结果**: completed
+
+### Changes Made
+- Added **8 new tests** to `tests/test_task_selector.py`, increasing test count from 11 to 19 tests
+- All tests pass
+
+### Test Categories Added
+1. **Completed Count Tests**:
+   - `test_get_completed_count_with_passes_true`: Tests that passes=True counts as completed even when status is "pending"
+
+2. **Priority Selection Tests**:
+   - `test_missing_priority_field`: Tests that missing priority defaults to 999
+   - `test_same_priority_selection`: Tests behavior when multiple tasks have same priority
+
+3. **Status Filtering Tests**:
+   - `test_in_progress_status_skipped`: Tests in_progress tasks are excluded
+   - `test_failed_status_not_selected`: Tests failed tasks are excluded
+   - `test_all_tasks_failed`: Tests None return when all tasks failed
+
+4. **Edge Case Tests**:
+   - `test_passes_none_vs_false`: Tests that passes=None is treated as falsy
+   - `test_get_pending_count_with_passes_true`: Tests pending excludes passes=True
+   - `test_mark_task_failed_not_found`: Tests marking non-existent task as failed
+
+### Key Insights
+- The priority selection logic: selects pending tasks where passes=False, sorted by priority (lower = higher priority)
+- Missing priority defaults to 999 (lowest priority)
+- passes=True marks a task as completed regardless of status
