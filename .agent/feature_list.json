@@ -63,8 +63,8 @@
       "name": "Add type annotations to task_selector.py",
       "description": "使用 mypy 检查 agent/task_selector.py 的类型错误，然后添加完整的类型注解。",
       "priority": 2,
-      "status": "pending",
-      "passes": false,
+      "status": "completed",
+      "passes": true,
       "verify_command": "python -m mypy agent/task_selector.py",
       "context_files": [
         "agent/task_selector.py"
@@ -77,8 +77,8 @@
       "name": "Add type annotations to git_helper.py",
       "description": "使用 mypy 检查 agent/git_helper.py 的类型错误，然后添加完整的类型注解。",
       "priority": 2,
-      "status": "pending",
-      "passes": false,
+      "status": "completed",
+      "passes": true,
       "verify_command": "python -m mypy agent/git_helper.py",
       "context_files": [
         "agent/git_helper.py"
@@ -152,9 +152,9 @@
       "name": "Create config validation",
       "description": "为 .agent/config.json 添加验证逻辑，确保必填字段存在且格式正确。",
       "priority": 2,
-      "status": "pending",
-      "passes": false,
-      "verify_command": "python -c \"import json; json.load(open('.agent/config.json'))\"",
+      "status": "completed",
+      "passes": true,
+      "verify_command": "python -c \"from agent.state_manager import StateManager; StateManager().validate_config()\"",
       "context_files": [
         "agent/state_manager.py",
         ".agent/config.json"

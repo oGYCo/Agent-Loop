@@ -10,6 +10,12 @@ from pathlib import Path
 from typing import Any, Optional, cast
 
 
+class ConfigValidationError(Exception):
+    """配置验证错误"""
+
+    pass
+
+
 class StateManager:
     """状态管理器"""
 
@@ -189,3 +195,72 @@ class StateManager:
         """获取配置项"""
         config = self.load_config()
         return config.get(key, default)
+
+    # ========== Config Validation ==========
+
+    def validate_config(self, config: Optional[dict[str, Any]] = None) -> dict[str, Any]:
+        """验证配置完整性
+
+        Args:
+            config: 要验证的配置字典，如果为None则从文件加载
+
+        Returns:
+            验证通过的配置字典
+
+        Raises:
+            ConfigValidationError: 配置验证失败
+        """
+        if config is None:
+            config = self.load_config()
+
+        # 定义必填字段及其类型
+        required_fields = {
+            "project_name": str,
+            "project_type": str,
+            "model": str,
+            "session_type": str,
+            "test_command": str,
+            "test_pattern": str,
+            "max_errors_before_intervention": int,
+            "context_window_limit": int,
+            "documentation_urls": dict,
+        }
+
+        errors: list[str] = []
+
+        # 检查必填字段
+        for field, expected_type in required_fields.items():
+            if field not in config:
+                errors.append(f"Missing required field: {field}")
+            elif not isinstance(config[field], expected_type):
+                actual_type = type(config[field]).__name__
+                expected_type_name = expected_type.__name__
+                errors.append(
+                    f"Invalid type for '{field}': expected {expected_type_name}, got {actual_type}"
+                )
+
+        # 验证数值字段的取值范围（仅在类型正确时检查）
+        if (
+            "max_errors_before_intervention" in config
+            and isinstance(config["max_errors_before_intervention"], int)
+        ):
+            if config["max_errors_before_intervention"] <= 0:
+                errors.append(
+                    "max_errors_before_intervention must be greater than 0"
+                )
+
+        if "context_window_limit" in config and isinstance(
+            config["context_window_limit"], int
+        ):
+            if config["context_window_limit"] <= 0:
+                errors.append("context_window_limit must be greater than 0")
+
+        # 验证 documentation_urls 是有效的对象
+        if "documentation_urls" in config and isinstance(config["documentation_urls"], dict):
+            if not config["documentation_urls"]:
+                errors.append("documentation_urls cannot be empty")
+
+        if errors:
+            raise ConfigValidationError("\n".join(errors))
+
+        return config
