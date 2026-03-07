@@ -4,6 +4,31 @@ Accumulated experience and lessons learned from task execution.
 
 ---
 
+## 2026-03-07 - Update Analysis Report with Completed Fixes (fix-014)
+
+**Task Description**: analysis_report.md 中记录了多个已修复的问题，但报告本身没有更新为已完成状态。需要更新报告，添加修复完成的标记，并清理过时的信息。
+
+**Lessons Learned:**
+
+1. **Documentation Update**: Updated analysis_report.md to mark completed fixes:
+   - Section 1.1 (version number): Marked as fixed (unified to 1.0.0)
+   - Section 1.4 (test_runner.py security): Marked as fixed (shell=True removed)
+   - Section 2.7 (documentation inconsistency): Marked as fixed (MEMORY.txt → MEMORY.md)
+   - Section 2.8 (__init__.py exports): Marked as fixed (exports added)
+
+2. **Changes Made**:
+   - Updated version info in section 1.1 to reflect actual 1.0.0 in all files
+   - Removed outdated code examples from sections 1.4, 2.7, 2.8
+   - Updated test count from 167 to 223 in report
+   - Fixed action items list - removed incorrect checkmark for run_agent state management (still open)
+   - Added correct checkmarks for completed items in short-term action items
+
+3. **Verification**: All 223 tests pass.
+
+4. **Commit**: Pushed to remote as `docs: update analysis_report.md to reflect completed fixes`
+
+---
+
 ## 2026-03-07 - Unify Type Annotation Style (fix-013)
 
 **Task Description**: 当前项目中类型注解风格不统一：有些地方使用 Optional[]，有些使用 | None。建议统一使用 Python 3.11+ 的 | None 语法（因为 pyproject.toml 指定 python_version = 3.11）。
@@ -410,197 +435,3 @@ Accumulated experience and lessons learned from task execution.
 *(Add new lessons at the top)*
 
 ## Task Experience Records
-
-
-
-
-
-
-
-
-
-2026-03-07 - Add caching mechanism to prompt_manager.py (fix-008)
-
-**任务描述**: 当前 prompt_manager.py 每次调用 load_template() 都会读取文件，这对于频繁调用的场景会导致不必要的 I/O 操作。建议添加模板缓存机制，可以设置缓存过期时间或提供手动刷新方法。
-
-**执行结果**: completed
-**执行消息**: ## Task Completed
-
-Successfully added caching mechanism to `prompt_manager.py` to avoid unnecessary I/O operations.
-
-
----
-
-Changes Made:
-
-**`agent/prompt_manager.py`:**
-- Added `cache_ttl` parameter to `PromptManager.__init__()`:
-  - `None` (default): Caching disabled (backward compatible)
-  - `0`: Cached templates never expire
-  - `>0`: TTL in seconds for automatic expiration
-- Modified `load_template()` to check cache before reading files
-- Added `_get_cached_template()` helper for cache validat
-
----
-
-
----
-
-2026-03-07 - Refactor run_agent loop state management in main.py (fix-009)
-
-**任务描述**: 在 main.py:149-193 的 run_agent 函数中，每次循环都创建新的 StateManager 实例并重新加载 state，这可能导致覆盖 agent 内部的状态变更。建议在循环外部创建单个 StateManager 实例，并确保状态变更正确同步。
-
-**执行结果**: completed
-**执行消息**: ## Task Completed
-
-I've successfully refactored the `run_agent` loop state management in `main.py`. Here's what was done:
-
-
----
-
-Changes Made
-
-**File: `main.py`**
-
-1. **Moved StateManager instantiation outside the loop** (lines 149-150)
-   - Before: `StateManager(project_root)` was created on each iteration inside the `for restart_count in range(max_restarts + 1)` loop
-   - After: Created once before the loop starts
-
-2. **Removed redundant state load** 
-   - The `state = state_manager.load_state()
----
-
-
----
-
-2026-03-07 - Improve config validation flexibility in state_manager.py (fix-010)
-
-**任务描述**: 当前 state_manager.py 的 validate_config 对 documentation_urls 字段的验证过于严格（要求非空字典）。这在某些场景下可能导致问题。建议改进验证逻辑，允许空字典，并在注释中说明何时需要填写内容。
-
-**执行结果**: completed
-**执行消息**: Task completed successfully.
-
-
----
-
-Changes Made
-
-**File: `agent/state_manager.py`:**
-- Removed the validation check that rejected empty dictionaries for documentation_urls
-- Added comment explaining that empty dictionary is allowed and suggesting when to fill in documentation links
-
-**File: `tests/test_state_manager.py`:**
-- Updated test_validate_config_empty_documentation_urls to verify that empty dictionary is now accepted
-
-
----
-
-Learnings
-
-- Made minimal, focused change to improve validation flexibility
-- Always update corresponding tests when changing validation logic
-- Added helpful comments to explain the expected usage
-
-
----
-
-
----
-
-2026-03-07 - Improve config validation flexibility in state_manager.py (fix-010)
-
-**任务描述**: 当前 state_manager.py 的 validate_config 对 documentation_urls 字段的验证过于严格（要求非空字典）。这在某些场景下可能导致问题。建议改进验证逻辑，允许空字典，并在注释中说明何时需要填写内容。
-
-**执行结果**: completed
-**执行消息**: ## Summary
-
-Successfully completed task **fix-010**: Improve config validation flexibility in state_manager.py
-
-
----
-
-Changes Made
-
-1. **`agent/state_manager.py`** - Modified `validate_config()` method:
-   - Removed the validation check that rejected empty dictionaries for `documentation_urls`
-   - Added a helpful comment explaining that empty dictionary is allowed and providing examples of when to fill in documentation links
-
-2. **`tests/test_state_manager.py`** - Updated test:
-   - Modified `tes
-
----
-
-
----
-
-2026-03-07 - Add logging configuration to the project (fix-011)
-
-**任务描述**: 当前项目中多处使用 logging.getLogger()，但没有统一的日志配置。建议在 main.py 中添加日志配置，设置日志级别、格式和处理器，以便于调试生产环境问题。
-
-**执行结果**: completed
-**执行消息**: ## Summary
-
-Successfully added logging configuration to the project:
-
-
----
-
-Changes Made
-
-**main.py** - Added centralized logging configuration:
-- Added `_configure_logging()` function that initializes logging on module import
-- Configurable via environment variables:
-  - `LOG_LEVEL`: DEBUG, INFO, WARNING, ERROR, CRITICAL (default: INFO)
-  - `LOG_FILE`: Optional file path for logging
-- Consistent log format: `timestamp | level | logger name | message`
-- Supports both console and optional file outp
-
----
-
-
----
-
-2026-03-07 - Standardize error handling across modules (fix-012)
-
-**任务描述**: 当前项目中错误处理不一致：git_helper.py 某些方法静默返回空值；test_runner.py 返回错误消息格式不统一；session_manager.py 某些异常被捕获但不记录。建议制定错误处理规范并在各模块中统一实施。
-
-**执行结果**: completed
-**执行消息**: ## Summary
-
-Successfully completed task **fix-012**: Standardize error handling across modules.
-
-
----
-
-Changes Made
-
-**1. agent/git_helper.py**:
-- Added `logging` import and logger setup
-- Replaced `print()` with `logger.error()` in `init_repo()` 
-- Added `logger.warning()` for silent return cases in:
-  - `get_recent_commits()` - now logs when returning empty list
-  - `get_current_branch()` - now logs when returning default "main"
-  - `get_diff()` - now logs when returning empty string
-
-**2. agent
-
----
-
-### 2026-03-07 - Unify type annotation style across codebase (fix-013)
-
-**任务描述**: 当前项目中类型注解风格不统一：有些地方使用 Optional[]，有些使用 | None。建议统一使用 Python 3.11+ 的 | None 语法（因为 pyproject.toml 指定 python_version = 3.11）。
-
-**执行结果**: completed
-**执行消息**: ## Summary
-
-I have successfully completed the task of unifying type annotation style across the codebase. Here's what was done:
-
-### Changes Made
-
-1. **Converted 10 Python files** in the `agent/` directory from `Optional[]` to Python 3.11+ `| None` syntax:
-   - `agent/agent_core.py` (7 occurrences)
-   - `agent/config_reloader.py` (5 occurrences)
-   - `agent/git_helper.py` (2 occurrences)
-   - `agent/human_intervention.py` (6 occurrences)
-   - `agent/performance_monitor.py` (5 occurrences)
-   - `
