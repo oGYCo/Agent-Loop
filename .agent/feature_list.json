@@ -37,8 +37,8 @@
       "name": "Implement accurate token estimation in session_manager.py",
       "description": "在 agent/session_manager.py:30 中，token 估算使用了简单的字符数除以4的方法（total_chars // 4），这非常不准确。建议使用 tiktoken 库或类似的准确 token 估算方法。首先需要检查项目中是否已经安装了 tiktoken，如果没有需要在 pyproject.toml 中添加依赖。",
       "priority": 4,
-      "status": "pending",
-      "passes": false,
+      "status": "completed",
+      "passes": true,
       "context": "读取 agent/session_manager.py 文件，找到 check_context_usage 方法中的 token 估算代码（大约在第28-30行）。查看 pyproject.toml 确认是否已有 tiktoken 依赖。如果需要，添加依赖后修改估算逻辑。",
       "created_at": "2026-03-07 21:00:00",
       "updated_at": "2026-03-07"

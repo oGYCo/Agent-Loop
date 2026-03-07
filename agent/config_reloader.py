@@ -3,11 +3,15 @@
 支持手动触发和文件监控两种方式重新加载配置文件。
 """
 
+import asyncio
 import os
 import time
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, cast
+
+from watchdog.events import FileSystemEventHandler, FileModifiedEvent
+from watchdog.observers import Observer
 
 from agent.state_manager import StateManager
 
@@ -213,10 +217,35 @@ class ConfigReloader:
         return ConfigWatcher(self, interval)
 
 
+class _ConfigFileEventHandler(FileSystemEventHandler):
+    """配置文件事件处理器
+
+    监听 config.json 和 feature_list.json 的变化并触发重载。
+    """
+
+    def __init__(self, reloader: ConfigReloader) -> None:
+        super().__init__()
+        self.reloader = reloader
+
+    def on_modified(self, event: Any) -> None:
+        """文件修改事件处理。
+
+        Args:
+            event: 文件系统事件。
+        """
+        if event.is_directory:
+            return
+
+        filename = os.path.basename(event.src_path)
+        if filename in ("config.json", "feature_list.json"):
+            self.reloader.reload()
+
+
 class ConfigWatcher:
     """配置文件监控器
 
-    定期检查配置文件变化并自动重载。
+    使用 watchdog 库实现非阻塞的文件监控。
+    支持同步和异步两种监控方式。
     """
 
     def __init__(self, reloader: ConfigReloader, interval: float = 1.0) -> None:
@@ -224,24 +253,72 @@ class ConfigWatcher:
 
         Args:
             reloader: ConfigReloader 实例。
-            interval: 检查间隔（秒）。
+            interval: 检查间隔（秒），仅用于异步轮询模式。
         """
         self.reloader = reloader
         self.interval = interval
         self._running = False
+        self._observer: Optional[Observer] = None
+        self._async_watcher_task: Optional[asyncio.Task[None]] = None
 
     def start(self) -> None:
-        """启动监控（阻塞方法）。"""
+        """启动监控（阻塞方法，使用 watchdog Observer）。
+
+        使用 watchdog 的 Observer 线程进行非阻塞监控，
+        但 start() 方法本身会阻塞直到 stop() 被调用。
+        """
         self._running = True
-        while self._running:
-            changes = self.reloader.check_for_changes()
-            if changes["config"] or changes["feature_list"]:
-                self.reloader.reload()
-            time.sleep(self.interval)
+        event_handler = _ConfigFileEventHandler(self.reloader)
+        self._observer = Observer()
+        self._observer.schedule(
+            event_handler,
+            str(self.reloader.agent_dir),
+            recursive=False
+        )
+        self._observer.start()
+
+        try:
+            while self._running:
+                time.sleep(0.1)
+        finally:
+            self.stop()
+
+    def start_async(self) -> None:
+        """启动异步监控（非阻塞方法）。
+
+        使用 asyncio 创建异步任务进行文件监控，
+        不会阻塞调用线程。
+        """
+        self._running = True
+        self._async_watcher_task = asyncio.create_task(self._async_watch())
+
+    async def _async_watch(self) -> None:
+        """异步文件监控任务。"""
+        event_handler = _ConfigFileEventHandler(self.reloader)
+        self._observer = Observer()
+        self._observer.schedule(
+            event_handler,
+            str(self.reloader.agent_dir),
+            recursive=False
+        )
+        self._observer.start()
+
+        try:
+            while self._running:
+                await asyncio.sleep(0.1)
+        finally:
+            self.stop()
 
     def stop(self) -> None:
         """停止监控。"""
         self._running = False
+        if self._observer is not None:
+            self._observer.stop()
+            self._observer.join()
+            self._observer = None
+        if self._async_watcher_task is not None:
+            self._async_watcher_task.cancel()
+            self._async_watcher_task = None
 
 
 def reload_config(agent_dir: Optional[str] = None, force: bool = False) -> Dict[str, Any]:
