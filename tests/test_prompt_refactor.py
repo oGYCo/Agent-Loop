@@ -145,10 +145,114 @@ def test_all_builtin_templates_exist():
     print(f"20. all builtin templates exist: OK ({len(expected)} templates)")
 
 
+def test_prompt_manager_caching():
+    """Test caching mechanism for template loading."""
+    import time as time_module
+
+    with tempfile.TemporaryDirectory() as td:
+        # Test 1: No cache by default (cache_ttl=None)
+        pm = PromptManager(td)
+        assert pm._cache_ttl is None
+        assert pm._template_cache == {}
+        print("21. cache disabled by default: OK")
+
+        # Test 2: Enable caching with cache_ttl=0 (never expires)
+        pm_with_cache = PromptManager(td, cache_ttl=0)
+        assert pm_with_cache._cache_ttl == 0
+
+        # First load should populate cache
+        content1 = pm_with_cache.load_template("system")
+        assert "system" in pm_with_cache._template_cache
+        print("22. cache populated on first load: OK")
+
+        # Second load should return cached content
+        content2 = pm_with_cache.load_template("system")
+        assert content1 == content2
+        print("23. cache used for subsequent loads: OK")
+
+        # Test 3: Manual clear_cache
+        pm_with_cache.clear_cache()
+        assert pm_with_cache._template_cache == {}
+        print("24. clear_cache works: OK")
+
+        # Test 4: refresh_template bypasses cache
+        content_before = pm_with_cache.load_template("system")
+        content_refreshed = pm_with_cache.refresh_template("system")
+        assert content_before == content_refreshed
+        # After refresh, should still have in cache
+        assert "system" in pm_with_cache._template_cache
+        print("25. refresh_template works: OK")
+
+        # Test 5: Cache invalidation on save_template
+        pm_save = PromptManager(td, cache_ttl=0)
+        # Create template file first
+        os.makedirs(os.path.join(td, "prompt_templates"))
+        with open(os.path.join(td, "prompt_templates", "system.md"), "w") as f:
+            f.write("Original content")
+
+        # Load to populate cache
+        pm_save.load_template("system")
+        assert pm_save._template_cache["system"]["content"] == "Original content"
+
+        # Save new content - should invalidate cache
+        pm_save.save_template("system", "New content")
+
+        # After save, cache should be cleared for that template
+        # The next load should get fresh content (not cached)
+        # But since we just saved, there's no cache entry anymore
+        assert "system" not in pm_save._template_cache
+        print("25a. cache invalidated on save_template: OK")
+
+        # Test 6: Cache invalidation on reset_template
+        pm_reset = PromptManager(td, cache_ttl=0)
+        # Create and cache a custom template
+        with open(os.path.join(td, "prompt_templates", "task.md"), "w") as f:
+            f.write("Custom task template")
+        pm_reset.load_template("task")
+        assert pm_reset._template_cache["task"]["content"] == "Custom task template"
+
+        # Reset should invalidate cache
+        pm_reset.reset_template("task")
+        assert "task" not in pm_reset._template_cache
+        print("25b. cache invalidated on reset_template: OK")
+
+        # Test 7: TTL expiration
+        pm_ttl = PromptManager(td, cache_ttl=1)  # 1 second TTL
+        content_ttl = pm_ttl.load_template("system")
+        assert "system" in pm_ttl._template_cache
+
+        # Wait for cache to expire
+        time_module.sleep(1.5)
+
+        # Cache should be expired, content should be reloaded
+        content_ttl2 = pm_ttl.load_template("system")
+        assert content_ttl == content_ttl2
+        print("26. cache TTL expiration works: OK")
+
+        # Test 8: use_cache=False bypasses cache
+        pm_bypass = PromptManager(td, cache_ttl=0)
+        # First create a user template file
+        os.makedirs(os.path.join(td, "prompt_templates"), exist_ok=True)
+        with open(os.path.join(td, "prompt_templates", "system.md"), "w") as f:
+            f.write("File content")
+
+        # Load normally to populate cache
+        pm_bypass.load_template("system")
+
+        # Manually modify cache to detect bypass
+        pm_bypass._template_cache["system"]["content"] = "CACHED_CONTENT"
+
+        # Load with use_cache=False should get actual file content
+        actual_content = pm_bypass.load_template("system", use_cache=False)
+        assert actual_content == "File content", f"Expected 'File content', got '{actual_content}'"
+        print("27. use_cache=False bypasses cache: OK")
+
+
 if __name__ == "__main__":
     test_render_template()
     test_scan_project_structure()
     test_prompt_manager_templates()
     test_prompt_manager_prompts_json()
     test_all_builtin_templates_exist()
+    test_prompt_manager_caching()
     print("\n=== ALL TESTS PASSED ===")

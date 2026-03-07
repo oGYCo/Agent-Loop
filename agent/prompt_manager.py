@@ -9,6 +9,7 @@ Provides a fully configurable prompt management system with:
 
 import json
 import re
+import time
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Optional, cast
@@ -445,11 +446,13 @@ class PromptManager:
         - claude_md_cleanup: Project documentation optimization
     """
 
-    def __init__(self, agent_dir: Optional[str] = None) -> None:
+    def __init__(self, agent_dir: Optional[str] = None, cache_ttl: Optional[int] = None) -> None:
         """Initialize PromptManager.
 
         Args:
             agent_dir: Path to the .agent directory. Auto-detects if not provided.
+            cache_ttl: Time-to-live for template cache in seconds. If None, caching is disabled.
+                      If set to 0, cached templates never expire. Default is None (no caching).
         """
         if agent_dir is None:
             agent_dir = str(Path(__file__).parent.parent / ".agent")
@@ -457,11 +460,15 @@ class PromptManager:
         self.prompts_path = self.agent_dir / "prompts.json"
         self.templates_dir = self.agent_dir / "prompt_templates"
 
+        # Template cache: {name: {"content": str, "timestamp": float}}
+        self._template_cache: dict[str, dict[str, Any]] = {}
+        self._cache_ttl: Optional[int] = cache_ttl  # None = disabled, 0 = never expire, >0 = TTL in seconds
+
     # ============================================================
     # Template Operations
     # ============================================================
 
-    def load_template(self, name: str) -> str:
+    def load_template(self, name: str, use_cache: bool = True) -> str:
         """Load a template by name.
 
         Resolution order:
@@ -470,6 +477,7 @@ class PromptManager:
 
         Args:
             name: Template name (e.g., "system", "task", "self_review")
+            use_cache: Whether to use the cache (default: True). Set to False to force reload.
 
         Returns:
             Template content string
@@ -477,18 +485,81 @@ class PromptManager:
         Raises:
             ValueError: If template name is unknown and no user file exists
         """
+        # Check cache first (if caching is enabled)
+        if use_cache and self._cache_ttl is not None:
+            cached = self._get_cached_template(name)
+            if cached is not None:
+                return cached
+
+        # Load from file or built-in
         user_template = self.templates_dir / f"{name}.md"
         if user_template.exists():
             with open(user_template, "r", encoding="utf-8") as f:
-                return f.read()
+                content = f.read()
+        elif name in _BUILTIN_TEMPLATES:
+            content = _BUILTIN_TEMPLATES[name]
+        else:
+            raise ValueError(
+                f"Unknown template: '{name}'. "
+                f"Available built-in templates: {list(_BUILTIN_TEMPLATES.keys())}"
+            )
 
-        if name in _BUILTIN_TEMPLATES:
-            return _BUILTIN_TEMPLATES[name]
+        # Store in cache
+        if self._cache_ttl is not None:
+            self._template_cache[name] = {
+                "content": content,
+                "timestamp": time.time(),
+            }
 
-        raise ValueError(
-            f"Unknown template: '{name}'. "
-            f"Available built-in templates: {list(_BUILTIN_TEMPLATES.keys())}"
-        )
+        return content
+
+    def _get_cached_template(self, name: str) -> Optional[str]:
+        """Get a cached template if valid.
+
+        Args:
+            name: Template name
+
+        Returns:
+            Cached content if valid, None otherwise
+        """
+        if name not in self._template_cache:
+            return None
+
+        # If TTL is 0, cache never expires
+        if self._cache_ttl == 0:
+            return self._template_cache[name]["content"]
+
+        # Check if cache has expired
+        cached_time = self._template_cache[name]["timestamp"]
+        if time.time() - cached_time > self._cache_ttl:
+            # Cache expired, remove it
+            del self._template_cache[name]
+            return None
+
+        return self._template_cache[name]["content"]
+
+    def clear_cache(self) -> None:
+        """Clear all cached templates."""
+        self._template_cache.clear()
+
+    def refresh_template(self, name: str) -> str:
+        """Force refresh a specific template, bypassing cache.
+
+        Args:
+            name: Template name to refresh
+
+        Returns:
+            Fresh template content
+
+        Raises:
+            ValueError: If template name is unknown
+        """
+        # Remove from cache if exists
+        if name in self._template_cache:
+            del self._template_cache[name]
+
+        # Load fresh (bypass cache)
+        return self.load_template(name, use_cache=False)
 
     def render_template(self, name: str, variables: dict[str, str]) -> str:
         """Load and render a template with variable substitution.
@@ -507,6 +578,7 @@ class PromptManager:
         """Save a user template override.
 
         Creates the prompt_templates directory if it doesn't exist.
+        Invalidates the cache for this template.
 
         Args:
             name: Template name
@@ -516,6 +588,9 @@ class PromptManager:
         template_path = self.templates_dir / f"{name}.md"
         with open(template_path, "w", encoding="utf-8") as f:
             f.write(content)
+        # Invalidate cache for this template
+        if name in self._template_cache:
+            del self._template_cache[name]
 
     def list_templates(self) -> list[dict[str, Any]]:
         """List all available templates with their override status.
@@ -549,6 +624,7 @@ class PromptManager:
 
     def reset_template(self, name: str) -> bool:
         """Reset a template to built-in default by removing user override.
+        Invalidates the cache for this template.
 
         Args:
             name: Template name to reset
@@ -559,6 +635,9 @@ class PromptManager:
         user_path = self.templates_dir / f"{name}.md"
         if user_path.exists():
             user_path.unlink()
+            # Invalidate cache for this template so next load gets builtin
+            if name in self._template_cache:
+                del self._template_cache[name]
             return True
         return False
 

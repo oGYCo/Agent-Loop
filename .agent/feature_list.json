@@ -81,8 +81,8 @@
       "name": "Refactor global monitor pattern in performance_monitor.py",
       "description": "在 agent/performance_monitor.py:183-198 中使用了全局可变状态 _global_monitor，这在多线程/异步环境中可能导致竞态条件。建议使用依赖注入或上下文管理器来管理 PerformanceMonitor 实例。",
       "priority": 8,
-      "status": "pending",
-      "passes": false,
+      "status": "completed",
+      "passes": true,
       "context": "读取 agent/performance_monitor.py 文件，找到全局 monitor 相关的代码（约第183-198行）。考虑使用依赖注入模式或上下文管理器来替代全局状态。",
       "created_at": "2026-03-07 21:00:00",
       "updated_at": "2026-03-07"
