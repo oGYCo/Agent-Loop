@@ -12,6 +12,17 @@
 
 ---
 
+## 已修复问题 (截至 2026-03-07)
+
+以下问题已在本次审计后被修复：
+
+1. ✅ **版本号不一致** - 已统一为 1.0.0
+2. ✅ **test_runner.py 安全问题** - 已移除 shell=True，使用 shell=False
+3. ✅ **__init__.py 导出不完整** - 已添加 PromptManager, PerformanceMonitor, ConfigReloader 导出
+4. ✅ **文档中的 MEMORY.txt** - 已更正为 MEMORY.md
+
+---
+
 ## 一、高优先级问题 (需要立即修复)
 
 ### 1.1 版本号不一致

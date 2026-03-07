@@ -1,0 +1,157 @@
+{
+  "features": [
+    {
+      "id": "task-001",
+      "name": "Explore Task",
+      "description": "现在请你以工业生产级的代码的视角完整的探索整个仓库的内容，然后识别其中有问题的地方、不合理、需要改进、需要更新、需要删除的地方，以及根据分析报告analyze_report.md中的问题（部分已经修复）制定详细的后续的计划和任务到feature_list.json中，并且按照优先级排序（注意任务的描述一定要先让agent先获取足够的上下文信息之后再开始执行任务）。",
+      "priority": 1,
+      "status": "completed",
+      "passes": true,
+      "created_at": "2026-03-07 19:39:00",
+      "updated_at": "2026-03-07"
+    },
+    {
+      "id": "fix-001",
+      "name": "Replace magic number 999 in task_selector.py",
+      "description": "在 agent/task_selector.py:42 中，使用了 magic number 999 作为默认优先级。需要将其替换为常量定义，例如 DEFAULT_PRIORITY = 1000，并在代码中使用该常量。这样可以提高代码可读性，避免优先级冲突。",
+      "priority": 2,
+      "status": "pending",
+      "passes": false,
+      "context": "读取 agent/task_selector.py 文件，找到 pending_tasks.sort(key=lambda x: x.get('priority', 999)) 这行代码，添加常量定义 DEFAULT_PRIORITY = 1000，然后替换 999 为 DEFAULT_PRIORITY。同时更新相关的类型注解和文档字符串。",
+      "created_at": "2026-03-07 21:00:00",
+      "updated_at": "2026-03-07"
+    },
+    {
+      "id": "fix-002",
+      "name": "Replace blocking input() with async solution in human_intervention.py",
+      "description": "在 agent/human_intervention.py:139 中使用了阻塞式的 input() 函数，这在异步上下文中会阻塞整个事件循环。需要改用异步输入方法或提供替代方案（如文件标记、API端点、环境变量等）。建议方案：1）使用 asyncio.to_thread 将 input() 放到线程中执行；2）添加一个可选的异步输入回调接口。",
+      "priority": 3,
+      "status": "pending",
+      "passes": false,
+      "context": "读取 agent/human_intervention.py 文件，找到 input() 调用的位置（第139行附近）。考虑使用 asyncio.to_thread(input, ...) 或添加一个可选的 input_callback 参数来支持异步输入。",
+      "created_at": "2026-03-07 21:00:00",
+      "updated_at": "2026-03-07"
+    },
+    {
+      "id": "fix-003",
+      "name": "Implement accurate token estimation in session_manager.py",
+      "description": "在 agent/session_manager.py:30 中，token 估算使用了简单的字符数除以4的方法（total_chars // 4），这非常不准确。建议使用 tiktoken 库或类似的准确 token 估算方法。首先需要检查项目中是否已经安装了 tiktoken，如果没有需要在 pyproject.toml 中添加依赖。",
+      "priority": 4,
+      "status": "pending",
+      "passes": false,
+      "context": "读取 agent/session_manager.py 文件，找到 check_context_usage 方法中的 token 估算代码（大约在第28-30行）。查看 pyproject.toml 确认是否已有 tiktoken 依赖。如果需要，添加依赖后修改估算逻辑。",
+      "created_at": "2026-03-07 21:00:00",
+      "updated_at": "2026-03-07"
+    },
+    {
+      "id": "fix-004",
+      "name": "Refactor blocking file watcher to async in config_reloader.py",
+      "description": "在 agent/config_reloader.py:233-240 中，ConfigWatcher.start() 方法使用了阻塞的 while 循环来监控文件变化。建议使用 watchdog 库或 asyncio 来实现非阻塞的文件监控。推荐使用 watchgod 库或标准库的 logging.handlers 中的 WatchedFileHandler 模式。",
+      "priority": 5,
+      "status": "pending",
+      "passes": false,
+      "context": "读取 agent/config_reloader.py 文件，找到 ConfigWatcher 类的 start() 方法（约第233-240行）。使用 watchdog 库重写文件监控逻辑，或使用 threading.Thread 将监控放到后台线程中。",
+      "created_at": "2026-03-07 21:00:00",
+      "updated_at": "2026-03-07"
+    },
+    {
+      "id": "fix-005",
+      "name": "Add tests for config_reloader module",
+      "description": "当前项目中缺少对 config_reloader 模块的测试。根据测试指南，需要使用真实数据和真实环境进行测试，不能使用 mock。建议测试场景：1）配置文件变化检测；2）feature_list.json 变化检测；3）热重载功能。",
+      "priority": 6,
+      "status": "pending",
+      "passes": false,
+      "context": "创建 tests/test_config_reloader.py 文件。参考其他测试文件的结构（如 test_state_manager.py），编写针对 ConfigReloader 类的真实测试。",
+      "created_at": "2026-03-07 21:00:00",
+      "updated_at": "2026-03-07"
+    },
+    {
+      "id": "fix-006",
+      "name": "Add tests for performance_monitor module",
+      "description": "当前项目中缺少对 performance_monitor 模块的测试。建议测试场景：1）性能数据记录；2）性能统计计算；3）全局 monitor 的单例行为。",
+      "priority": 7,
+      "status": "pending",
+      "passes": false,
+      "context": "创建 tests/test_performance_monitor.py 文件。参考其他测试文件的结构，编写针对 PerformanceMonitor 类的真实测试。",
+      "created_at": "2026-03-07 21:00:00",
+      "updated_at": "2026-03-07"
+    },
+    {
+      "id": "fix-007",
+      "name": "Refactor global monitor pattern in performance_monitor.py",
+      "description": "在 agent/performance_monitor.py:183-198 中使用了全局可变状态 _global_monitor，这在多线程/异步环境中可能导致竞态条件。建议使用依赖注入或上下文管理器来管理 PerformanceMonitor 实例。",
+      "priority": 8,
+      "status": "pending",
+      "passes": false,
+      "context": "读取 agent/performance_monitor.py 文件，找到全局 monitor 相关的代码（约第183-198行）。考虑使用依赖注入模式或上下文管理器来替代全局状态。",
+      "created_at": "2026-03-07 21:00:00",
+      "updated_at": "2026-03-07"
+    },
+    {
+      "id": "fix-008",
+      "name": "Add caching mechanism to prompt_manager.py",
+      "description": "当前 prompt_manager.py 每次调用 load_template() 都会读取文件，这对于频繁调用的场景会导致不必要的 I/O 操作。建议添加模板缓存机制，可以设置缓存过期时间或提供手动刷新方法。",
+      "priority": 9,
+      "status": "pending",
+      "passes": false,
+      "context": "读取 agent/prompt_manager.py 文件，找到 load_template 方法。添加一个模板缓存字典（_template_cache），在加载模板时检查缓存，只有缓存不存在或需要刷新时才读取文件。",
+      "created_at": "2026-03-07 21:00:00",
+      "updated_at": "2026-03-07"
+    },
+    {
+      "id": "fix-009",
+      "name": "Refactor run_agent loop state management in main.py",
+      "description": "在 main.py:149-193 的 run_agent 函数中，每次循环都创建新的 StateManager 实例并重新加载 state，这可能导致覆盖 agent 内部的状态变更。建议在循环外部创建单个 StateManager 实例，并确保状态变更正确同步。",
+      "priority": 10,
+      "status": "pending",
+      "passes": false,
+      "context": "读取 main.py 文件，找到 run_agent 函数（约第149-193行）。重构状态管理逻辑：在循环外部创建 StateManager 实例，将状态同步逻辑提取为独立方法。",
+      "created_at": "2026-03-07 21:00:00",
+      "updated_at": "2026-03-07"
+    },
+    {
+      "id": "fix-010",
+      "name": "Improve config validation flexibility in state_manager.py",
+      "description": "当前 state_manager.py 的 validate_config 对 documentation_urls 字段的验证过于严格（要求非空字典）。这在某些场景下可能导致问题。建议改进验证逻辑，允许空字典，并在注释中说明何时需要填写内容。",
+      "priority": 11,
+      "status": "pending",
+      "passes": false,
+      "context": "读取 agent/state_manager.py 文件，找到 validate_config 方法中的 documentation_urls 验证逻辑。调整验证逻辑，使其更灵活或在注释中说明预期行为。",
+      "created_at": "2026-03-07 21:00:00",
+      "updated_at": "2026-03-07"
+    },
+    {
+      "id": "fix-011",
+      "name": "Add logging configuration to the project",
+      "description": "当前项目中多处使用 logging.getLogger()，但没有统一的日志配置。建议在 main.py 中添加日志配置，设置日志级别、格式和处理器，以便于调试生产环境问题。",
+      "priority": 12,
+      "status": "pending",
+      "passes": false,
+      "context": "读取 main.py 文件，在入口点添加 logging.basicConfig() 或更详细的日志配置。确保日志格式包含时间、级别、模块名和消息内容。",
+      "created_at": "2026-03-07 21:00:00",
+      "updated_at": "2026-03-07"
+    },
+    {
+      "id": "fix-012",
+      "name": "Standardize error handling across modules",
+      "description": "当前项目中错误处理不一致：git_helper.py 某些方法静默返回空值；test_runner.py 返回错误消息格式不统一；session_manager.py 某些异常被捕获但不记录。建议制定错误处理规范并在各模块中统一实施。",
+      "priority": 13,
+      "status": "pending",
+      "passes": false,
+      "context": "审查 agent/ 目录下的所有模块，识别错误处理不一致的地方。创建一个错误处理规范文档并在各模块中实施。",
+      "created_at": "2026-03-07 21:00:00",
+      "updated_at": "2026-03-07"
+    },
+    {
+      "id": "fix-013",
+      "name": "Unify type annotation style across codebase",
+      "description": "当前项目中类型注解风格不统一：有些地方使用 Optional[]，有些使用 | None。建议统一使用 Python 3.11+ 的 | None 语法（因为 pyproject.toml 指定 python_version = 3.11）。",
+      "priority": 14,
+      "status": "pending",
+      "passes": false,
+      "context": "使用 grep 或其他工具搜索使用 Optional[] 的位置，然后逐个替换为 | None 语法。",
+      "created_at": "2026-03-07 21:00:00",
+      "updated_at": "2026-03-07"
+    }
+  ]
+}
