@@ -110,6 +110,7 @@ from .state_manager import StateManager
 from .task_selector import TaskSelector
 from .git_helper import GitHelper
 from .human_intervention import HumanIntervention
+from .performance_monitor import PerformanceMonitor, get_monitor
 
 
 # 配置日志
@@ -166,6 +167,9 @@ class AgentCore:
         self._last_known_files: Dict[str, float] = {}
         self._code_changed: bool = False
         self._initial_file_state()
+
+        # 性能监控
+        self.perf_monitor = get_monitor()
 
     def _initial_file_state(self) -> None:
         """记录初始文件状态，用于检测代码变更"""
@@ -1352,79 +1356,93 @@ Please start by gathering context, then analyze and make updates."""
 
     def execute_task(self, task: Dict[str, Any]) -> Dict[str, Any]:
         """同步包装器 - 执行任务（带重试机制）"""
-        # 获取重试配置
-        retry_config = self.config.get("retry", {})
-        max_retries = retry_config.get("max_retries", 3)
-        retry_interval = retry_config.get("retry_interval", 5)
+        import time as time_module
+        task_id = task.get("id", "unknown")
+        task_name = task.get("name", "unknown")
+        start_time = time_module.time()
 
-        # 重试记录
-        retry_count = 0
-        retry_reasons: List[str] = []
+        # 使用性能监控跟踪任务执行
+        with self.perf_monitor.track_operation("execute_task", task_id):
+            # 获取重试配置
+            retry_config = self.config.get("retry", {})
+            max_retries = retry_config.get("max_retries", 3)
+            retry_interval = retry_config.get("retry_interval", 5)
 
-        # 尝试执行任务
-        while retry_count <= max_retries:
-            try:
-                # 执行任务
-                result = asyncio.run(self.execute_task_with_sdk(task))
+            # 重试记录
+            retry_count = 0
+            retry_reasons: List[str] = []
+            result: Optional[Dict[str, Any]] = None
 
-                # 检查结果状态
-                if result.get("status") == "error":
-                    error_msg = result.get("message", "Unknown error")
+            # 尝试执行任务
+            while retry_count <= max_retries:
+                try:
+                    # 执行任务
+                    result = asyncio.run(self.execute_task_with_sdk(task))
 
-                    # 判断是否应该重试
+                    # 检查结果状态
+                    if result.get("status") == "error":
+                        error_msg = result.get("message", "Unknown error")
+
+                        # 判断是否应该重试
+                        if retry_count < max_retries:
+                            retry_count += 1
+                            retry_reasons.append(f"Attempt {retry_count}: {error_msg}")
+                            logger.warning(f"Task {task.get('id')} failed: {error_msg}. Retrying in {retry_interval}s (attempt {retry_count}/{max_retries})...")
+
+                            # 等待后重试
+                            time_module.sleep(retry_interval)
+
+                            # 继续下一次尝试
+                            continue
+                        else:
+                            # 达到最大重试次数，返回最终错误
+                            result["retry_count"] = retry_count
+                            result["retry_reasons"] = retry_reasons
+                            logger.error(f"Task {task.get('id')} failed after {retry_count} attempts: {error_msg}")
+                    else:
+                        # 任务成功
+                        if retry_count > 0:
+                            result["retry_count"] = retry_count
+                            result["retry_reasons"] = retry_reasons
+                            logger.info(f"Task {task.get('id')} succeeded after {retry_count} retries")
+                    break
+
+                except Exception as e:
+                    error_msg = str(e) if str(e) else f"Task execution failed: {type(e).__name__}"
+
                     if retry_count < max_retries:
                         retry_count += 1
                         retry_reasons.append(f"Attempt {retry_count}: {error_msg}")
-                        logger.warning(f"Task {task.get('id')} failed: {error_msg}. Retrying in {retry_interval}s (attempt {retry_count}/{max_retries})...")
+                        logger.warning(f"Task {task.get('id')} exception: {error_msg}. Retrying in {retry_interval}s (attempt {retry_count}/{max_retries})...")
 
-                        # 等待后重试
-                        import time
-                        time.sleep(retry_interval)
-
-                        # 继续下一次尝试
-                        continue
+                        time_module.sleep(retry_interval)
                     else:
-                        # 达到最大重试次数，返回最终错误
-                        result["retry_count"] = retry_count
-                        result["retry_reasons"] = retry_reasons
                         logger.error(f"Task {task.get('id')} failed after {retry_count} attempts: {error_msg}")
-                        return result
-                else:
-                    # 任务成功
-                    if retry_count > 0:
-                        result["retry_count"] = retry_count
-                        result["retry_reasons"] = retry_reasons
-                        logger.info(f"Task {task.get('id')} succeeded after {retry_count} retries")
-                    return result
+                        result = {
+                            "task_id": task.get("id"),
+                            "status": "error",
+                            "message": error_msg,
+                            "retry_count": retry_count,
+                            "retry_reasons": retry_reasons
+                        }
+                        break
 
-            except Exception as e:
-                error_msg = str(e) if str(e) else f"Task execution failed: {type(e).__name__}"
+            # 如果循环正常结束但没有结果（理论上不会发生）
+            if result is None:
+                result = {
+                    "task_id": task.get("id"),
+                    "status": "error",
+                    "message": "Max retries exceeded",
+                    "retry_count": retry_count,
+                    "retry_reasons": retry_reasons
+                }
 
-                if retry_count < max_retries:
-                    retry_count += 1
-                    retry_reasons.append(f"Attempt {retry_count}: {error_msg}")
-                    logger.warning(f"Task {task.get('id')} exception: {error_msg}. Retrying in {retry_interval}s (attempt {retry_count}/{max_retries})...")
+            # 记录任务性能数据
+            duration = time_module.time() - start_time
+            status = result.get("status", "unknown")
+            self.perf_monitor.metrics.record_task(task_id, task_name, duration, status)
 
-                    import time
-                    time.sleep(retry_interval)
-                else:
-                    logger.error(f"Task {task.get('id')} failed after {retry_count} attempts: {error_msg}")
-                    return {
-                        "task_id": task.get("id"),
-                        "status": "error",
-                        "message": error_msg,
-                        "retry_count": retry_count,
-                        "retry_reasons": retry_reasons
-                    }
-
-        # 理论上不会到达这里
-        return {
-            "task_id": task.get("id"),
-            "status": "error",
-            "message": "Max retries exceeded",
-            "retry_count": retry_count,
-            "retry_reasons": retry_reasons
-        }
+            return result
 
     def verify_task(self, task: Dict[str, Any]) -> bool:
         """验证任务完成度"""
@@ -1461,6 +1479,9 @@ Please start by gathering context, then analyze and make updates."""
 
     def initialize_session(self, agent_type: str = "coder") -> Dict[str, Any]:
         """初始化会话"""
+        # 开始性能监控
+        self.perf_monitor.metrics.start_session()
+
         session_id = datetime.now().strftime("%Y%m%d_%H%M%S")
 
         state = self.state_manager.load_state()
@@ -1510,6 +1531,9 @@ Please start by gathering context, then analyze and make updates."""
 
     def complete_session(self, summary: Optional[Dict[str, Any]] = None) -> None:
         """完成会话"""
+        # 结束性能监控
+        perf_stats = self.perf_monitor.metrics.end_session()
+
         state = self.state_manager.load_state()
         session_id = state.get("current_session", {}).get("id")
 
@@ -1520,6 +1544,7 @@ Please start by gathering context, then analyze and make updates."""
                     session["end_time"] = datetime.now().isoformat()
                     session["status"] = "completed"
                     session["summary"] = summary or {}
+                    session["performance"] = perf_stats
             self.state_manager.save_session_history(history)
 
         commit_message = f"Session {session_id}: {summary.get('message', 'Progress update') if summary else 'Progress update'}"

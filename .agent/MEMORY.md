@@ -40,6 +40,30 @@ This file stores accumulated experience and lessons learned from the Agent-Loop 
 
 ## Lessons Learned
 
+### 2026-03-07: Performance Monitoring
+
+Added performance monitoring functionality to track task execution time, session duration, and system resource usage:
+
+1. **New Module**: Created `agent/performance_monitor.py` with:
+   - `PerformanceMetrics` class: Collects task timings and session stats
+   - `PerformanceMonitor` class: Provides context manager and decorator for tracking operations
+   - Uses Python's `resource` module for system metrics (CPU time, memory usage)
+   - Logs performance data via `agent_core.performance` logger
+
+2. **Integration with AgentCore**:
+   - Added `perf_monitor` instance to `AgentCore.__init__`
+   - Session start/end tracking in `initialize_session` and `complete_session`
+   - Task execution tracking in `execute_task` with automatic duration calculation
+   - Performance stats saved to session history
+
+3. **Usage Patterns**:
+   - Context manager: `with monitor.track_operation("operation_name", task_id):`
+   - Decorator: `@monitor.track_function`
+   - Direct recording: `metrics.record_task(task_id, task_name, duration, status)`
+   - Get system metrics: `monitor.get_system_metrics()`
+
+4. **Key Insight**: Use Python's built-in `resource` module instead of external `psutil` for system metrics to avoid additional dependencies.
+
 ### 2026-03-07: Task Retry Mechanism
 
 Added a retry mechanism to the task execution in `agent_core.py`:
@@ -273,6 +297,8 @@ Or via `env` parameter in ClaudeAgentOptions.
 ---
 
 ## Task Experience Records
+
+
 
 
 
@@ -720,7 +746,10 @@ When improving CLI help in main.py:
 
 ---
 
-### 2026-03-07 - Improve main.py CLI help (self-013)
+
+---
+
+2026-03-07 - Improve main.py CLI help (self-013)
 
 **任务描述**: 改进 main.py 的命令行参数解析，添加更好的帮助信息和子命令支持。
 
@@ -729,10 +758,35 @@ When improving CLI help in main.py:
 
 I've successfully improved the main.py CLI help with better argument parsing and subcommand support. Here's what was done:
 
-### Changes Made to `main.py`:
+
+---
+
+Changes Made to `main.py`:
 1. **Added version support** - Added `__version__` variable and `--version` flag
 2. **Improved main help** - Added descriptive `description` and `epilog` with usage examples
 3. **Added new options per subcommand**:
    - `run`: Added `--max-restarts` option (default: 3)
    - `list`: Added `--filter` option (all/pending/completed)
   
+
+---
+
+### 2026-03-07 - Optimize imports and remove unused code (self-024)
+
+**任务描述**: 审查所有模块的导入语句，移除未使用的导入。检查并删除未使用的函数、变量和常量。使用 isort 优化导入顺序。
+
+**执行结果**: completed
+**执行消息**: ## Summary
+
+I have successfully completed the task of optimizing imports and removing unused code. Here's what was done:
+
+### Changes Made
+
+1. **agent/state_manager.py**: Removed unused `os` import
+
+2. **agent/human_intervention.py**: Removed unused `Path` import
+
+3. **agent/test_runner.py**: 
+   - Removed unused `os` import
+   - Removed unused variables `project_root` and `test_pattern` in `run_test_for_feature` method
+   - Simplified `verify_feature` method to return `False` when no `verify_co
