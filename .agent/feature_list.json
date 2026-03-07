@@ -59,8 +59,8 @@
       "name": "Add tests for config_reloader module",
       "description": "当前项目中缺少对 config_reloader 模块的测试。根据测试指南，需要使用真实数据和真实环境进行测试，不能使用 mock。建议测试场景：1）配置文件变化检测；2）feature_list.json 变化检测；3）热重载功能。",
       "priority": 6,
-      "status": "pending",
-      "passes": false,
+      "status": "completed",
+      "passes": true,
       "context": "创建 tests/test_config_reloader.py 文件。参考其他测试文件的结构（如 test_state_manager.py），编写针对 ConfigReloader 类的真实测试。",
       "created_at": "2026-03-07 21:00:00",
       "updated_at": "2026-03-07"
