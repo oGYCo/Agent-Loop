@@ -682,286 +682,188 @@ Start by reading CLAUDE.md and the relevant source files for this task."""
             logger.info(f"Auto-planned {added_count} new tasks based on project context")
 
     def review_task_plan(self, completed_task: Optional[Dict[str, Any]] = None) -> None:
-        """审查并更新任务计划
+        """生成任务计划自省任务
 
-        每完成一个任务后调用此方法，检查：
-        1. 后续任务是否需要调整优先级
-        2. 是否有任务变得过时（不再需要）
-        3. 是否需要新增任务（基于完成的任务）
-        4. 是否有任务变成阻塞状态（依赖未完成的前置任务）
+        每完成一个任务后，生成一个自省任务让 Agent 自主判断：
+        1. 哪些待办任务变得过时（不再需要）
+        2. 哪些任务优先级需要调整
+        3. 是否需要新增任务
+        4. 是否有重复任务
+
+        Agent 需要自主读取 feature_list.json，分析当前状态，然后决定如何修改。
 
         Args:
             completed_task: 刚完成的任务信息
         """
-        import re
+        logger.info("Generating self-review task for agent...")
 
-        logger.info("Reviewing task plan...")
-
+        # 生成自省任务 ID
         data = self.state_manager.load_feature_list()
         features = data.get("features", [])
-        today = datetime.now().strftime('%Y-%m-%d')
+        review_task_id = f"self-review-{datetime.now().strftime('%Y%m%d%H%M%S')}"
 
-        changes_made = []
-
-        # 1. 检查过时任务 - 已完成相关任务后，某些任务可能不再需要
-        # 例如：类型注解任务完成后，"修复mypy错误"类的任务就过时了
-        obsolete_patterns = [
-            (r"mypy.*error", r"type.*annotation", "已添加类型注解后mypy错误任务可能过时"),
-            (r"fix.*test", r"test.*pass", "测试通过后修复测试的任务可能过时"),
-        ]
-
-        for feature in features:
-            if feature.get("status") != "pending":
-                continue
-
-            desc = feature.get("description", "").lower()
-            name = feature.get("name", "").lower()
-
-            # 检查是否有过时任务的迹象
-            for pattern_pair in obsolete_patterns:
-                if re.search(pattern_pair[0], desc) or re.search(pattern_pair[0], name):
-                    # 检查是否有对应的已完成任务
-                    for completed in features:
-                        if completed.get("status") == "completed":
-                            completed_desc = completed.get("description", "").lower()
-                            if re.search(pattern_pair[1], completed_desc):
-                                # 标记为过时（降低优先级或添加说明）
-                                if feature.get("priority", 99) < 90:
-                                    old_priority = feature.get("priority")
-                                    feature["priority"] = min(90, old_priority + 10)
-                                    changes_made.append(f"任务 {feature['id']} 优先级调整: {old_priority} -> {feature['priority']} (相关任务已完成)")
-
-        # 2. 调整优先级 - 根据系统当前状态
-        # 统计已完成/待办比例，调整各类任务优先级
+        # 统计当前状态
         completed_count = sum(1 for f in features if f.get("status") == "completed")
         pending_count = sum(1 for f in features if f.get("status") == "pending")
+        failed_count = sum(1 for f in features if f.get("status") == "failed")
 
-        # 如果待办太多，提高测试相关任务的优先级
-        if pending_count > 15:
-            for feature in features:
-                if feature.get("status") == "pending":
-                    desc = feature.get("description", "").lower()
-                    if "test" in desc and feature.get("priority", 99) > 5:
-                        old_priority = feature.get("priority")
-                        feature["priority"] = max(1, old_priority - 2)
-                        changes_made.append(f"任务 {feature['id']} 优先级调整: {old_priority} -> {feature['priority']} (待办积压)")
+        # 构建自省任务
+        review_task = {
+            "id": review_task_id,
+            "name": "Self-review: Optimize task plan",
+            "description": f"""请仔细审查当前任务计划。
 
-        # 3. 检查阻塞任务 - 某些任务可能依赖已失败的任务
-        for feature in features:
-            if feature.get("status") == "pending":
-                desc = feature.get("description", "")
-                # 检查是否有依赖失败任务的迹象
-                if "fix" in desc.lower() and "failed" in desc.lower():
-                    # 查找对应的失败任务
-                    failed_id_match = re.search(r'([a-z]+-\d+)', desc)
-                    if failed_id_match:
-                        failed_id = failed_id_match.group(1)
-                        # 查找该任务是否仍然是失败状态
-                        target_found = False
-                        for target in features:
-                            if target.get("id") == failed_id and target.get("status") == "failed":
-                                target_found = True
-                                break
-                        if not target_found:
-                            # 失败任务已修复或删除，标记此任务也完成
-                            feature["status"] = "completed"
-                            feature["passes"] = True
-                            changes_made.append(f"任务 {feature['id']} 自动标记完成 (依赖任务已解决)")
+刚完成的任务: {completed_task.get('name') if completed_task else 'N/A'}
 
-        # 4. 清理重复任务
-        seen_ids: set[str] = set()
-        duplicates: list[str] = []
-        for feature in features:
-            fid = feature.get("id", "")
-            if fid in seen_ids:
-                duplicates.append(fid)
-            seen_ids.add(fid)
+当前状态:
+- 已完成: {completed_count} 个
+- 待完成: {pending_count} 个
+- 失败: {failed_count} 个
 
-        if duplicates:
-            # 删除重复任务（保留第一个）
-            id_counts: dict[str, int] = {}
-            to_remove: list[int] = []
-            for i, feature in enumerate(features):
-                fid = feature.get("id", "")
-                if fid in id_counts:
-                    if id_counts[fid] > 0:
-                        to_remove.append(i)
-                        id_counts[fid] += 1
-                else:
-                    id_counts[fid] = 1
+请执行以下自省任务:
+1. 读取 .agent/feature_list.json 分析所有待办任务
+2. 判断哪些任务已经过时（因为依赖的任务已完成或系统已改变）
+3. 判断哪些任务优先级需要调整
+4. 判断是否需要新增任务
+5. 判断是否有重复任务需要合并
 
-            # 从后往前删除（保持索引不变）
-            for i in reversed(to_remove):
-                removed = features.pop(i)
-                changes_made.append(f"删除重复任务: {removed.get('id')}")
+重要: 你需要自主判断并直接修改 feature_list.json，而不是简单执行脚本。
+只修改真正需要变更的部分，保留合理的任务。""",
+            "priority": 1,  # 高优先级，让 Agent 立即处理
+            "status": "pending",
+            "passes": False,
+            "context_files": [".agent/feature_list.json"],
+            "created_at": datetime.now().strftime('%Y-%m-%d'),
+            "updated_at": datetime.now().strftime('%Y-%m-%d'),
+        }
 
-        # 保存更改
-        if changes_made:
-            data["features"] = features
-            self.state_manager.save_feature_list(data)
-            logger.info(f"Task plan reviewed. Changes: {len(changes_made)}")
-            for change in changes_made:
-                logger.info(f"  - {change}")
+        # 添加自省任务（如果不存在）
+        existing_ids = {f.get("id") for f in features}
+        if review_task_id not in existing_ids:
+            self.state_manager.add_feature(review_task)
+            logger.info(f"Added self-review task: {review_task_id}")
         else:
-            logger.info("Task plan review: no changes needed")
+            logger.info("Self-review task already exists, skipping")
 
-    def refine_memory(self, force: bool = False) -> None:
-        """提炼并优化 MEMORY.md
+    def suggest_memory_cleanup(self) -> str:
+        """生成 MEMORY.md 清理建议
 
-        定期清理 MEMORY.md，移除：
-        1. 重复的任务记录
-        2. 过时的经验（被后续记录覆盖）
-        3. 冗余的空行和格式问题
-        4. 保留最精华的内容
+        返回一个提示信息，让 Agent 自主判断如何清理 MEMORY.md
 
-        Args:
-            force: 是否强制执行（即使未到清理周期）
+        Returns:
+            清理建议文本
         """
-        import re
-
         memory_file = self.state_manager.agent_dir / "MEMORY.md"
 
         if not memory_file.exists():
-            logger.warning("MEMORY.md not found, skipping refinement")
-            return
+            return ""
 
         with open(memory_file, "r", encoding="utf-8") as f:
             content = f.read()
 
-        original_lines = len(content.split('\n'))
-        refined_content = content
+        # 统计
+        lines = content.split('\n')
+        task_record_count = content.count("### ")
+        lessons_count = content.count("### 2026")
 
-        # 1. 清理重复的空行（3个以上空行 -> 2个）
-        refined_content = re.sub(r'\n{4,}', '\n\n\n', refined_content)
+        suggestions = []
 
-        # 2. 清理任务记录中的重复内容
-        # 识别 "Task Experience Records" 部分
-        if "## Task Experience Records" in refined_content:
-            parts = refined_content.split("## Task Experience Records")
-            static_content = parts[0]
-            task_records = parts[1] if len(parts) > 1 else ""
+        if len(lines) > 300:
+            suggestions.append(f"- MEMORY.md 内容较多 ({len(lines)} 行)，可能需要精简")
 
-            # 解析并去重任务记录
-            seen_entries: dict[str, str] = {}
-            cleaned_records: list[str] = []
+        if task_record_count > 30:
+            suggestions.append(f"- 任务记录较多 ({task_record_count} 条)，考虑保留最重要的")
 
-            # 按 ### 分割任务记录
-            entries = re.split(r'\n### ', task_records)
-            for entry in entries:
-                if not entry.strip():
-                    continue
+        if lessons_count > 20:
+            suggestions.append(f"- Lessons Learned 较多 ({lessons_count} 条)，考虑合并重复内容")
 
-                # 提取任务ID作为去重键
-                id_match = re.match(r'\d{4}-\d{2}-\d{2} - .+ \((\w+)\)', entry)
-                if id_match:
-                    task_id = id_match.group(1)
-                    # 如果已存在且新内容更短（精简版），则跳过
-                    if task_id in seen_entries:
-                        # 保留内容更丰富的那一个
-                        if len(entry) > len(seen_entries[task_id]):
-                            seen_entries[task_id] = entry
-                    else:
-                        seen_entries[task_id] = entry
+        # 检查重复章节
+        seen_titles = set()
+        duplicates = []
+        for line in lines:
+            if line.startswith("## "):
+                title = line[3:].strip()
+                if title in seen_titles:
+                    duplicates.append(title)
+                seen_titles.add(title)
 
-            # 重建任务记录部分 - 按日期排序（最新的在前）
-            def get_sort_key(x: str) -> str:
-                match = re.match(r'(\d{4}-\d{2}-\d{2})', x)
-                return match.group(1) if match else "1900-01-01"
+        if duplicates:
+            suggestions.append(f"- 发现重复章节: {', '.join(duplicates[:3])}")
 
-            sorted_records = sorted(seen_entries.values(), key=get_sort_key, reverse=True)
+        if suggestions:
+            return "MEMORY.md 清理建议:\n" + "\n".join(suggestions)
+        return ""
 
-            # 限制保留最近的任务记录（最多30条）
-            if len(sorted_records) > 30:
-                sorted_records = sorted_records[:30]
+    def suggest_claude_md_cleanup(self) -> str:
+        """生成 CLAUDE.md 清理建议
 
-            task_records_cleaned = "\n\n---\n\n### ".join(sorted_records)
-            refined_content = static_content + "## Task Experience Records\n\n" + task_records_cleaned
+        返回一个提示信息，让 Agent 自主判断如何清理 CLAUDE.md
 
-        # 3. 清理 "---" 分隔符过多的情况
-        refined_content = re.sub(r'\n---\n---\n', '\n---\n', refined_content)
-
-        # 4. 清理行尾多余空格
-        refined_content = re.sub(r' +\n', '\n', refined_content)
-
-        # 保存
-        if refined_content != content:
-            with open(memory_file, "w", encoding="utf-8") as f:
-                f.write(refined_content)
-
-            new_lines = len(refined_content.split('\n'))
-            logger.info(f"MEMORY.md refined: {original_lines} -> {new_lines} lines ({original_lines - new_lines} lines removed)")
-        else:
-            logger.info("MEMORY.md refinement: no changes needed")
-
-    def refine_claude_md(self, force: bool = False) -> None:
-        """提炼并优化 CLAUDE.md
-
-        清理 CLAUDE.md 中的：
-        1. 重复的章节
-        2. 过时的 Lessons Learned
-        3. 冗余的格式
-
-        Args:
-            force: 是否强制执行
+        Returns:
+            清理建议文本
         """
-        import re
-
         claude_md_path = Path(self.project_root) / "CLAUDE.md"
 
         if not claude_md_path.exists():
-            logger.warning("CLAUDE.md not found, skipping refinement")
-            return
+            return ""
 
         with open(claude_md_path, "r", encoding="utf-8") as f:
             content = f.read()
 
-        original_lines = len(content.split('\n'))
-        refined_content = content
+        # 统计
+        lines = content.split('\n')
+        lessons_count = content.count("### 2026")
 
-        # 1. 清理重复的空行
-        refined_content = re.sub(r'\n{4,}', '\n\n\n', refined_content)
+        suggestions = []
 
-        # 2. 清理 "Lessons Learned" 部分的重复条目
-        if "## Lessons Learned" in refined_content:
-            parts = refined_content.split("## Lessons Learned")
-            before_lessons = parts[0]
-            lessons_section = parts[1] if len(parts) > 1 else ""
+        if len(lines) > 200:
+            suggestions.append(f"- CLAUDE.md 内容较多 ({len(lines)} 行)，可能需要精简")
 
-            # 提取并去重 lessons
-            seen_lessons: set[int] = set()
-            unique_lessons: list[str] = []
+        if lessons_count > 15:
+            suggestions.append(f"- Lessons Learned 较多 ({lessons_count} 条)，考虑保留最精华的内容")
 
-            # 按 ### 分割
-            lesson_entries = re.split(r'\n### ', lessons_section)
-            for entry in lesson_entries:
-                if not entry.strip():
-                    continue
+        # 检查重复章节
+        seen_titles = set()
+        duplicates = []
+        for line in lines:
+            if line.startswith("## ") or line.startswith("### "):
+                title = line[2:].strip() if line.startswith("##") else line[3:].strip()
+                if title in seen_titles:
+                    duplicates.append(title)
+                seen_titles.add(title)
 
-                # 提取内容哈希去重
-                content_hash = hash(entry.strip()[:200])  # 用前200字符作为哈希
-                if content_hash not in seen_lessons:
-                    seen_lessons.add(content_hash)
-                    unique_lessons.append(entry)
+        if duplicates:
+            suggestions.append(f"- 发现重复章节: {', '.join(set(duplicates[:3]))}")
 
-            # 限制保留最近的 lessons（最多20条）
-            if len(unique_lessons) > 20:
-                unique_lessons = unique_lessons[:20]
+        if suggestions:
+            return "CLAUDE.md 清理建议:\n" + "\n".join(suggestions)
+        return ""
 
-            lessons_cleaned = "\n\n### ".join(unique_lessons)
-            refined_content = before_lessons + "## Lessons Learned\n\n### " + lessons_cleaned
+    def refine_memory(self, force: bool = False) -> str:
+        """生成 MEMORY.md 清理任务
 
-        # 3. 清理行尾多余空格
-        refined_content = re.sub(r' +\n', '\n', refined_content)
+        不自动删除内容，而是生成一个自省任务让 Agent 自主判断如何清理
 
-        # 保存
-        if refined_content != content:
-            with open(claude_md_path, "w", encoding="utf-8") as f:
-                f.write(refined_content)
+        Args:
+            force: 是否强制生成（即使内容较少）
 
-            new_lines = len(refined_content.split('\n'))
-            logger.info(f"CLAUDE.md refined: {original_lines} -> {new_lines} lines ({original_lines - new_lines} lines removed)")
-        else:
-            logger.info("CLAUDE.md refinement: no changes needed")
+        Returns:
+            清理建议文本
+        """
+        return self.suggest_memory_cleanup()
+
+    def refine_claude_md(self, force: bool = False) -> str:
+        """生成 CLAUDE.md 清理任务
+
+        不自动删除内容，而是生成一个自省任务让 Agent 自主判断如何清理
+
+        Args:
+            force: 是否强制生成（即使内容较少）
+
+        Returns:
+            清理建议文本
+        """
+        return self.suggest_claude_md_cleanup()
 
     async def execute_task_with_sdk(self, task: Dict[str, Any]) -> Dict[str, Any]:
         """使用 Claude Agent SDK 执行任务"""
@@ -1582,16 +1484,20 @@ Start by reading CLAUDE.md and the relevant source files for this task."""
                 self._auto_plan_next_steps()
 
                 # 审查并更新任务计划（任务完成后的自我调整）
+                # 生成自省任务让 Agent 自主判断
                 if verified:
                     self.review_task_plan(task)
 
-                # 定期提炼 MEMORY.md（每5次迭代或强制时）
+                # 输出文档清理建议（让 Agent 自主决定是否处理）
                 if summary["iterations"] > 0 and summary["iterations"] % 5 == 0:
-                    self.refine_memory(force=False)
+                    memory_suggestion = self.refine_memory(force=False)
+                    if memory_suggestion:
+                        logger.info(memory_suggestion)
 
-                # 定期提炼 CLAUDE.md（每10次迭代或强制时）
                 if summary["iterations"] > 0 and summary["iterations"] % 10 == 0:
-                    self.refine_claude_md(force=False)
+                    claude_suggestion = self.refine_claude_md(force=False)
+                    if claude_suggestion:
+                        logger.info(claude_suggestion)
 
                 # 检测代码变更并尝试热更新
                 if self.needs_reload():

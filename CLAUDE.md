@@ -124,3 +124,32 @@ ANTHROPIC_BASE_URL      # API endpoint (default: https://api.minimaxi.com/anthro
 ## Current Tasks
 
 Run `python main.py list` to see pending refactoring tasks in `.agent/feature_list.json`.
+
+## Self-Improvement Features
+
+### Task Plan Auto-Review (Agent-Driven)
+
+After each task completion, the system generates a **self-review task** for the Agent to:
+- Read `.agent/feature_list.json` and analyze pending tasks
+- Decide which tasks are obsolete (dependencies completed)
+- Adjust priorities based on current system state
+- Add new tasks if needed
+- Merge duplicate tasks
+
+**The Agent makes decisions, not automatic scripts.**
+
+### MEMORY.md & CLAUDE.md Refinement (Agent-Driven)
+
+Instead of auto-deleting content, the system provides suggestions:
+- Every 5 iterations: outputs cleanup suggestions for MEMORY.md
+- Every 10 iterations: outputs cleanup suggestions for CLAUDE.md
+
+The Agent then decides whether and how to clean up - never automatic deletion.
+
+### Post-Task Actions (Agent Must Do)
+
+After completing any task, the agent MUST:
+1. Review feature_list.json - manually adjust priorities, remove obsolete tasks, add new tasks if needed
+2. Update MEMORY.md - extract key learnings from this task
+3. Update CLAUDE.md - add important patterns or insights discovered
+4. Commit changes - save progress with git

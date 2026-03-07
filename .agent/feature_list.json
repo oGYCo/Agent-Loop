@@ -107,8 +107,8 @@
       "name": "Improve error messages",
       "description": "审查现有错误处理，使用更友好的错误消息替换通用的异常信息。",
       "priority": 3,
-      "status": "pending",
-      "passes": false,
+      "status": "completed",
+      "passes": true,
       "verify_command": "grep -c 'raise.*Error' agent/*.py",
       "context_files": [
         "agent/agent_core.py",
@@ -435,6 +435,49 @@
       "context_files": [
         "agent/state_manager.py",
         "main.py"
+      ],
+      "created_at": "2026-03-07",
+      "updated_at": "2026-03-07"
+    },
+    {
+      "id": "self-031",
+      "name": "Add task plan auto-review mechanism",
+      "description": "实现任务计划自动审查机制：每完成一个任务后，让agent仔细检查feature_list.json中的后续任务，根据当前系统状态调整优先级、新增必要的任务、删除过时的任务。确保计划始终与系统当前状态保持同步。",
+      "priority": 1,
+      "status": "completed",
+      "passes": true,
+      "verify_command": "grep -r 'review_task_plan' agent/",
+      "context_files": [
+        "agent/agent_core.py",
+        ".agent/feature_list.json"
+      ],
+      "created_at": "2026-03-07",
+      "updated_at": "2026-03-07"
+    },
+    {
+      "id": "self-032",
+      "name": "Enhance MEMORY.md and CLAUDE.md update mechanism",
+      "description": "增强 MEMORY.md 和 CLAUDE.md 的更新机制：不仅简单追加，还要智能提炼、去重、删除过时内容。实现定期整理功能，保持这两个文件的精简和时效性。",
+      "priority": 1,
+      "status": "completed",
+      "passes": true,
+      "verify_command": "grep -r 'refine_memory\\|refine_claude_md' agent/",
+      "context_files": [
+        "agent/agent_core.py",
+        ".agent/MEMORY.md"
+      ],
+      "created_at": "2026-03-07",
+      "updated_at": "2026-03-07"
+    },
+    {
+      "id": "self-review-20260307160526",
+      "name": "Self-review: Optimize task plan",
+      "description": "请仔细审查当前任务计划。\n\n刚完成的任务: Test Task\n\n当前状态:\n- 已完成: 22 个\n- 待完成: 10 个\n- 失败: 0 个\n\n请执行以下自省任务:\n1. 读取 .agent/feature_list.json 分析所有待办任务\n2. 判断哪些任务已经过时（因为依赖的任务已完成或系统已改变）\n3. 判断哪些任务优先级需要调整\n4. 判断是否需要新增任务\n5. 判断是否有重复任务需要合并\n\n重要: 你需要自主判断并直接修改 feature_list.json，而不是简单执行脚本。\n只修改真正需要变更的部分，保留合理的任务。",
+      "priority": 1,
+      "status": "pending",
+      "passes": false,
+      "context_files": [
+        ".agent/feature_list.json"
       ],
       "created_at": "2026-03-07",
       "updated_at": "2026-03-07"
