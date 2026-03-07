@@ -40,6 +40,18 @@ This file stores accumulated experience and lessons learned from the Agent-Loop 
 
 ## Lessons Learned
 
+### 2026-03-07: Improving Error Messages
+
+When improving error messages in the codebase:
+
+1. **Custom exception classes**: Add `__init__` methods to custom exceptions to store the message for later retrieval with a `.message` attribute.
+
+2. **Generic exception handling**: When catching generic `Exception`, always handle the case where `str(e)` is empty - use `type(e).__name__` to provide useful information about what went wrong.
+
+3. **Error message patterns**:
+   - Before: `return False, f"Test execution failed: {str(e)}"` - fails if e has no message
+   - After: `error_msg = str(e) if str(e) else f"Unexpected error: {type(e).__name__}"`
+
 ### 2026-03-07: Adding Comprehensive Unit Tests
 
 When adding tests for `agent_core.py`:
@@ -218,6 +230,8 @@ Or via `env` parameter in ClaudeAgentOptions.
 ---
 
 ## Task Experience Records
+
+
 
 
 
@@ -643,7 +657,10 @@ Tests Added (24 new test cases)
 
 ---
 
-### 2026-03-07 - Update README.md with current features (self-025)
+
+---
+
+2026-03-07 - Update README.md with current features (self-025)
 
 **任务描述**: 更新 README.md，添加项目最新功能介绍、使用方法、配置说明和示例。确保文档与代码同步。
 
@@ -652,7 +669,10 @@ Tests Added (24 new test cases)
 
 I've successfully completed the task **self-025: Update README.md with current features**. Here's what was done:
 
-### Changes Made
+
+---
+
+Changes Made
 
 1. **Updated README.md** with:
    - Complete CLI Reference with all commands (`init`, `run`, `list`, `add`, `status`)
@@ -664,7 +684,10 @@ I've successfully completed the task **self-025: Update README.md with current f
 
 ---
 
-### 2026-03-07 - Code review for all core modules (self-029)
+
+---
+
+2026-03-07 - Code review for all core modules (self-029)
 
 **任务描述**: 对所有核心模块进行代码审查，包括：state_manager, task_selector, git_helper, session_manager, human_intervention。检查代码质量、一致性和潜在问题。
 
@@ -693,3 +716,23 @@ I've successfully completed the task **self-025: Update README.md with current f
 - human_intervention.py 中的 `exit(1)` 应改为抛出异常
 - 考虑使用 logging 替代 print 语句
 - 为文件 I/O 操作添加错误处理
+
+---
+
+### 2026-03-07 - Code review for all modules (self-029)
+
+**任务描述**: 对所有核心模块进行代码审查，包括：state_manager, task_selector, git_helper, session_manager, human_intervention。检查代码质量、一致性和潜在问题。
+
+**执行结果**: completed
+**执行消息**: ## Summary
+
+I have completed the code review for all core modules. Here's what was done:
+
+### Code Review Findings
+
+| Module | Status | Issues Found |
+|--------|--------|--------------|
+| **state_manager.py** | ✅ Good | Minor: Mixed language comments, no file I/O error handling |
+| **task_selector.py** | ⚠️ Fixed | Fixed: Boolean comparison improved to use `is True` |
+| **git_helper.py** | ✅ Good | Minor: Import order (subprocess before os), print vs logging |
+| **session_manager.py** | ✅ Good |
