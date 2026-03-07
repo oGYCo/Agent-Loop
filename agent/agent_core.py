@@ -10,7 +10,7 @@ import sys
 import logging
 from datetime import datetime
 from pathlib import Path
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, Any, List, cast
 
 from claude_agent_sdk import (
     query,
@@ -23,12 +23,23 @@ from claude_agent_sdk import (
     CLIConnectionError,
     ProcessError,
 )
-from claude_agent_sdk.types import StreamEvent, AssistantMessage, ResultMessage, UserMessage
+from claude_agent_sdk.types import (
+    StreamEvent,
+    AssistantMessage,
+    ResultMessage,
+    UserMessage,
+    PreToolUseHookInput,
+    PostToolUseHookInput,
+    NotificationHookInput,
+    StopHookInput,
+    HookContext,
+    AsyncHookJSONOutput,
+)
 
 
 # ========== Hooks 实现 ==========
 
-async def pre_tool_hook(input_data: dict, tool_use_id: str | None, context: dict) -> dict:
+async def pre_tool_hook(input_data: Any, tool_use_id: str | None, context: Any) -> AsyncHookJSONOutput:
     """工具执行前调用 - 记录工具调用信息"""
     tool_name = input_data.get("tool_name", "unknown")
     tool_input = input_data.get("tool_input", {})
@@ -42,21 +53,20 @@ async def pre_tool_hook(input_data: dict, tool_use_id: str | None, context: dict
     print(f"\n[PreToolUse] {tool_name}", flush=True)
     print(f"  Input: {input_preview}", flush=True)
 
-    return {}  # 允许执行
+    return {"async_": True}  # 允许执行
 
 
-async def post_tool_hook(input_data: dict, tool_use_id: str | None, context: dict) -> dict:
+async def post_tool_hook(input_data: Any, tool_use_id: str | None, context: Any) -> AsyncHookJSONOutput:
     """工具执行后调用 - 流式输出结果"""
     import sys
 
     tool_name = input_data.get("tool_name", "unknown")
-    result = input_data.get("result", {})
-    result_type = input_data.get("result_type", "unknown")
+    result = input_data.get("tool_response", {})
 
-    # 根据结果类型进行流式输出
-    if result_type == "text":
+    # 检查结果是否为文本类型
+    if isinstance(result, str):
         # 文本结果直接打印（流式）
-        text_content = result.get("text", "")
+        text_content = result
         if text_content:
             print(f"\n📤 Result: ", end="", flush=True)
             # 流式输出每个字符或行
@@ -74,10 +84,10 @@ async def post_tool_hook(input_data: dict, tool_use_id: str | None, context: dic
             print(f"  Result: {result_preview[:300]}...")
         sys.stdout.flush()
 
-    return {}
+    return {"async_": True}
 
 
-async def notification_hook(input_data: dict, tool_use_id: str | None, context: dict) -> dict:
+async def notification_hook(input_data: Any, tool_use_id: str | None, context: Any) -> AsyncHookJSONOutput:
     """处理通知消息"""
     message = input_data.get("message", "")
     notification_type = input_data.get("notification_type", "")
@@ -85,16 +95,16 @@ async def notification_hook(input_data: dict, tool_use_id: str | None, context: 
     logger.info(f"Notification: {notification_type}: {message[:200]}")
     print(f"\n[Notification] {notification_type}: {message[:200]}", flush=True)
 
-    return {}
+    return {"async_": True}
 
 
-async def stop_hook(input_data: dict, tool_use_id: str | None, context: dict) -> dict:
+async def stop_hook(input_data: Any, tool_use_id: str | None, context: Any) -> AsyncHookJSONOutput:
     """处理停止事件"""
     session_id = input_data.get("session_id", "")
     logger.info(f"Session {session_id} ended")
     print(f"\n[Stop] Session {session_id} ended", flush=True)
 
-    return {}
+    return {"async_": True}
 
 from .state_manager import StateManager
 from .task_selector import TaskSelector
@@ -262,7 +272,7 @@ class AgentCore:
 
     def gather_project_context(self) -> Dict[str, Any]:
         """收集项目上下文信息，用于制定计划前的分析"""
-        context = {
+        context: Dict[str, Any] = {
             "config": self.state_manager.load_config(),
             "feature_list": self.state_manager.load_feature_list(),
             "state": self.state_manager.load_state(),
@@ -276,7 +286,7 @@ class AgentCore:
         }
 
         # 分类任务
-        data = context["feature_list"]
+        data: dict[str, Any] = cast(dict[str, Any], context["feature_list"])
         for task in data.get("features", []):
             status = task.get("status", "pending")
             if status == "completed":
@@ -358,7 +368,7 @@ You are responsible for the continuous improvement of this Agent-Loop project. Y
 - 完成后更新 feature_list.json 中的任务状态
 - 提取经验教训并更新 .agent/MEMORY.md"""
 
-    def get_task_prompt(self, task: Dict[str, Any]) -> str:  # type: ignore[no-untyped-def]
+    def get_task_prompt(self, task: Dict[str, Any]) -> str:
         """获取任务提示词 - 包含完整上下文"""
         git_status = self.git_helper.get_status()
         current_branch = self.git_helper.get_current_branch()
@@ -440,7 +450,7 @@ Start by reading CLAUDE.md and the relevant source files for this task."""
 
         return prompt
 
-    def _get_verify_command(self, task: Dict[str, Any]) -> str:  # type: ignore[no-untyped-def]
+    def _get_verify_command(self, task: Dict[str, Any]) -> str:
         """获取验证命令"""
         if task.get('verify_command'):
             return f"Run: `{task.get('verify_command')}`"
@@ -460,7 +470,7 @@ Start by reading CLAUDE.md and the relevant source files for this task."""
         ]
 
         lines = claude_md.split('\n')
-        selected_lines = []
+        selected_lines: list[str] = []
         in_key_section = False
 
         for line in lines:
@@ -870,9 +880,9 @@ Start by reading CLAUDE.md and the relevant source files for this task."""
 
                     # 处理 UserMessage - 工具结果（来自工具执行）
                     elif isinstance(message, UserMessage):
-                        content = message.content
-                        if isinstance(content, list):
-                            for block in content:
+                        user_content = message.content
+                        if isinstance(user_content, list):
+                            for block in user_content:
                                 block_type = getattr(block, 'type', None)
                                 if block_type == "tool_result":
                                     tool_use_id = getattr(block, 'tool_use_id', '')
@@ -1194,7 +1204,7 @@ Start by reading CLAUDE.md and the relevant source files for this task."""
 
         lines = []
         current_section = None
-        current_content = []
+        current_content: list[str] = []
 
         # 提取修改内容
         modify_match = re.search(r'修改内容[:：]\s*(.+?)(?=\n\n|\n##|\Z)', message, re.DOTALL)
@@ -1215,9 +1225,10 @@ Start by reading CLAUDE.md and the relevant source files for this task."""
             return "\n".join(lines)
 
         # 如果没有匹配到结构化内容，尝试提取关键句子
-        key_sentences = re.findall(r'[^。]+(?:修复|添加|更新|修复了|添加了)[^。]+。', message)
+        key_sentences: list[str] = re.findall(r'[^。]+(?:修复|添加|更新|修复了|添加了)[^。]+。', message)
         if key_sentences:
-            return "- " + key_sentences[0].strip()[:200]
+            result_str: str = "- " + key_sentences[0].strip()[:200]
+            return result_str
 
         return ""
 
