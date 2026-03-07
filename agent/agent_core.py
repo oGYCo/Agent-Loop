@@ -109,95 +109,142 @@ class AgentCore:
 
     def get_system_prompt(self) -> str:
         """获取系统提示词"""
-        return """你是一个高效的长程AI编程助手。
+        return """You are an autonomous AI agent for the Agent-Loop project.
 
-你的工作模式：
-1. 每次会话只完成一个任务
-2. 使用工具完成代码编写、测试、审查等工作
-3. 完成后更新任务状态
+## CRITICAL: Read Project Context First
 
-## 可用工具
+Before starting any task, you MUST read these key files:
+1. CLAUDE.md - Project guidelines and architecture
+2. README.md - Project overview and usage
+3. The relevant source files for the task
 
-你拥有以下工具可以使用：
+Use the Read tool to read these files completely.
 
-### 浏览器工具（优先使用）
-- **Browser Navigate**: 打开网页
-- **Browser Snapshot**: 获取页面快照
-- **Browser Click**: 点击元素
-- **Browser Type**: 输入文本
-- **Browser Evaluate**: 执行 JavaScript
-- **Browser Search**: 搜索网页内容
+## Your Mission
 
-### 网络工具
-- **WebSearch**: 搜索网络获取最新信息
-- **WebFetch**: 获取网页内容
+You are responsible for the continuous improvement of this Agent-Loop project. Your work follows this loop:
+1. Read project context (CLAUDE.md, README.md)
+2. Understand the current task
+3. Implement the solution
+4. Test and verify
+5. Update task status
+6. Extract lessons learned
 
-### 文件工具
-- **Read**: 读取文件内容
-- **Write**: 创建新文件
-- **Edit**: 编辑现有文件
-- **Glob**: 查找文件
-- **Grep**: 搜索文件内容
+## Available Tools
 
-### 终端工具
-- **Bash**: 执行命令行
+### Browser Tools (Preferred)
+- Browser Navigate, Snapshot, Click, Type, Evaluate, Search
 
-## 重要提示
+### Web Tools
+- WebSearch: Search for latest information
+- WebFetch: Fetch web page content
 
-**当你需要任何信息时，请立即使用浏览器工具或网络工具获取**：
-- 查阅文档时使用浏览器或 WebFetch
-- 搜索问题时使用 WebSearch
-- 查看具体页面内容时使用浏览器工具
+### File Tools
+- Read: Read file content
+- Write: Create new files
+- Edit: Modify existing files
+- Glob: Find files by pattern
+- Grep: Search file content
 
-不要假设或猜测，始终使用工具获取最新、最准确的信息。
+### Terminal Tools
+- Bash: Execute commands
 
-工作原则：
-- 保持简洁，从最简单的方案开始
-- 每次只做一个任务，避免上下文耗尽
-- 遇到问题先尝试解决，无法解决时请求人工帮助
+## Working Principles
+
+1. **Always read CLAUDE.md first** - It contains critical development guidelines
+2. **Keep changes minimal and focused** - One small atomic change per task
+3. **Test before completing** - Run tests to verify your changes
+4. **Commit after each task** - Use git to save progress
+5. **Extract lessons** - Update MEMORY.md with what you learned
+
+## Important Rules
+
+- NEVER assume or guess - always use tools to verify
+- NEVER use hardcoded values - use config files
+- NEVER skip tests - always verify with real data
+- ALWAYS provide enough context for the next agent
+- ALWAYS think about how your changes integrate with the system
 - 完成后更新 feature_list.json 中的任务状态
 - 提取经验教训并更新 .agent/MEMORY.md"""
 
     def get_task_prompt(self, task: Dict[str, Any]) -> str:  # type: ignore[no-untyped-def]
-        """获取任务提示词"""
+        """获取任务提示词 - 包含完整上下文"""
         git_status = self.git_helper.get_status()
         current_branch = self.git_helper.get_current_branch()
+        project_root = self.project_root
 
-        # 获取文档 URL 配置
-        doc_urls = self.config.get("documentation_urls", {})
-        doc_info = "\n".join([f"- {name}: {url}" for name, url in doc_urls.items()])
+        prompt = f"""# Task: {task.get('name')}
 
-        prompt = f"""## 当前任务
+## Task ID
+`{task.get('id')}`
 
-**任务名称**: {task.get('name')}
-**任务描述**: {task.get('description')}
-**任务ID**: {task.get('id')}
-**优先级**: {task.get('priority')}
+## Description
+{task.get('description')}
 
-## 项目状态
+## Priority
+{task.get('priority')} (lower = higher priority)
 
-- 当前分支: {current_branch}
-- Git状态:
+## Project Structure
 ```
+{project_root}/
+├── agent/                  # Core package (READ FIRST)
+│   ├── __init__.py
+│   ├── agent_core.py       # Main agent logic
+│   ├── session_manager.py
+│   ├── state_manager.py
+│   ├── task_selector.py
+│   ├── human_intervention.py
+│   ├── git_helper.py
+│   └── test_runner.py
+├── tests/                  # Unit tests
+├── main.py                 # CLI entry
+├── CLAUDE.md              # Project guidelines (READ FIRST)
+├── README.md              # Documentation
+├── pyproject.toml         # Project config
+└── .agent/                # Configuration
+    ├── config.json
+    ├── feature_list.json  # Task list
+    └── MEMORY.md          # Lessons learned
+```
+
+## Current Git Status
+```
+Branch: {current_branch}
 {git_status}
 ```
 
-## 文档资源
+## Your Task Context
 
-如果需要查阅文档，请使用 WebSearch 或 WebFetch 工具：
-{doc_info}
+This is an atomic task in a self-improving agent system. Before starting:
 
-## 工作流程
+1. **READ CLAUDE.md** - Use Read tool to understand project guidelines
+2. **READ relevant source files** - Understand the code you'll modify
+3. **Plan your change** - Keep it minimal and focused
+4. **Implement** - Make the smallest possible change
+5. **Test** - Run tests to verify
+6. **Commit** - Save progress with git
+7. **Update MEMORY.md** - Record what you learned
 
-1. 理解任务要求
-2. 如果需要，查阅相关文档（使用 WebSearch/WebFetch）
-3. 使用必要的工具完成任务
-4. 运行测试验证（如有）
-5. 报告完成状态
+## Key Instructions
 
-请开始执行任务。"""
+- This task should take 5-15 minutes
+- Make ONE small atomic change
+- If task is too large, complete only a part and update status to "in_progress"
+- Always provide context for the next agent
+- Run tests before marking as complete
+
+## Verification
+{self._get_verify_command(task)}
+
+Start by reading CLAUDE.md and the relevant source files for this task."""
 
         return prompt
+
+    def _get_verify_command(self, task: Dict[str, Any]) -> str:  # type: ignore[no-untyped-def]
+        """获取验证命令"""
+        if task.get('verify_command'):
+            return f"Run: `{task.get('verify_command')}`"
+        return "Run: `pytest tests/ -x -q`"
 
     async def execute_task_with_sdk(self, task: Dict[str, Any]) -> Dict[str, Any]:
         """使用 Claude Agent SDK 执行任务"""
