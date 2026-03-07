@@ -1,0 +1,25 @@
+{
+  "project_name": "agent-project",
+  "project_type": "generic",
+  "test_command": "pytest",
+  "test_pattern": "test_*.py",
+  "max_errors_before_intervention": 3,
+  "context_window_limit": 100000,
+  "model": "MiniMax-M2.5-highspeed",
+  "session_type": "coder",
+  "documentation_urls": {
+    "claude_agent_sdk": "https://platform.claude.com/docs/en/agent-sdk/overview",
+    "python_sdk": "https://platform.claude.com/docs/en/agent-sdk/python",
+    "typescript_sdk": "https://platform.claude.com/docs/en/agent-sdk/typescript",
+    "hooks": "https://platform.claude.com/docs/en/agent-sdk/hooks",
+    "streaming_output": "https://platform.claude.com/docs/en/agent-sdk/streaming-output",
+    "sessions": "https://platform.claude.com/docs/en/agent-sdk/sessions",
+    "file_checkpointing": "https://platform.claude.com/docs/en/agent-sdk/file-checkpointing",
+    "permissions": "https://platform.claude.com/docs/en/agent-sdk/permissions",
+    "custom_tools": "https://platform.claude.com/docs/en/agent-sdk/custom-tools",
+    "mcp": "https://modelcontextprotocol.io/introduction",
+    "python_logging": "https://docs.python.org/3/library/logging.html",
+    "mypy": "https://mypy.readthedocs.io/",
+    "pytest": "https://docs.pytest.org/"
+  }
+}

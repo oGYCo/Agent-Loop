@@ -1,0 +1,107 @@
+{
+  "features": [
+    {
+      "id": "refactor-001",
+      "name": "Complete SDK streaming output",
+      "description": "实现完整流式输出，启用 include_partial_messages，处理 StreamEvent 实现实时 AI 思考过程显示",
+      "priority": 1,
+      "status": "completed",
+      "passes": true,
+      "verify_command": "python -m pytest tests/ -x -q",
+      "created_at": "2026-03-07",
+      "updated_at": "2026-03-07"
+    },
+    {
+      "id": "refactor-002",
+      "name": "Implement official hooks mechanism",
+      "description": "实现官方 Hooks 机制：PreToolUse, PostToolUse, Notification, Stop hooks",
+      "priority": 1,
+      "status": "completed",
+      "passes": true,
+      "created_at": "2026-03-07",
+      "updated_at": "2026-03-07"
+    },
+    {
+      "id": "refactor-003",
+      "name": "Use ClaudeSDKClient for fine control",
+      "description": "使用 ClaudeSDKClient 替代简单 query() 调用，获得更精细的会话控制",
+      "priority": 1,
+      "status": "completed",
+      "passes": true,
+      "created_at": "2026-03-07",
+      "updated_at": "2026-03-07"
+    },
+    {
+      "id": "refactor-004",
+      "name": "Implement session management with resume",
+      "description": "集成官方会话管理，实现 session_id 返回和 resume 参数支持会话恢复",
+      "priority": 2,
+      "status": "completed",
+      "passes": true,
+      "created_at": "2026-03-07",
+      "updated_at": "2026-03-07"
+    },
+    {
+      "id": "refactor-005",
+      "name": "Improve error handling with specific exceptions",
+      "description": "添加特定异常类型处理：CLINotFoundError, CLIConnectionError, ProcessError, ClaudeSDKError",
+      "priority": 2,
+      "status": "completed",
+      "passes": true,
+      "created_at": "2026-03-07",
+      "updated_at": "2026-03-07"
+    },
+    {
+      "id": "refactor-006",
+      "name": "Implement file checkpointing",
+      "description": "实现文件检查点功能：enable_file_checkpointing=True，支持文件修改追踪和恢复",
+      "priority": 2,
+      "status": "completed",
+      "passes": true,
+      "verify_command": "python -m pytest tests/test_agent_core.py -v",
+      "created_at": "2026-03-07",
+      "updated_at": "2026-03-07"
+    },
+    {
+      "id": "refactor-007",
+      "name": "Fix MCP tool authorization",
+      "description": "修复 MCP 工具授权：正确配置 allowed_tools 包含所有 MCP 工具",
+      "priority": 2,
+      "status": "completed",
+      "passes": true,
+      "created_at": "2026-03-07",
+      "updated_at": "2026-03-07"
+    },
+    {
+      "id": "refactor-008",
+      "name": "Implement PermissionRequest hook for human intervention",
+      "description": "使用官方 PermissionRequest hook 改进人工干预机制",
+      "priority": 3,
+      "status": "pending",
+      "passes": false,
+      "created_at": "2026-03-07",
+      "updated_at": "2026-03-07"
+    },
+    {
+      "id": "refactor-009",
+      "name": "Complete type annotations",
+      "description": "完善类型注解：使用 mypy 检查并修复类型错误",
+      "priority": 3,
+      "status": "pending",
+      "passes": false,
+      "verify_command": "python -m mypy agent_core.py",
+      "created_at": "2026-03-07",
+      "updated_at": "2026-03-07"
+    },
+    {
+      "id": "refactor-010",
+      "name": "Add logging configuration",
+      "description": "查阅 Python logging 模块文档，添加统一的日志配置替代 print",
+      "priority": 3,
+      "status": "pending",
+      "passes": false,
+      "created_at": "2026-03-07",
+      "updated_at": "2026-03-07"
+    }
+  ]
+}
