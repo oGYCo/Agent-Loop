@@ -378,6 +378,8 @@ When fixing mypy type annotation errors for methods that access nested dicts fro
 
 
 
+
+
 2026-03-07: Task Plan Self-Review
 
 When reviewing the task plan (feature_list.json):
@@ -1152,7 +1154,10 @@ When fixing mypy type annotation errors:
 
 ---
 
-### 2026-03-07 - Fix type annotation errors in agent_core.py (feature-036)
+
+---
+
+2026-03-07 - Fix type annotation errors in agent_core.py (feature-036)
 
 **任务描述**: 修复 agent_core.py 中的 mypy 类型错误：第1653行使用内置 callbale 而非 typing.Callable，导致类型检查失败。需要将 shutdown_flag 参数类型从 Optional[callable] 改为 Optional[Callable[[], bool]]。
 
@@ -1161,7 +1166,10 @@ When fixing mypy type annotation errors:
 
 I've successfully fixed the type annotation error in `agent_core.py`. Here's a summary:
 
-### Changes Made
+
+---
+
+Changes Made
 
 1. **Added `Callable` to imports** (line 13):
    ```python
@@ -1172,6 +1180,46 @@ I've successfully fixed the type annotation error in `agent_core.py`. Here's a s
    - Before: `shutdown_flag: Optional[callable] = None`
    - After: `shutdown_flag: Optional[Callable[[], bool]] = None`
 
-### Verification
+
+---
+
+Verification
 
 - Ran mypy type checking - the error on line 1653 is now fixed
+
+---
+
+### 2026-03-07 - Fix type annotation errors in prompt_manager.py (feature-037)
+
+**任务描述**: 修复 prompt_manager.py 中的 mypy 类型错误：get_active_prompt() 和 get_active_prompt_name() 方法返回类型声明为 str 但实际返回 Any。需要添加正确的类型转换或使用 cast() 处理。
+
+**执行结果**: completed
+**执行消息**: ## Task Complete
+
+I've successfully fixed the mypy type annotation errors in `prompt_manager.py`:
+
+### Changes Made
+1. **Line 166**: Added `cast(str, ...)` around the return value of `get_active_prompt()`
+2. **Line 181**: Added `cast(str, ...)` around the return value of `get_active_prompt_name()`
+
+### Root Cause
+The issue was that `prompts.get(active_key, {}).get("system", ...)` returns `Any` because:
+- `prompts` is typed as `dict[str, Any]` (from JSON loading)
+- Chained `.get()` calls on a `di
+### 2026-03-07 - Rename TestRunner class to avoid pytest warning (feature-038)
+
+**任务描述**: 重命名 agent/test_runner.py 中的 TestRunner 类为 TestRunnerModule 或 AgentTestRunner，避免 pytest 将其识别为测试类并产生警告。
+
+**执行结果**: completed
+
+**执行的更改**:
+1. **agent/test_runner.py**: 将 `class TestRunner` 重命名为 `class AgentTestRunner`
+2. **agent/__init__.py**: 更新导入和导出为 `AgentTestRunner`
+3. **tests/test_test_runner.py**: 更新所有引用
+
+**关键洞察**:
+- pytest 默认会收集以 "Test" 开头的类作为测试类，即使它们有 `__init__` 构造函数
+- 初次尝试重命名为 `TestRunnerModule` 仍然产生警告，因为它仍然以 "Test" 开头
+- 最终使用 `AgentTestRunner` 作为新名称，成功消除了警告
+
+**验证**: 运行 `pytest tests/ -v 2>&1 | grep -i 'warning'` 确认无警告输出
