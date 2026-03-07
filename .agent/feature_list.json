@@ -519,8 +519,8 @@
       "name": "Fix type annotation errors in prompt_manager.py",
       "description": "修复 prompt_manager.py 中的 mypy 类型错误：get_active_prompt() 和 get_active_prompt_name() 方法返回类型声明为 str 但实际返回 Any。需要添加正确的类型转换或使用 cast() 处理。",
       "priority": 1,
-      "status": "pending",
-      "passes": false,
+      "status": "completed",
+      "passes": true,
       "verify_command": "python -m mypy agent/prompt_manager.py --ignore-missing-imports",
       "context_files": [
         "agent/prompt_manager.py"

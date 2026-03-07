@@ -193,6 +193,7 @@ When adding tests for `agent_core.py`:
 - Empty list `[]` is inferred as `list[str]`, use `list[str] = []` to specify type
 - `re.findall()` returns `list[str]`, annotate explicitly when needed
 - Use `Any` for SDK hook inputs to avoid complex union type issues with HookMatcher
+- When using `dict.get(key, {}).get(nested_key)`, the result is `Any` - use `cast(str, ...)` to satisfy type checkers
 
 ### Unused Import Detection
 
@@ -326,7 +327,30 @@ Or via `env` parameter in ClaudeAgentOptions.
 
 ---
 
+### 2026-03-07: Fix Type Annotation Errors in prompt_manager.py
+
+When fixing mypy type annotation errors for methods that access nested dicts from JSON data:
+
+1. **The issue**: Lines 166 and 181 in `prompt_manager.py` - `get_active_prompt()` and `get_active_prompt_name()` use chained `.get()` calls on dicts loaded from JSON, returning `Any` instead of `str`.
+
+2. **The fix**: Wrap the return values with `cast(str, ...)`:
+   ```python
+   # Before:
+   return prompts.get(active_key, {}).get("system", self.DEFAULT_PROMPTS["system"])
+
+   # After:
+   return cast(str, prompts.get(active_key, {}).get("system", self.DEFAULT_PROMPTS["system"]))
+   ```
+
+3. **Key insight**: When accessing nested dictionaries from JSON-loaded data, chained `.get()` calls return `Any` type. Use `cast()` from `typing` to explicitly tell mypy the expected return type.
+
+4. **Verification**: Run `python -m mypy agent/prompt_manager.py --ignore-missing-imports` to confirm no errors.
+
+---
+
 ## Task Experience Records
+
+
 
 
 
@@ -1076,7 +1100,10 @@ When doing a production-grade code review:
 
 ---
 
-### 2026-03-07: Fix Type Annotation Error in agent_core.py
+
+---
+
+2026-03-07: Fix Type Annotation Error in agent_core.py
 
 When fixing mypy type annotation errors:
 
@@ -1092,7 +1119,10 @@ When fixing mypy type annotation errors:
 
 ---
 
-### 2026-03-07 - task and plan (feature-035)
+
+---
+
+2026-03-07 - task and plan (feature-035)
 
 **任务描述**: 请先仔细的review当前项目的所有的文件，检查是否存在什么问题，要用工业生产级的标准来进行审查，然后制定一系列的后续的优化和迭代任务，注意任务描述一定要足够的清楚和详细
 
@@ -1101,7 +1131,10 @@ When fixing mypy type annotation errors:
 
 我已完成对 Agent-Loop 项目的全面代码审查，以工业生产级标准进行检查。以下是审查结果：
 
-### 审查发现的问题
+
+---
+
+审查发现的问题
 
 #### 1. 类型注解错误 (优先级 1)
 | 文件 | 问题 | 行号 |
@@ -1116,3 +1149,29 @@ When fixing mypy type annotation errors:
 #### 3. 代码质量问题 (优先级 3)
 - 中英文混用的 docstrings - 文档风格不一致
 - `agent_core.py` 中 `run_agent_l
+
+---
+
+### 2026-03-07 - Fix type annotation errors in agent_core.py (feature-036)
+
+**任务描述**: 修复 agent_core.py 中的 mypy 类型错误：第1653行使用内置 callbale 而非 typing.Callable，导致类型检查失败。需要将 shutdown_flag 参数类型从 Optional[callable] 改为 Optional[Callable[[], bool]]。
+
+**执行结果**: completed
+**执行消息**: ## Task Complete
+
+I've successfully fixed the type annotation error in `agent_core.py`. Here's a summary:
+
+### Changes Made
+
+1. **Added `Callable` to imports** (line 13):
+   ```python
+   from typing import Optional, Dict, Any, List, cast, Callable
+   ```
+
+2. **Fixed type annotation** (line 1653):
+   - Before: `shutdown_flag: Optional[callable] = None`
+   - After: `shutdown_flag: Optional[Callable[[], bool]] = None`
+
+### Verification
+
+- Ran mypy type checking - the error on line 1653 is now fixed
