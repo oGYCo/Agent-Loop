@@ -4,7 +4,6 @@
 """
 
 import subprocess
-import os
 from pathlib import Path
 from typing import Tuple, Optional, Dict, Any
 
@@ -68,14 +67,8 @@ class TestRunner:
         if not feature:
             return False, f"Feature {feature_id} not found"
 
-        # 获取项目根目录
-        project_root = Path(__file__).parent.parent
-
-        # 构建测试命令
-        test_pattern = self.config.get("test_pattern", "test_*.py")
-        test_command = self.config.get("test_command", "pytest")
-
         # 运行测试
+        test_command = self.config.get("test_command", "pytest")
         success, output = self.run_tests(test_command)
 
         return success, output
@@ -106,7 +99,5 @@ class TestRunner:
             except Exception:
                 return False
 
-        # 默认运行通用测试
-        feature_id_str: str = feature_id if feature_id else ""
-        success, _ = self.run_test_for_feature(feature_id_str)
-        return success
+        # 没有 verify_command 时返回 False，不自动运行测试
+        return False
