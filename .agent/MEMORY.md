@@ -350,6 +350,8 @@ Or via `env` parameter in ClaudeAgentOptions.
 
 
 
+
+
 2026-03-07: Task Plan Self-Review
 
 When reviewing the task plan (feature_list.json):
@@ -934,7 +936,10 @@ Changes Made
 
 ---
 
-### 2026-03-07 - Add feature (feature-033)
+
+---
+
+2026-03-07 - Add feature (feature-033)
 
 **任务描述**: 给项目增加一个能够非常方便的进行管理和自定义各种提示词的功能，以便整个项目能够适配各种不同类型的任务和工作，请先认真获取了所有必要的上下文之后再进行具体的执行
 
@@ -943,18 +948,27 @@ Changes Made
 
 ## Implementation Summary
 
-### New Module: `agent/prompt_manager.py`
+
+---
+
+New Module: `agent/prompt_manager.py`
 - Created a comprehensive `PromptManager` class for managing prompts
 - Supports loading/saving prompts from/to `.agent/prompts.json`
 - Provides methods: `get_active_prompt()`, `list_prompts()`, `add_prompt()`, `update_prompt()`, `delete_prompt()`, `set_active_prompt()`
 
-### New Configuration: `.agent/prompts.json`
+
+---
+
+New Configuration: `.agent/prompts.json`
 - Auto-created on first access
 
 
 ---
 
-### 2026-03-07: Git Push After Commit
+
+---
+
+2026-03-07: Git Push After Commit
 
 Added automatic git push after commit in `git_helper.py`:
 
@@ -972,3 +986,25 @@ Added automatic git push after commit in `git_helper.py`:
 3. **Test results**: All 165 tests pass
 
 4. **Key Insight**: When implementing automatic push, always handle the case where there's no remote configured or no upstream branch - these are not errors, just cases where push cannot be performed but the commit still succeeded. 
+
+---
+
+### 2026-03-07 - fix (feature-034)
+
+**任务描述**: 补充修复整个项目中git的流程操作，即在进行了git commit之后还应该执行git push，请先认真获取了所有必要的上下文之后再进行具体的执行
+
+**执行结果**: completed
+**执行消息**: ## Summary
+
+I've successfully completed the task of adding git push after commit in the project. Here's what was done:
+
+### Changes Made to `agent/git_helper.py`:
+
+1. **Modified `stage_and_commit` method**:
+   - Added optional `push` parameter (default: `True`)
+   - Automatically calls `push()` after successful commit
+
+2. **Added new `push` method**:
+   - Pushes commits to remote repository
+   - Handles edge cases gracefully:
+     - No remote configured: prints message and returns `True` (not an

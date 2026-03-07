@@ -198,7 +198,25 @@
       "id": "20260307_173041",
       "start_time": "2026-03-07T17:30:41.901883",
       "agent_type": "coder",
-      "status": "started"
+      "status": "completed",
+      "end_time": "2026-03-07T17:39:27.539275",
+      "summary": {
+        "completed": 1,
+        "errors": 1,
+        "iterations": 2,
+        "session_id": "20260307_173041",
+        "sdk_session_id": "605eb3bb-e118-47cc-be58-89ac22369b15"
+      },
+      "performance": {
+        "session_duration_seconds": 525.65,
+        "total_tasks": 2,
+        "session_start": "2026-03-07T17:30:41.893226",
+        "session_end": "2026-03-07T17:39:27.539110",
+        "avg_task_duration": 262.74,
+        "min_task_duration": 186.42,
+        "max_task_duration": 339.06,
+        "total_task_time": 525.48
+      }
     }
   ],
   "total_sessions": 23
