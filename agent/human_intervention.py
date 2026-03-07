@@ -3,9 +3,10 @@
 当遇到特定情况时，暂停并通知人类
 """
 
+import asyncio
 import json
 from datetime import datetime
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, Callable
 
 from .state_manager import StateManager
 
@@ -107,13 +108,21 @@ class HumanIntervention:
 
         return None
 
-    def wait_for_human(self, request: Dict[str, Any]) -> bool:
+    def wait_for_human(
+        self,
+        request: Dict[str, Any],
+        input_callback: Optional[Callable[[str], str]] = None
+    ) -> bool:
         """等待人类响应
 
         在实际实现中，这可能通过以下方式：
         1. 发送通知（邮件、Slack等）
         2. 创建交互式提示
         3. 写入待处理文件供人类检查
+
+        Args:
+            request: 干预请求详情
+            input_callback: 可选的异步输入回调函数，用于自定义输入获取方式
 
         Returns:
             人类是否批准继续
@@ -135,8 +144,12 @@ class HumanIntervention:
             f.write(f"Time: {request.get('timestamp')}\n")
             f.write(f"Task: {request.get('task_id')}\n")
 
-        # 简单的命令行交互
-        response = input("\nDo you want to continue? (yes/no/skip): ").strip().lower()
+        # 使用异步方式获取输入，避免阻塞事件循环
+        # 如果提供了回调函数则使用回调，否则使用 asyncio.to_thread
+        if input_callback:
+            response = input_callback("\nDo you want to continue? (yes/no/skip): ").strip().lower()
+        else:
+            response = asyncio.run(self._async_input("\nDo you want to continue? (yes/no/skip): "))
 
         if response == "yes":
             # 删除待处理文件
@@ -152,6 +165,19 @@ class HumanIntervention:
             # 终止
             print("Agent stopped. Please resolve the issue and restart.")
             exit(1)
+
+    async def _async_input(self, prompt: str) -> str:
+        """异步获取用户输入
+
+        使用线程池执行阻塞的 input() 调用，避免阻塞事件循环
+
+        Args:
+            prompt: 提示文本
+
+        Returns:
+            用户输入的字符串
+        """
+        return await asyncio.to_thread(lambda: input(prompt))
 
     def notify_completion(self, summary: Dict[str, Any]) -> None:
         """通知任务完成"""
