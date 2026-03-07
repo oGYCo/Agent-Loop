@@ -696,6 +696,8 @@ Accumulated experience and lessons learned from task execution.
 
 
 
+
+
 2026-03-08 - API密钥认证 (feature-013)
 
 **任务描述**: 为API服务添加API Key认证机制，支持配置多个密钥，实现基本的访问控制。
@@ -981,7 +983,10 @@ Code Review Findings (Production-Grade Perspective)
 
 ---
 
-### 2026-03-08 - 更新README.md文档 (feature-019)
+
+---
+
+2026-03-08 - 更新README.md文档 (feature-019)
 
 **任务描述**: 更新README.md以包含所有已实现的功能：1) 邮件通知服务 (feature-007) 2) 任务看板功能 (feature-011) 3) API密钥认证 (feature-013) 4) Webhook通知 (feature-005) 5) Grafana仪表板模板 (feature-012) 6) 错误处理改进 (feature-018)。确保文档与代码功能保持同步。
 
@@ -990,7 +995,10 @@ Code Review Findings (Production-Grade Perspective)
 
 我已成功更新 README.md 文档，包含所有已实现的功能：
 
-### 新增功能文档 (Features)
+
+---
+
+新增功能文档 (Features)
 
 1. **邮件通知服务 (feature-007)** - Send email alerts on task completion, failure, or intervention
 2. **Webhook通知 (feature-005)** - HTTP POST notifications to external services  
@@ -998,3 +1006,39 @@ Code Review Findings (Production-Grade Perspective)
 4. **API密钥认证 (feature-013)** - Secure API access with configurable API keys
 5. **Grafana仪表板模板 (feature-012)** - Pre-built Grafana dashboard template for monitoring
 6. **错误处
+
+---
+
+### 2026-03-08 - 更新README.zh-CN.md中文文档 (feature-020)
+
+**任务描述**: 更新README.zh-CN.md以包含所有已实现的功能，与README.md保持同步。确保所有新功能的描述准确且翻译正确。
+
+**执行结果**: completed
+**执行消息**: ## 任务完成 ✅
+
+我已成功更新 `README.zh-CN.md` 中文文档，使其与 `README.md` 保持同步。以下是所做的更改：
+
+### 1. 核心特性部分
+添加了 6 个缺失的功能：
+- **邮件通知** - 任务完成、失败或干预时发送邮件提醒
+- **Webhook 通知** - 向外部服务发送 HTTP POST 通知
+- **任务看板 UI** - 可视化 Kanban 风格任务看板，支持拖拽
+- **API 密钥认证** - 安全 API 访问，支持可配置 API 密钥
+- **Grafana 监控面板** - 预置 Grafana 监控面板模板
+- **增强的错误处理** - 改进的错误恢复和优雅降级
+
+### 2. 配置部分
+添加了 3 个新的配置章节：
+- **邮件配置** - SMTP 配置示例
+- **Webhook 配置** - Webhook URL 和重试配置
+- **API 密钥配置** - API 密钥管理
+
+### 3. 项目结构部分
+更新了项目结构，包含：
+- `agent/email_notifier.py` - 邮件通知服务
+- `
+
+**学到的经验**:
+- ## 任务完成 ✅
+
+我已成功更新 `README.zh-CN.md` 中文文档，使其与 `README.md` 保持同步。
