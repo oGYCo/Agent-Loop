@@ -15,7 +15,6 @@
 </p>
 
 <p align="center">
-  <a href="https://agent-loop.dev"><strong>Documentation</strong></a> ·
   <a href="#quick-start"><strong>Get Started</strong></a> ·
   <a href="#cli-reference"><strong>CLI Reference</strong></a> ·
   <a href="#configuration"><strong>Configuration</strong></a>
