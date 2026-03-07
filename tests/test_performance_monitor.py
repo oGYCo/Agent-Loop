@@ -1,6 +1,7 @@
 """Tests for PerformanceMonitor module"""
 
 import time
+import threading
 import pytest
 
 # Add parent directory to path for imports
@@ -14,6 +15,7 @@ from agent.performance_monitor import (
     PerformanceMonitor,
     get_monitor,
     reset_monitor,
+    monitor_scope,
 )
 
 
@@ -222,6 +224,48 @@ class TestPerformanceMonitor:
         assert monitor.get_operation_summary() == []
 
 
+class TestMonitorScope:
+    """Test cases for monitor_scope context manager"""
+
+    def test_monitor_scope_creates_new_instance(self):
+        """Test monitor_scope creates a new isolated instance"""
+        with monitor_scope() as monitor:
+            assert isinstance(monitor, PerformanceMonitor)
+            # Can track operations in this scope
+            with monitor.track_operation("test_op"):
+                time.sleep(0.01)
+
+            assert len(monitor.get_operation_summary()) == 1
+
+    def test_monitor_scope_isolation(self):
+        """Test that each monitor_scope creates isolated instances"""
+        with monitor_scope() as monitor1:
+            with monitor1.track_operation("op1"):
+                pass
+
+            with monitor_scope() as monitor2:
+                with monitor2.track_operation("op2"):
+                    pass
+
+            # monitor1 and monitor2 are different instances
+            assert monitor1 is not monitor2
+            # Each has its own operation summary
+            assert len(monitor1.get_operation_summary()) == 1
+            assert len(monitor2.get_operation_summary()) == 1
+
+    def test_monitor_scope_with_session(self):
+        """Test monitor_scope with session tracking"""
+        with monitor_scope() as monitor:
+            monitor.metrics.start_session()
+            with monitor.track_operation("task"):
+                time.sleep(0.01)
+            monitor.metrics.record_task("task-1", "Test", 1.0, "success")
+            stats = monitor.metrics.end_session()
+
+            assert stats["total_tasks"] == 1
+            assert stats["session_duration_seconds"] > 0
+
+
 class TestGlobalMonitor:
     """Test cases for global monitor singleton"""
 
@@ -264,6 +308,35 @@ class TestGlobalMonitor:
 
         # New monitor should have empty operations
         assert len(monitor2.get_operation_summary()) == 0
+
+    def test_get_monitor_thread_safety(self):
+        """Test that get_monitor is thread-safe"""
+        reset_monitor()
+
+        monitors = []
+        errors = []
+
+        def get_monitor_in_thread():
+            try:
+                m = get_monitor()
+                monitors.append(m)
+            except Exception as e:
+                errors.append(e)
+
+        # Create multiple threads trying to get the monitor
+        threads = [threading.Thread(target=get_monitor_in_thread) for _ in range(10)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+
+        # All should get the same instance without errors
+        assert len(errors) == 0
+        assert len(monitors) == 10
+        # All monitors should be the same instance
+        assert all(m is monitors[0] for m in monitors)
+
+        reset_monitor()
 
 
 class TestIntegration:

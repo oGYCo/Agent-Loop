@@ -70,9 +70,9 @@
       "name": "Add tests for performance_monitor module",
       "description": "当前项目中缺少对 performance_monitor 模块的测试。建议测试场景：1）性能数据记录；2）性能统计计算；3）全局 monitor 的单例行为。",
       "priority": 7,
-      "status": "pending",
-      "passes": false,
-      "context": "创建 tests/test_performance_monitor.py 文件。参考其他测试文件的结构，编写针对 PerformanceMonitor 类的真实测试。",
+      "status": "completed",
+      "passes": true,
+      "context": "创建 tests/test_performance_monitor.py 文件。参考 tests/test_config_reloader.py 的结构（29个测试用例），编写针对 PerformanceMonitor 类的真实测试。使用 tempfile.TemporaryDirectory() 进行测试隔离，使用真实数据不使用 mock。",
       "created_at": "2026-03-07 21:00:00",
       "updated_at": "2026-03-07"
     },

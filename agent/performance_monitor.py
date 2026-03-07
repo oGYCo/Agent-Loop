@@ -6,6 +6,7 @@
 import time
 import logging
 import resource
+import threading
 from datetime import datetime
 from typing import Optional, Dict, Any, List
 from contextlib import contextmanager
@@ -179,19 +180,47 @@ class PerformanceMonitor:
         self._operation_stack.clear()
 
 
-# 全局性能监控器实例
+# 全局性能监控器实例（线程安全）
 _global_monitor: Optional[PerformanceMonitor] = None
+_global_monitor_lock = threading.Lock()
 
 
 def get_monitor() -> PerformanceMonitor:
-    """获取全局性能监控器实例"""
+    """获取全局性能监控器实例（线程安全）"""
     global _global_monitor
     if _global_monitor is None:
-        _global_monitor = PerformanceMonitor()
+        with _global_monitor_lock:
+            # Double-check locking pattern
+            if _global_monitor is None:
+                _global_monitor = PerformanceMonitor()
     return _global_monitor
 
 
 def reset_monitor() -> None:
-    """重置全局性能监控器"""
+    """重置全局性能监控器（线程安全）"""
     global _global_monitor
-    _global_monitor = None
+    with _global_monitor_lock:
+        _global_monitor = None
+
+
+@contextmanager
+def monitor_scope() -> "PerformanceMonitor":
+    """上下文管理器：创建作用域内的性能监控器实例
+
+    推荐使用此方法代替全局 get_monitor() 以避免多线程/异步环境中的竞态条件。
+
+    Usage:
+        with monitor_scope() as monitor:
+            with monitor.track_operation("operation_name"):
+                # 执行操作
+                pass
+
+    Yields:
+        PerformanceMonitor: 新的监控器实例
+    """
+    monitor = PerformanceMonitor()
+    try:
+        yield monitor
+    finally:
+        # 作用域结束时自动清理
+        pass
