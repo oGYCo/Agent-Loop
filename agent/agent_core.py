@@ -159,6 +159,9 @@ class AgentCore:
         # 缓存 CLAUDE.md 内容
         self._claude_md_cache: Optional[str] = None
 
+        # 迭代计数器，用于决定何时执行文档清理
+        self._iteration_count: int = 0
+
         # 代码变更检测
         self._last_known_files: Dict[str, float] = {}
         self._code_changed: bool = False
@@ -836,6 +839,37 @@ Start by reading CLAUDE.md and the relevant source files for this task."""
         """
         return self.suggest_memory_cleanup()
 
+    def _build_memory_cleanup_prompt(self) -> str:
+        """构建 MEMORY.md 清理的 prompt
+
+        Returns:
+            清理用的 prompt，如果不需要清理则返回空字符串
+        """
+        suggestion = self.suggest_memory_cleanup()
+        if not suggestion:
+            return ""
+
+        prompt = f"""## MEMORY.md 文档优化
+
+{suggestion}
+
+### 任务
+
+请执行以下操作:
+1. 读取 `.agent/MEMORY.md` 文件
+2. 分析当前内容，识别可以合并、删除或精简的部分
+3. 直接使用 Edit 或 Write 工具修改文件
+4. 保留最重要的内容，删除冗余重复的内容
+
+重要:
+- 不要删除所有内容，只删除真正冗余的部分
+- 保留关键的经验教训和技术细节
+- 完成后请总结你做了哪些修改
+
+请开始优化。"""
+
+        return prompt
+
     def refine_claude_md(self, force: bool = False) -> str:
         """生成 CLAUDE.md 清理任务
 
@@ -848,6 +882,37 @@ Start by reading CLAUDE.md and the relevant source files for this task."""
             清理建议文本
         """
         return self.suggest_claude_md_cleanup()
+
+    def _build_claude_md_cleanup_prompt(self) -> str:
+        """构建 CLAUDE.md 清理的 prompt
+
+        Returns:
+            清理用的 prompt，如果不需要清理则返回空字符串
+        """
+        suggestion = self.suggest_claude_md_cleanup()
+        if not suggestion:
+            return ""
+
+        prompt = f"""## CLAUDE.md 文档优化
+
+{suggestion}
+
+### 任务
+
+请执行以下操作:
+1. 读取项目根目录下的 `CLAUDE.md` 文件
+2. 分析当前内容，识别可以合并、删除或精简的部分
+3. 直接使用 Edit 或 Write 工具修改文件
+4. 保留最重要的内容，删除冗余重复的内容
+
+重要:
+- 不要删除所有内容，只删除真正冗余的部分
+- 保留关键的项目指南和技术细节
+- 完成后请总结你做了哪些修改
+
+请开始优化。"""
+
+        return prompt
 
     async def execute_task_with_sdk(self, task: Dict[str, Any]) -> Dict[str, Any]:
         """使用 Claude Agent SDK 执行任务"""
@@ -1085,6 +1150,7 @@ Start by reading CLAUDE.md and the relevant source files for this task."""
 
                         # 任务完成后执行自省（仅当任务成功时）
                         if not is_error and session_id:
+                            # 1. 任务计划自省
                             logger.info("Starting post-task self-review...")
                             review_prompt = self._build_self_review_prompt(task)
                             await client.query(review_prompt, session_id=session_id)
@@ -1112,6 +1178,46 @@ Start by reading CLAUDE.md and the relevant source files for this task."""
                                     review_result = str(review_msg.result or '')
                                     logger.info(f"Self-review completed: {review_result[:300]}...")
                                     break
+
+                            # 2. MEMORY.md 清理（每5次迭代执行一次）
+                            if self._iteration_count > 0 and self._iteration_count % 5 == 0:
+                                memory_prompt = self._build_memory_cleanup_prompt()
+                                if memory_prompt:
+                                    logger.info("Starting MEMORY.md cleanup...")
+                                    await client.query(memory_prompt, session_id=session_id)
+
+                                    async for cleanup_msg in client.receive_response():
+                                        if isinstance(cleanup_msg, StreamEvent):
+                                            event = cleanup_msg.event
+                                            event_type = event.get("type", "")
+                                            if event_type == "content_block_delta":
+                                                delta = event.get("delta", {})
+                                                if delta.get("type") == "text_delta":
+                                                    print(delta.get("text", ""), end="", flush=True)
+                                        elif isinstance(cleanup_msg, ResultMessage):
+                                            cleanup_result = str(cleanup_msg.result or '')
+                                            logger.info(f"MEMORY.md cleanup completed: {cleanup_result[:200]}...")
+                                            break
+
+                            # 3. CLAUDE.md 清理（每10次迭代执行一次）
+                            if self._iteration_count > 0 and self._iteration_count % 10 == 0:
+                                claude_prompt = self._build_claude_md_cleanup_prompt()
+                                if claude_prompt:
+                                    logger.info("Starting CLAUDE.md cleanup...")
+                                    await client.query(claude_prompt, session_id=session_id)
+
+                                    async for cleanup_msg in client.receive_response():
+                                        if isinstance(cleanup_msg, StreamEvent):
+                                            event = cleanup_msg.event
+                                            event_type = event.get("type", "")
+                                            if event_type == "content_block_delta":
+                                                delta = event.get("delta", {})
+                                                if delta.get("type") == "text_delta":
+                                                    print(delta.get("text", ""), end="", flush=True)
+                                        elif isinstance(cleanup_msg, ResultMessage):
+                                            cleanup_result = str(cleanup_msg.result or '')
+                                            logger.info(f"CLAUDE.md cleanup completed: {cleanup_result[:200]}...")
+                                            break
 
                     # 处理其他消息类型
                     else:
@@ -1498,18 +1604,7 @@ Start by reading CLAUDE.md and the relevant source files for this task."""
                 self._auto_plan_next_steps()
 
                 # 审查并更新任务计划（任务完成后的自我调整）
-                # 注意: 自省现在在 execute_task_with_sdk 内部执行，保持上下文不丢失
-
-                # 输出文档清理建议（让 Agent 自主决定是否处理）
-                if summary["iterations"] > 0 and summary["iterations"] % 5 == 0:
-                    memory_suggestion = self.refine_memory(force=False)
-                    if memory_suggestion:
-                        logger.info(memory_suggestion)
-
-                if summary["iterations"] > 0 and summary["iterations"] % 10 == 0:
-                    claude_suggestion = self.refine_claude_md(force=False)
-                    if claude_suggestion:
-                        logger.info(claude_suggestion)
+                # 注意: 自省和文档清理现在在 execute_task_with_sdk 内部执行，保持上下文不丢失
 
                 # 检测代码变更并尝试热更新
                 if self.needs_reload():
@@ -1528,6 +1623,7 @@ Start by reading CLAUDE.md and the relevant source files for this task."""
                 summary["errors"] += 1
 
             summary["iterations"] += 1
+            self._iteration_count = summary["iterations"]
 
         self.complete_session(summary)
         return summary
