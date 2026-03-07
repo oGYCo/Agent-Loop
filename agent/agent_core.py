@@ -149,6 +149,105 @@ class AgentCore:
         # 缓存 CLAUDE.md 内容
         self._claude_md_cache: Optional[str] = None
 
+        # 代码变更检测
+        self._last_known_files: Dict[str, float] = {}
+        self._code_changed: bool = False
+        self._initial_file_state()
+
+    def _initial_file_state(self) -> None:
+        """记录初始文件状态，用于检测代码变更"""
+        agent_dir = Path(self.project_root) / "agent"
+        if agent_dir.exists():
+            for f in agent_dir.glob("*.py"):
+                self._last_known_files[str(f)] = f.stat().st_mtime
+
+    def check_code_changes(self) -> bool:
+        """检测代码文件是否有变更"""
+        agent_dir = Path(self.project_root) / "agent"
+        if not agent_dir.exists():
+            return False
+
+        for f in agent_dir.glob("*.py"):
+            f_path = str(f)
+            current_mtime = f.stat().st_mtime
+            if f_path in self._last_known_files:
+                if current_mtime > self._last_known_files[f_path]:
+                    self._code_changed = True
+                    return True
+            else:
+                # 新文件
+                self._code_changed = True
+                return True
+
+        return False
+
+    def needs_reload(self) -> bool:
+        """检查是否需要重新加载（代码变更或配置变更）"""
+        return self._code_changed or self.check_code_changes()
+
+    def reload_modules(self) -> bool:
+        """热更新 Python 模块，重新加载修改过的代码"""
+        import importlib
+
+        modules_to_reload = [
+            "agent.agent_core",
+            "agent.state_manager",
+            "agent.task_selector",
+            "agent.session_manager",
+            "agent.git_helper",
+            "agent.human_intervention",
+            "agent.test_runner",
+        ]
+
+        reloaded = []
+        failed = []
+
+        for module_name in modules_to_reload:
+            try:
+                if module_name in sys.modules:
+                    importlib.reload(sys.modules[module_name])
+                    reloaded.append(module_name)
+            except Exception as e:
+                failed.append((module_name, str(e)))
+
+        # 重新初始化组件
+        if not failed:
+            self._reinitialize_components()
+            # 更新文件状态
+            self._initial_file_state()
+            self._code_changed = False
+            logger.info(f"Hot reload successful: {len(reloaded)} modules reloaded")
+            return True
+        else:
+            logger.error(f"Hot reload failed: {failed}")
+            return False
+
+    def _reinitialize_components(self) -> None:
+        """重新初始化组件（热更新后）"""
+        self.state_manager = StateManager()
+        self.task_selector = TaskSelector(self.state_manager)
+        self.config = self.state_manager.load_config()
+        # 清除 CLAUDE.md 缓存
+        self._claude_md_cache = None
+        logger.info("Components reinitialized after hot reload")
+
+    def graceful_restart(self) -> None:
+        """优雅重启：保存状态后退出，让外部进程重启"""
+        logger.info("Code changes detected, preparing for graceful restart...")
+
+        # 保存当前状态
+        state = self.state_manager.load_state()
+        state["needs_restart"] = True
+        state["restart_reason"] = "code_changed"
+        self.state_manager.save_state(state)
+
+        print("\n" + "=" * 60)
+        print("CODE CHANGES DETECTED")
+        print("=" * 60)
+        print("The agent has modified its own code and needs to restart.")
+        print("Please restart the agent to continue with updated code.")
+        print("=" * 60 + "\n")
+
     def read_claude_md(self) -> str:
         """读取 CLAUDE.md 文件内容"""
         if self._claude_md_cache:
@@ -1180,6 +1279,16 @@ Start by reading CLAUDE.md and the relevant source files for this task."""
 
                 # 自主制定后续计划
                 self._auto_plan_next_steps()
+
+                # 检测代码变更并尝试热更新
+                if self.needs_reload():
+                    logger.info("Code changes detected, attempting hot reload...")
+                    if self.reload_modules():
+                        logger.info("Hot reload successful, continuing...")
+                    else:
+                        logger.warning("Hot reload failed, will trigger graceful restart")
+                        self.graceful_restart()
+                        break
 
             except Exception as e:
                 logger.error(f"Error executing task: {e}")

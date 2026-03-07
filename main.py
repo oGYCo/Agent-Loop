@@ -44,22 +44,51 @@ def init_project(args: argparse.Namespace) -> None:
     print("To run the agent, use: python main.py --run")
 
 
-def run_agent(args: argparse.Namespace) -> None:
-    """运行Agent循环"""
-    print("Starting agent...")
-
+def run_agent(args: argparse.Namespace, max_restarts: int = 3) -> None:
+    """运行Agent循环，支持自动重启"""
     project_root = args.project_dir if args.project_dir else None
-    agent = AgentCore(project_root)
-    session_manager = SessionManager(agent.state_manager)
 
-    # 显示会话统计
-    stats = session_manager.get_session_stats()
-    print(f"Total sessions: {stats['total_sessions']}")
-    print(f"Completed sessions: {stats['completed_sessions']}")
+    for restart_count in range(max_restarts + 1):
+        # 检查是否需要重启
+        state_manager = StateManager(project_root)
+        state = state_manager.load_state()
 
-    # 运行Agent循环
-    max_iterations = getattr(args, 'iterations', None) or 10
-    summary = agent.run_agent_loop(max_iterations)
+        if restart_count > 0:
+            print(f"\n{'='*50}")
+            print(f"RESTART {restart_count}/{max_restarts}")
+            print(f"{'='*50}")
+
+        print("Starting agent...")
+
+        agent = AgentCore(project_root)
+        session_manager = SessionManager(agent.state_manager)
+
+        # 显示会话统计
+        stats = session_manager.get_session_stats()
+        print(f"Total sessions: {stats['total_sessions']}")
+        print(f"Completed sessions: {stats['completed_sessions']}")
+
+        # 运行Agent循环
+        iterations = getattr(args, 'iterations', None) or 10
+        summary = agent.run_agent_loop(iterations)
+
+        # 检查是否需要重启
+        state = state_manager.load_state()
+        if state.get("needs_restart"):
+            # 清除重启标记
+            state["needs_restart"] = False
+            state["restart_reason"] = None
+            state_manager.save_state(state)
+
+            if restart_count < max_restarts:
+                print(f"\n{'='*50}")
+                print("Code changed, restarting to apply updates...")
+                print(f"{'='*50}\n")
+                continue
+            else:
+                print("\nMax restarts reached, exiting.")
+
+        break
 
     print("\n" + "=" * 50)
     print("Agent Run Summary")
