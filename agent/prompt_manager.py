@@ -163,7 +163,7 @@ You are responsible for the continuous improvement of this Agent-Loop project. Y
         if active_key not in prompts:
             active_key = "default"
 
-        return prompts.get(active_key, {}).get("system", self.DEFAULT_PROMPTS["system"])
+        return cast(str, prompts.get(active_key, {}).get("system", self.DEFAULT_PROMPTS["system"]))
 
     def get_active_prompt_name(self) -> str:
         """Get the name of the currently active prompt.
@@ -178,7 +178,7 @@ You are responsible for the continuous improvement of this Agent-Loop project. Y
         if active_key not in prompts:
             active_key = "default"
 
-        return prompts.get(active_key, {}).get("name", "default")
+        return cast(str, prompts.get(active_key, {}).get("name", "default"))
 
     def list_prompts(self) -> list[dict[str, Any]]:
         """List all available prompts.
