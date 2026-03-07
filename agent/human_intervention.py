@@ -5,10 +5,48 @@
 
 import asyncio
 import json
+import logging
 from datetime import datetime
 from typing import Dict, Any, Callable
 
 from .state_manager import StateManager
+
+logger = logging.getLogger(__name__)
+
+
+def _get_webhook_notifier():
+    """Lazy import to avoid circular dependency"""
+    try:
+        from .webhook import get_webhook_notifier
+        return get_webhook_notifier()
+    except ImportError:
+        return None
+
+
+async def _send_human_intervention_webhook_async(reason: str, task_id: str | None = None, context: Dict[str, Any] | None = None) -> None:
+    """Send webhook notification for human intervention (async)"""
+    try:
+        notifier = _get_webhook_notifier()
+        if notifier:
+            await notifier.notify_human_intervention(
+                reason=reason,
+                task_id=task_id,
+                context=context
+            )
+    except Exception as e:
+        logger.warning(f"Failed to send human intervention webhook: {e}")
+
+
+def _send_human_intervention_webhook(reason: str, task_id: str | None = None, context: Dict[str, Any] | None = None) -> None:
+    """Send webhook notification for human intervention (sync wrapper)"""
+    try:
+        try:
+            loop = asyncio.get_running_loop()
+            loop.create_task(_send_human_intervention_webhook_async(reason, task_id, context))
+        except RuntimeError:
+            asyncio.run(_send_human_intervention_webhook_async(reason, task_id, context))
+    except Exception as e:
+        logger.warning(f"Failed to send human intervention webhook: {e}")
 
 
 class HumanIntervention:
@@ -70,6 +108,13 @@ class HumanIntervention:
 
         # 保存干预请求
         self._save_intervention_request(request)
+
+        # 发送Webhook通知 - 需要人工干预
+        _send_human_intervention_webhook(
+            reason=reason,
+            task_id=task_id,
+            context=context
+        )
 
         return request
 

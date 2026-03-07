@@ -37,6 +37,44 @@ from claude_agent_sdk.types import (
 )
 
 
+# ========== Webhook Notifier (Lazy Import) ==========
+
+def _get_webhook_notifier():
+    """Lazy import to avoid circular dependency"""
+    try:
+        from .webhook import get_webhook_notifier
+        return get_webhook_notifier()
+    except ImportError:
+        return None
+
+
+async def _send_webhook_notification_async(event_type: str, data: Dict[str, Any]) -> bool:
+    """Send webhook notification (async)"""
+    try:
+        notifier = _get_webhook_notifier()
+        if notifier:
+            return await notifier.send_notification(event_type, data)
+    except Exception:
+        pass  # Silently ignore webhook errors
+    return False
+
+
+def _send_webhook_notification(event_type: str, data: Dict[str, Any]) -> None:
+    """Send webhook notification (sync wrapper)"""
+    try:
+        asyncio.get_event_loop()
+        # If we have an event loop running, schedule the coroutine
+        try:
+            loop = asyncio.get_running_loop()
+            # We're in an async context, schedule the task
+            loop.create_task(_send_webhook_notification_async(event_type, data))
+        except RuntimeError:
+            # No running event loop, run in new one
+            asyncio.run(_send_webhook_notification_async(event_type, data))
+    except Exception:
+        pass  # Silently ignore webhook errors
+
+
 # ========== WebSocket Event Pusher (Lazy Import) ==========
 
 def _get_event_pusher():
@@ -1641,9 +1679,24 @@ class AgentCore:
                 if verified:
                     summary["completed"] += 1
                     _push_log_sync("info", f"Task completed: {task_name} ({task_id})", "task")
+
+                    # 发送Webhook通知 - 任务完成
+                    _send_webhook_notification("task_completed", {
+                        "task_id": task_id,
+                        "task_name": task_name,
+                        "status": "completed"
+                    })
                 else:
                     summary["errors"] += 1
                     _push_log_sync("warning", f"Task verification failed: {task_name} ({task_id})", "task")
+
+                    # 发送Webhook通知 - 任务失败
+                    _send_webhook_notification("task_failed", {
+                        "task_id": task_id,
+                        "task_name": task_name,
+                        "status": "failed",
+                        "error_message": result.get("message", "Verification failed")
+                    })
 
                 # 提取并保存经验
                 self.extract_and_save_experience(task, result)

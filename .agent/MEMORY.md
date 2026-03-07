@@ -4,6 +4,62 @@ Accumulated experience and lessons learned from task execution.
 
 ---
 
+## 2026-03-08 - Webhook Notification System (feature-005)
+
+**Task Description**: 实现Webhook通知功能：当任务完成/失败/需要人工干预时，发送HTTP POST请求到配置的URL。需要阅读agent/human_intervention.py了解干预触发机制。
+
+**Lessons Learned:**
+
+1. **Webhook Implementation**:
+   - Created new `agent/webhook.py` module with `WebhookNotifier` class
+   - Supports three event types: `task_completed`, `task_failed`, `human_intervention`
+   - Configurable via `webhook` section in config.json
+
+2. **Configuration**:
+   - Added webhook configuration to `.agent/config.json`:
+     ```json
+     "webhook": {
+       "enabled": false,
+       "url": "",
+       "secret": "",
+       "timeout": 10,
+       "events": ["task_completed", "task_failed", "human_intervention"],
+       "retry_count": 3,
+       "retry_interval": 2
+     }
+     ```
+
+3. **API Integration**:
+   - Added `POST /webhook/test` endpoint in api.py for testing webhook configuration
+   - Verified: `curl -X POST http://localhost:8000/webhook/test`
+
+4. **Agent Integration**:
+   - Integrated webhook notifications in `agent_core.py` - sends notifications on task completion/failure
+   - Integrated webhook notifications in `human_intervention.py` - sends notification when human intervention is required
+   - Used lazy imports to avoid circular dependencies
+   - Used sync wrapper with asyncio.run() for proper async handling in sync contexts
+
+5. **Async/Sync Handling**:
+   - Webhook notifications are async by default
+   - In sync contexts (like run_agent_loop), used wrapper functions that detect running event loop
+   - If event loop exists, schedule task with create_task; otherwise run in new event loop
+
+6. **Testing**:
+   - Created `tests/test_webhook.py` with 16 test cases covering:
+     - Configuration loading
+     - Event filtering
+     - Notification sending with mocked HTTP client
+     - Secret handling
+     - Retry logic
+
+7. **Verification**:
+   - All 239 tests pass
+   - API endpoint returns correct message when webhook is not configured
+
+8. **Commit**: Pushed as `feat: add webhook notification system`
+
+---
+
 ## 2026-03-08 - Basic Web Dashboard Interface (feature-004)
 
 **Task Description**: 创建简单的Web Dashboard展示：1) Agent当前状态 2) 任务列表和进度 3) 实时日志输出。可以使用HTML+JavaScript实现，需要先了解API端点设计。
@@ -682,6 +738,8 @@ Accumulated experience and lessons learned from task execution.
 
 
 
+
+
 2026-03-07 - Clean up MEMORY.md duplicate entries (fix-015)
 
 **任务描述**: MEMORY.md 文件中存在重复的条目（例如 fix-008 出现了两次）。需要清理重复内容，保留最新和最完整的版本。
@@ -914,7 +972,10 @@ python main.py server --port 8000
 
 ---
 
-### 2026-03-08 - WebSocket实时推送支持 (feature-003)
+
+---
+
+2026-03-08 - WebSocket实时推送支持 (feature-003)
 
 **任务描述**: 实现WebSocket端点 /ws 用于实时推送Agent运行状态、任务进度、日志。需要先了解FastAPI的WebSocket实现方式，以及如何在现有agent_core.py中集成状态推送。
 
@@ -923,7 +984,10 @@ python main.py server --port 8000
 
 I've successfully completed the WebSocket real-time push support feature (feature-003). Here's what was done:
 
-### Implementation
+
+---
+
+Implementation
 
 1. **Integrated EventPusher into agent_core.py**:
    - Added lazy import function `_get_event_pusher()` to avoid circular dependency (api.py imports agent_core.py for the /run endpoint)
@@ -931,3 +995,22 @@ I've successfully completed the WebSocket real-time push support feature (featur
    - Added sync `_push_log_sync()` wrapper for sync code paths with event loop handling
 
 2. **WebSocket Event P
+
+---
+
+### 2026-03-08 - 基础Web Dashboard界面 (feature-004)
+
+**任务描述**: 创建简单的Web Dashboard展示：1) Agent当前状态 2) 任务列表和进度 3) 实时日志输出。可以使用HTML+JavaScript实现，需要先了解API端点设计。
+
+**执行结果**: completed
+**执行消息**: ## Task Completed ✓
+
+I've successfully created a basic Web Dashboard for Agent-Loop (feature-004). Here's what was done:
+
+### Implementation
+
+1. **Created Web Dashboard** (`static/index.html`):
+   - **Status Panel**: Shows project name, type, git branch, uncommitted changes, task progress bar
+   - **Task List**: Displays all tasks with priority badges (color-coded) and status badges
+   - **Real-time Logs**: Connects to WebSocket for live log streaming with auto-reconnect
+   - Auto-refresh: Statu

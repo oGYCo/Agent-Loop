@@ -65,8 +65,8 @@
       "name": "Webhook通知系统",
       "description": "实现Webhook通知功能：当任务完成/失败/需要人工干预时，发送HTTP POST请求到配置的URL。需要阅读agent/human_intervention.py了解干预触发机制。",
       "priority": 5,
-      "status": "pending",
-      "passes": false,
+      "status": "completed",
+      "passes": true,
       "context_files": [
         "agent/human_intervention.py",
         "agent/agent_core.py"

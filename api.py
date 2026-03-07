@@ -381,6 +381,26 @@ def health_check() -> Dict[str, str]:
     return {"status": "healthy", "service": "agent-loop-api"}
 
 
+@app.post("/webhook/test")
+async def test_webhook() -> Dict[str, Any]:
+    """Test webhook notification
+
+    Sends a test webhook notification to verify the webhook configuration.
+    """
+    try:
+        from agent.webhook import get_webhook_notifier
+
+        notifier = get_webhook_notifier()
+        result = await notifier.test_webhook()
+        return result
+    except Exception as e:
+        logger.error(f"Error testing webhook: {e}")
+        return {
+            "success": False,
+            "message": f"Test failed: {type(e).__name__}: {str(e)}"
+        }
+
+
 @app.get("/")
 def serve_dashboard():
     """Serve the web dashboard"""
