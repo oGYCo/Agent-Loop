@@ -713,7 +713,7 @@ Start by reading CLAUDE.md and the relevant source files for this task."""
             # 1. 检查过时任务（依赖于已完成的但不再需要）
             # 例如：如果 "add basic tests" 已完成，"add comprehensive tests" 可能变得冗余
             task_names = {f.get("name", "").lower() for f in features}
-            task_ids_to_remove = []
+            task_ids_to_remove: list[str] = []
 
             for task in pending:
                 task_name = task.get("name", "").lower()
