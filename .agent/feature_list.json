@@ -49,8 +49,8 @@
       "name": "Add type annotations to state_manager.py",
       "description": "使用 mypy 检查 agent/state_manager.py 的类型错误，然后添加完整的类型注解。",
       "priority": 2,
-      "status": "pending",
-      "passes": false,
+      "status": "completed",
+      "passes": true,
       "verify_command": "python -m mypy agent/state_manager.py",
       "context_files": [
         "agent/state_manager.py"
