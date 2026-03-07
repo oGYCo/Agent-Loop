@@ -231,7 +231,7 @@ Or via `env` parameter in ClaudeAgentOptions.
 
 ## Task Experience Records
 
-### 2026-03-07: Task Plan Self-Review
+2026-03-07: Task Plan Self-Review
 
 When reviewing the task plan (feature_list.json):
 
@@ -245,3 +245,96 @@ When reviewing the task plan (feature_list.json):
 
 4. **Project health**: 22 completed tasks with 0 failures indicates good project stability.
 
+
+
+---
+
+### 2026-03-07 - Self-review: Optimize task plan (self-review-20260307160526)
+
+**任务描述**: 请仔细审查当前任务计划。
+
+刚完成的任务: Test Task
+
+当前状态:
+- 已完成: 22 个
+- 待完成: 10 个
+- 失败: 0 个
+
+请执行以下自省任务:
+1. 读取 .agent/feature_list.json 分析所有待办任务
+2. 判断哪些任务已经过时（因为依赖的任务已完成或系统已改变）
+3. 判断哪些任务优先级需要调整
+4. 判断是否需要新增任务
+5. 判断是否有重复任务需要合并
+
+重要: 你需要自主判断并直接修改 feature_list.json，而不是简单执行脚本。
+只修改真正需要变更的部分，保留合理的任务。
+
+**执行结果**: completed
+**执行消息**: ## Summary
+
+I completed the self-review task with the following findings:
+
+### Analysis Results
+
+**Current Status:**
+- Completed: 23 tasks
+- Pending: 10 tasks  
+- Failed: 0 tasks
+
+**No obsolete tasks found** - All 10 pending tasks are independent improvements that remain relevant:
+- Test coverage (5 tasks)
+- CLI improvement (1 task)
+- Code quality (1 task)
+- Production features (3 tasks)
+- Performance monitoring & Config hot reload (low priority)
+
+### Priority Adjustments Made
+
+| Task | Before |
+---
+
+### 2026-03-07 - Self-review: Optimize task plan (self-review-20260307160905)
+
+**任务描述**: 请仔细审查当前任务计划。
+
+刚完成的任务: Self-review: Optimize task plan
+
+当前状态:
+- 已完成: 23 个
+- 待完成: 10 个
+- 失败: 0 个
+
+请执行以下自省任务:
+1. 读取 .agent/feature_list.json 分析所有待办任务
+2. 判断哪些任务已经过时（因为依赖的任务已完成或系统已改变）
+3. 判断哪些任务优先级需要调整
+4. 判断是否需要新增任务
+5. 判断是否有重复任务需要合并
+
+**执行结果**: completed
+**执行消息**: ## Summary
+
+### Analysis Results
+
+**Current Status:**
+- Completed: 22 tasks (after cleanup)
+- Pending: 11 tasks (including current self-review)
+
+**Changes Made:**
+
+1. **Removed obsolete task**: Deleted completed self-review task (self-review-20260307160526) to keep the list clean
+
+2. **Priority adjustments for test tasks**:
+   - self-009 (state_manager tests): 3 → 2
+   - self-010 (task_selector tests): 3 → 2
+   - self-022 (session_manager tests): 3 → 2
+   - self-023 (human_intervention tests): 3 → 2
+
+**Rationale**: Test coverage is critical for production quality. The project already has comprehensive tests for agent_core (37 tests passing), but other modules need similar test coverage. These tests should be higher priority to ensure code quality.
+
+**Pending tasks summary (by priority):**
+- Priority 1: Self-review (recurring)
+- Priority 2: Tests (4), Retry mechanism, Graceful shutdown
+- Priority 3: CLI help, Optimize imports
+- Priority 4: Performance monitoring, Config hot reload
