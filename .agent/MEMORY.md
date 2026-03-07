@@ -231,6 +231,8 @@ Or via `env` parameter in ClaudeAgentOptions.
 
 ## Task Experience Records
 
+
+
 2026-03-07: Task Plan Self-Review
 
 When reviewing the task plan (feature_list.json):
@@ -249,7 +251,10 @@ When reviewing the task plan (feature_list.json):
 
 ---
 
-### 2026-03-07 - Self-review: Optimize task plan (self-review-20260307160526)
+
+---
+
+2026-03-07 - Self-review: Optimize task plan (self-review-20260307160526)
 
 **任务描述**: 请仔细审查当前任务计划。
 
@@ -275,7 +280,10 @@ When reviewing the task plan (feature_list.json):
 
 I completed the self-review task with the following findings:
 
-### Analysis Results
+
+---
+
+Analysis Results
 
 **Current Status:**
 - Completed: 23 tasks
@@ -289,12 +297,18 @@ I completed the self-review task with the following findings:
 - Production features (3 tasks)
 - Performance monitoring & Config hot reload (low priority)
 
-### Priority Adjustments Made
+
+---
+
+Priority Adjustments Made
 
 | Task | Before |
 ---
 
-### 2026-03-07 - Self-review: Optimize task plan (self-review-20260307160905)
+
+---
+
+2026-03-07 - Self-review: Optimize task plan (self-review-20260307160905)
 
 **任务描述**: 请仔细审查当前任务计划。
 
@@ -315,7 +329,10 @@ I completed the self-review task with the following findings:
 **执行结果**: completed
 **执行消息**: ## Summary
 
-### Analysis Results
+
+---
+
+Analysis Results
 
 **Current Status:**
 - Completed: 22 tasks (after cleanup)
@@ -338,3 +355,48 @@ I completed the self-review task with the following findings:
 - Priority 2: Tests (4), Retry mechanism, Graceful shutdown
 - Priority 3: CLI help, Optimize imports
 - Priority 4: Performance monitoring, Config hot reload
+
+
+---
+
+### 2026-03-07 - Self-review: Optimize task plan (self-review-20260307160905)
+
+**任务描述**: 请仔细审查当前任务计划。
+
+刚完成的任务: Self-review: Optimize task plan
+
+当前状态:
+- 已完成: 23 个
+- 待完成: 10 个
+- 失败: 0 个
+
+请执行以下自省任务:
+1. 读取 .agent/feature_list.json 分析所有待办任务
+2. 判断哪些任务已经过时（因为依赖的任务已完成或系统已改变）
+3. 判断哪些任务优先级需要调整
+4. 判断是否需要新增任务
+5. 判断是否有重复任务需要合并
+
+重要: 你需要自主判断并直接修改 feature_list.json，而不是简单执行脚本。
+只修改真正需要变更的部分，保留合理的任务。
+
+**执行结果**: completed
+**执行消息**: ## Summary
+
+I completed the self-review task with the following analysis and actions:
+
+### Analysis Results
+
+**Current Status:**
+- Completed: 23 tasks
+- Pending: 10 tasks
+- Failed: 0 tasks
+
+### Changes Made
+
+1. **Removed obsolete task**: Deleted completed self-review task (self-review-20260307160526) to keep the list clean
+
+2. **Priority adjustments for test tasks** (from priority 3 to 2):
+   - self-009: Add more unit tests for state_manager
+   - self-010: Add more unit tests for task_selector
+ 

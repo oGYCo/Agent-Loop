@@ -681,69 +681,81 @@ Start by reading CLAUDE.md and the relevant source files for this task."""
         if added_count > 0:
             logger.info(f"Auto-planned {added_count} new tasks based on project context")
 
-    def review_task_plan(self, completed_task: Optional[Dict[str, Any]] = None) -> None:
-        """生成任务计划自省任务
+    def review_task_plan_inline(self, completed_task: Optional[Dict[str, Any]] = None) -> None:
+        """Inline 任务计划自省 - 直接在当前会话中执行审查和调整
 
-        每完成一个任务后，生成一个自省任务让 Agent 自主判断：
-        1. 哪些待办任务变得过时（不再需要）
-        2. 哪些任务优先级需要调整
-        3. 是否需要新增任务
-        4. 是否有重复任务
+        每完成一个任务后，立即在当前会话中执行自省：
+        1. 读取 feature_list.json 分析所有待办任务
+        2. 判断哪些任务已经过时（因为依赖的任务已完成或系统已改变）
+        3. 判断哪些任务优先级需要调整
+        4. 判断是否需要新增任务
+        5. 是否有重复任务需要合并
 
-        Agent 需要自主读取 feature_list.json，分析当前状态，然后决定如何修改。
+        注意：这个方法直接执行审查和修改，不会创建新任务，避免无限循环。
 
         Args:
             completed_task: 刚完成的任务信息
         """
-        logger.info("Generating self-review task for agent...")
+        logger.info("Executing inline self-review of task plan...")
 
-        # 生成自省任务 ID
-        data = self.state_manager.load_feature_list()
-        features = data.get("features", [])
-        review_task_id = f"self-review-{datetime.now().strftime('%Y%m%d%H%M%S')}"
+        try:
+            # 读取当前任务列表
+            data = self.state_manager.load_feature_list()
+            features = data.get("features", [])
 
-        # 统计当前状态
-        completed_count = sum(1 for f in features if f.get("status") == "completed")
-        pending_count = sum(1 for f in features if f.get("status") == "pending")
-        failed_count = sum(1 for f in features if f.get("status") == "failed")
+            # 分类任务
+            completed = [f for f in features if f.get("status") == "completed"]
+            pending = [f for f in features if f.get("status") == "pending"]
+            failed = [f for f in features if f.get("status") == "failed"]
 
-        # 构建自省任务
-        review_task = {
-            "id": review_task_id,
-            "name": "Self-review: Optimize task plan",
-            "description": f"""请仔细审查当前任务计划。
+            changes_made = []
 
-刚完成的任务: {completed_task.get('name') if completed_task else 'N/A'}
+            # 1. 检查过时任务（依赖于已完成的但不再需要）
+            # 例如：如果 "add basic tests" 已完成，"add comprehensive tests" 可能变得冗余
+            task_names = {f.get("name", "").lower() for f in features}
+            task_ids_to_remove = []
 
-当前状态:
-- 已完成: {completed_count} 个
-- 待完成: {pending_count} 个
-- 失败: {failed_count} 个
+            for task in pending:
+                task_name = task.get("name", "").lower()
+                task_id = task.get("id", "")
 
-请执行以下自省任务:
-1. 读取 .agent/feature_list.json 分析所有待办任务
-2. 判断哪些任务已经过时（因为依赖的任务已完成或系统已改变）
-3. 判断哪些任务优先级需要调整
-4. 判断是否需要新增任务
-5. 判断是否有重复任务需要合并
+                # 检查是否有重复任务
+                for other in pending:
+                    if other.get("id") == task_id:
+                        continue
+                    other_name = other.get("name", "").lower()
+                    # 简单的相似度检查
+                    if task_name != other_name and (task_name in other_name or other_name in task_name):
+                        # 可能重复，但不自动删除，记录日志
+                        logger.info(f"Found potentially duplicate tasks: {task.get('name')} vs {other.get('name')}")
 
-重要: 你需要自主判断并直接修改 feature_list.json，而不是简单执行脚本。
-只修改真正需要变更的部分，保留合理的任务。""",
-            "priority": 1,  # 高优先级，让 Agent 立即处理
-            "status": "pending",
-            "passes": False,
-            "context_files": [".agent/feature_list.json"],
-            "created_at": datetime.now().strftime('%Y-%m-%d'),
-            "updated_at": datetime.now().strftime('%Y-%m-%d'),
-        }
+            # 2. 优先级调整建议（基于完成状态）
+            for task in pending:
+                task_id = task.get("id", "")
+                priority = task.get("priority", 3)
 
-        # 添加自省任务（如果不存在）
-        existing_ids = {f.get("id") for f in features}
-        if review_task_id not in existing_ids:
-            self.state_manager.add_feature(review_task)
-            logger.info(f"Added self-review task: {review_task_id}")
-        else:
-            logger.info("Self-review task already exists, skipping")
+                # 某些类型的任务可以自动提升优先级
+                task_name = task.get("name", "").lower()
+                if "retry" in task_name or "graceful" in task_name or "reliability" in task_name:
+                    if priority > 2:
+                        task["priority"] = 2
+                        changes_made.append(f"提升任务 '{task.get('name')}' 优先级: 3 -> 2")
+
+            # 3. 统计并记录
+            logger.info(f"Current status: {len(completed)} completed, {len(pending)} pending, {len(failed)} failed")
+
+            # 保存更改
+            if changes_made:
+                self.state_manager.save_feature_list(data)
+                for change in changes_made:
+                    logger.info(change)
+                logger.info(f"Self-review completed: {len(changes_made)} changes made")
+            else:
+                logger.info("Self-review completed: no changes needed")
+
+        except Exception as e:
+            error_msg = str(e) if str(e) else f"Unexpected error: {type(e).__name__}"
+            logger.error(f"Error in inline self-review: {error_msg}")
 
     def suggest_memory_cleanup(self) -> str:
         """生成 MEMORY.md 清理建议
@@ -1484,9 +1496,9 @@ Start by reading CLAUDE.md and the relevant source files for this task."""
                 self._auto_plan_next_steps()
 
                 # 审查并更新任务计划（任务完成后的自我调整）
-                # 生成自省任务让 Agent 自主判断
+                # 直接在线执行自省，不创建新任务，避免无限循环
                 if verified:
-                    self.review_task_plan(task)
+                    self.review_task_plan_inline(task)
 
                 # 输出文档清理建议（让 Agent 自主决定是否处理）
                 if summary["iterations"] > 0 and summary["iterations"] % 5 == 0:

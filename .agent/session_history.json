@@ -143,7 +143,37 @@
       "start_time": "2026-03-07T12:40:19.571474",
       "agent_type": "coder",
       "status": "started"
+    },
+    {
+      "id": "20260307_134623",
+      "start_time": "2026-03-07T13:46:23.632574",
+      "agent_type": "coder",
+      "status": "started"
+    },
+    {
+      "id": "20260307_141607",
+      "start_time": "2026-03-07T14:16:07.416891",
+      "agent_type": "coder",
+      "status": "started"
+    },
+    {
+      "id": "20260307_142155",
+      "start_time": "2026-03-07T14:21:55.311701",
+      "agent_type": "coder",
+      "status": "started"
+    },
+    {
+      "id": "20260307_151306",
+      "start_time": "2026-03-07T15:13:06.719900",
+      "agent_type": "coder",
+      "status": "started"
+    },
+    {
+      "id": "20260307_160806",
+      "start_time": "2026-03-07T16:08:06.865859",
+      "agent_type": "coder",
+      "status": "started"
     }
   ],
-  "total_sessions": 15
+  "total_sessions": 20
 }
