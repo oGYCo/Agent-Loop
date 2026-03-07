@@ -37,19 +37,25 @@ Agent-Loop 是一个自主 AI Agent 系统，通过实时流式输出、会话�
 
 ## 核心特性
 
-| 特性             | 描述                                                  |
-| ---------------- | ----------------------------------------------------- |
-| **实时流式输出** | AI 决策过程和工具调用的实时显示                       |
-| **会话管理**     | 支持会话恢复、分支和检查点                            |
-| **Hook 机制**    | PreToolUse、PostToolUse、Notification、Stop 钩子      |
-| **人工干预**     | 错误阈值超出时自动暂停                                |
-| **Git 集成**     | Agent 自主执行 git commit 和 push，每个任务后保存进度 |
-| **任务重试**     | 可配置的任务失败重试机制                              |
-| **性能监控**     | 跟踪任务执行时间、会话时长和资源使用                  |
-| **配置热重载**   | 支持手动或文件监控方式重新加载配置                    |
-| **优雅关闭**     | 安全处理 SIGINT/SIGTERM 信号                          |
-| **自动审查**     | 任务完成后自动进行任务计划审查                        |
-| **可定制提示词** | 基于模板的提示词系统，支持 `{{variable}}` 变量替换    |
+| 特性                   | 描述                                                  |
+| ---------------------- | ----------------------------------------------------- |
+| **实时流式输出**       | AI 决策过程和工具调用的实时显示                       |
+| **会话管理**           | 支持会话恢复、分支和检查点                            |
+| **Hook 机制**          | PreToolUse、PostToolUse、Notification、Stop 钩子        |
+| **人工干预**           | 错误阈值超出时自动暂停                                |
+| **Git 集成**           | Agent 自主执行 git commit 和 push，每个任务后保存进度 |
+| **任务重试**           | 可配置的任务失败重试机制                              |
+| **性能监控**           | 跟踪任务执行时间、会话时长和资源使用                  |
+| **配置热重载**         | 支持手动或文件监控方式重新加载配置                    |
+| **优雅关闭**           | 安全处理 SIGINT/SIGTERM 信号                          |
+| **自动审查**           | 任务完成后自动进行任务计划审查                        |
+| **可定制提示词**       | 基于模板的提示词系统，支持 `{{variable}}` 变量替换    |
+| **邮件通知**           | 任务完成、失败或干预时发送邮件提醒                    |
+| **Webhook 通知**       | 向外部服务发送 HTTP POST 通知                         |
+| **任务看板 UI**        | 可视化 Kanban 风格任务看板，支持拖拽                   |
+| **API 密钥认证**       | 安全 API 访问，支持可配置 API 密钥                    |
+| **Grafana 监控面板**   | 预置 Grafana 监控面板模板                             |
+| **增强的错误处理**     | 改进的错误恢复和优雅降级                              |
 
 ## 快速开始
 
@@ -295,6 +301,53 @@ python main.py --project-dir /path/to/project list
 | `allowed_tools`                  | 字符串数组 | Agent 允许使用的 SDK 工具  |
 | `mcp_servers`                    | 对象数组   | MCP 服务器配置             |
 
+### 邮件配置
+
+```json
+{
+  "email": {
+    "enabled": true,
+    "smtp_host": "smtp.gmail.com",
+    "smtp_port": 587,
+    "smtp_user": "your-email@gmail.com",
+    "smtp_password": "your-app-password",
+    "use_tls": true,
+    "from_name": "Agent-Loop",
+    "from_email": "agent-loop@example.com",
+    "to_emails": ["admin@example.com", "team@example.com"],
+    "events": ["task_completed", "task_failed", "human_intervention"],
+    "timeout": 30
+  }
+}
+```
+
+### Webhook 配置
+
+```json
+{
+  "webhook": {
+    "enabled": true,
+    "url": "https://your-server.com/webhook",
+    "secret": "your-webhook-secret",
+    "timeout": 10,
+    "events": ["task_completed", "task_failed", "human_intervention"],
+    "retry_count": 3,
+    "retry_interval": 2
+  }
+}
+```
+
+### API 密钥配置
+
+```json
+{
+  "api_keys": {
+    "enabled": true,
+    "keys": ["your-api-key-1", "your-api-key-2"]
+  }
+}
+```
+
 ## SDK 使用示例
 
 ```python
@@ -409,12 +462,23 @@ agent-loop/
 │   ├── git_helper.py           # Git 操作
 │   ├── test_runner.py          # 测试执行
 │   ├── performance_monitor.py  # 性能跟踪
-│   └── config_reloader.py      # 配置热重载
+│   ├── config_reloader.py      # 配置热重载
+│   ├── email_notifier.py       # 邮件通知服务
+│   ├── webhook.py              # Webhook 通知服务
+│   ├── metrics.py              # 指标收集
+│   └── console.py              # 控制台 UI
 ├── tests/                      # 单元测试
 │   ├── test_agent_core.py
 │   ├── test_state_manager.py
 │   ├── test_task_selector.py
+│   ├── test_email_notifier.py
+│   ├── test_webhook.py
 │   └── ...
+├── dashboards/                  # Grafana 监控面板模板
+│   └── agent-loop-dashboard.json
+├── static/                     # Web 看板静态文件
+│   └── index.html
+├── api.py                      # REST API 服务
 ├── main.py                     # CLI 入口点
 ├── pyproject.toml              # 项目配置 (uv)
 ├── README.md                   # 英文文档
