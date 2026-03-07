@@ -56,8 +56,8 @@ async def _send_webhook_notification_async(event_type: str, data: Dict[str, Any]
         notifier = _get_webhook_notifier()
         if notifier:
             return await notifier.send_notification(event_type, data)
-    except Exception:
-        pass  # Silently ignore webhook errors
+    except Exception as e:
+        logger.warning(f"Failed to send webhook notification: {type(e).__name__}: {e}")
     return False
 
 
@@ -73,8 +73,8 @@ def _send_webhook_notification(event_type: str, data: Dict[str, Any]) -> None:
         except RuntimeError:
             # No running event loop, run in new one
             asyncio.run(_send_webhook_notification_async(event_type, data))
-    except Exception:
-        pass  # Silently ignore webhook errors
+    except Exception as e:
+        logger.warning(f"Failed to send webhook notification: {type(e).__name__}: {e}")
 
 
 # ========== WebSocket Event Pusher (Lazy Import) ==========
@@ -94,8 +94,8 @@ async def _push_log_async(level: str, message: str, source: str = "agent_core"):
     if pusher:
         try:
             await pusher.push_log(level, message, source)
-        except Exception:
-            pass  # Silently ignore WebSocket errors
+        except Exception as e:
+            logger.warning(f"Failed to push log to WebSocket: {type(e).__name__}: {e}")
 
 
 def _push_log_sync(level: str, message: str, source: str = "agent_core"):
@@ -111,9 +111,9 @@ def _push_log_sync(level: str, message: str, source: str = "agent_core"):
                 else:
                     loop.run_until_complete(pusher.push_log(level, message, source))
             except RuntimeError:
-                pass  # No event loop available
-    except Exception:
-        pass  # Silently ignore WebSocket errors
+                logger.debug("No event loop available for WebSocket push")
+    except Exception as e:
+        logger.warning(f"Failed to push log to WebSocket: {type(e).__name__}: {e}")
 
 
 # ========== Hooks 实现 ==========
