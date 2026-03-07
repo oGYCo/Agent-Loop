@@ -12,7 +12,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, Header, Depends
 from fastapi.responses import FileResponse, Response
 from pydantic import BaseModel
 from pathlib import Path
@@ -38,6 +38,59 @@ app = FastAPI(
 
 # Global state
 _agent_instance = None
+
+# ========== API Key Authentication ==========
+
+def load_api_keys() -> tuple[bool, List[str]]:
+    """Load API keys from config
+
+    Returns:
+        Tuple of (enabled, keys)
+    """
+    try:
+        state_manager = StateManager()
+        config = state_manager.load_config()
+        api_keys_config = config.get("api_keys", {})
+        enabled = api_keys_config.get("enabled", False)
+        keys = api_keys_config.get("keys", [])
+        return enabled, keys
+    except Exception:
+        return False, []
+
+
+def get_api_key(x_api_key: str = Header(None, description="API key for authentication")) -> str:
+    """Validate API key from request header
+
+    Args:
+        x_api_key: API key from X-API-Key header
+
+    Returns:
+        The validated API key
+
+    Raises:
+        HTTPException: If API key is invalid or missing
+    """
+    enabled, valid_keys = load_api_keys()
+
+    # If API key authentication is not enabled, allow access
+    if not enabled:
+        return "no-auth"
+
+    # Check if API key is provided
+    if not x_api_key:
+        raise HTTPException(
+            status_code=401,
+            detail="API key is required. Set X-API-Key header."
+        )
+
+    # Check if API key is valid
+    if x_api_key not in valid_keys:
+        raise HTTPException(
+            status_code=403,
+            detail="Invalid API key"
+        )
+
+    return x_api_key
 
 
 # ========== WebSocket Manager ==========
@@ -212,7 +265,7 @@ class RunResponse(BaseModel):
 # ========== API Endpoints ==========
 
 @app.get("/status", response_model=StatusResponse)
-def get_status() -> StatusResponse:
+def get_status(api_key: str = Depends(get_api_key)) -> StatusResponse:
     """Get Agent status"""
     try:
         state_manager = StateManager()
@@ -248,7 +301,7 @@ def get_status() -> StatusResponse:
 
 
 @app.get("/tasks", response_model=List[TaskResponse])
-def get_tasks(status_filter: Optional[str] = None) -> List[TaskResponse]:
+def get_tasks(status_filter: Optional[str] = None, api_key: str = Depends(get_api_key)) -> List[TaskResponse]:
     """Get task list, optionally filtered by status"""
     try:
         state_manager = StateManager()
@@ -281,7 +334,7 @@ def get_tasks(status_filter: Optional[str] = None) -> List[TaskResponse]:
 
 
 @app.post("/tasks", response_model=TaskResponse, status_code=201)
-def create_task(task: TaskCreate) -> TaskResponse:
+def create_task(task: TaskCreate, api_key: str = Depends(get_api_key)) -> TaskResponse:
     """Add a new task"""
     try:
         state_manager = StateManager()
@@ -323,7 +376,7 @@ def create_task(task: TaskCreate) -> TaskResponse:
 
 
 @app.post("/run", response_model=RunResponse)
-def run_agent(request: RunRequest) -> RunResponse:
+def run_agent(request: RunRequest, api_key: str = Depends(get_api_key)) -> RunResponse:
     """Start the agent"""
     global _agent_instance
     try:
@@ -355,7 +408,7 @@ def run_agent(request: RunRequest) -> RunResponse:
 
 
 @app.get("/sessions", response_model=SessionResponse)
-def get_sessions() -> SessionResponse:
+def get_sessions(api_key: str = Depends(get_api_key)) -> SessionResponse:
     """Get session history"""
     try:
         state_manager = StateManager()
@@ -383,7 +436,7 @@ def health_check() -> Dict[str, str]:
 
 
 @app.get("/metrics")
-def metrics():
+def metrics(api_key: str = Depends(get_api_key)):
     """Prometheus metrics endpoint
 
     Returns metrics in Prometheus text format including:
@@ -417,7 +470,7 @@ def metrics():
 
 
 @app.post("/webhook/test")
-async def test_webhook() -> Dict[str, Any]:
+async def test_webhook(api_key: str = Depends(get_api_key)) -> Dict[str, Any]:
     """Test webhook notification
 
     Sends a test webhook notification to verify the webhook configuration.
@@ -437,7 +490,7 @@ async def test_webhook() -> Dict[str, Any]:
 
 
 @app.get("/")
-def serve_dashboard():
+def serve_dashboard(api_key: str = Depends(get_api_key)):
     """Serve the web dashboard"""
     static_path = Path(__file__).parent / "static" / "index.html"
     return FileResponse(static_path)
@@ -453,6 +506,19 @@ async def websocket_endpoint(websocket: WebSocket):
     - log: Log messages (info, warning, error)
     - iteration: Iteration updates during agent loop
     """
+    # Check API key authentication
+    enabled, valid_keys = load_api_keys()
+
+    if enabled:
+        # Get API key from query parameter
+        api_key = websocket.query_params.get("api_key")
+        if not api_key:
+            await websocket.close(code=4001, reason="API key required")
+            return
+        if api_key not in valid_keys:
+            await websocket.close(code=4003, reason="Invalid API key")
+            return
+
     await ws_manager.connect(websocket)
     try:
         # Send welcome message

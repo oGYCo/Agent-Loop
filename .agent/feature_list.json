@@ -80,15 +80,15 @@
       "name": "Prometheus指标导出",
       "description": "添加 /metrics 端点暴露Prometheus格式的指标，包括：任务完成数、错误数、会话时长、API调用次数等。需要先了解prometheus-client库的使用方式。",
       "priority": 6,
-      "status": "pending",
-      "passes": false,
+      "status": "completed",
+      "passes": true,
       "context_files": [
         "agent/performance_monitor.py",
         "NEW_FEATURES_ANALYSIS.md"
       ],
       "verify_command": "curl http://localhost:8000/metrics",
       "created_at": "2026-03-07",
-      "updated_at": "2026-03-07"
+      "updated_at": "2026-03-08"
     },
     {
       "id": "feature-007",
@@ -182,10 +182,11 @@
       "name": "API密钥认证",
       "description": "为API服务添加API Key认证机制，支持配置多个密钥，实现基本的访问控制。",
       "priority": 7,
-      "status": "pending",
-      "passes": false,
+      "status": "completed",
+      "passes": true,
       "context_files": [
-        "agent/state_manager.py"
+        "agent/state_manager.py",
+        "api.py"
       ],
       "verify_command": "测试带密钥的API调用",
       "created_at": "2026-03-07",
@@ -198,6 +199,21 @@
       "priority": 1,
       "status": "completed",
       "passes": true,
+      "created_at": "2026-03-08",
+      "updated_at": "2026-03-08"
+    },
+    {
+      "id": "feature-017",
+      "name": "Metrics收集集成到Agent执行流程",
+      "description": "将Prometheus指标收集集成到agent_core.py的执行流程中：任务完成时调用increment_task_completed，任务失败时调用increment_error，会话开始/结束时调用相应方法，使/metrics端点能显示实时更新的指标。",
+      "priority": 7,
+      "status": "pending",
+      "passes": false,
+      "context_files": [
+        "agent/agent_core.py",
+        "agent/metrics.py"
+      ],
+      "verify_command": "运行agent后检查curl http://localhost:8000/metrics",
       "created_at": "2026-03-08",
       "updated_at": "2026-03-08"
     }
