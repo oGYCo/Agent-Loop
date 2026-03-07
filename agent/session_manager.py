@@ -5,7 +5,7 @@
 
 import json
 from datetime import datetime
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, cast
 from pathlib import Path
 
 from .state_manager import StateManager
@@ -65,17 +65,20 @@ class SessionManager:
 
         # 检查上一个会话是否未正常结束
         history = self.state_manager.load_session_history()
-        for session in history.get("sessions", []):
+        sessions: List[Dict[str, Any]] = history.get("sessions", [])
+        for session in sessions:
             if session.get("id") == session_id:
-                return session.get("status") != "completed"
+                status: str = cast(str, session.get("status"))
+                return status != "completed"
 
         return False
 
     def get_session_summary(self, session_id: str) -> Optional[Dict[str, Any]]:
         """获取会话摘要"""
         history = self.state_manager.load_session_history()
+        sessions: List[Dict[str, Any]] = history.get("sessions", [])
 
-        for session in history.get("sessions", []):
+        for session in sessions:
             if session.get("id") == session_id:
                 return session
 
@@ -102,7 +105,7 @@ class SessionManager:
             return None
 
         with open(checkpoint_file, "r") as f:
-            return json.load(f)
+            return cast(Dict[str, Any], json.load(f))
 
     def cleanup_checkpoints(self, keep_latest: int = 3) -> None:
         """清理旧检查点"""
