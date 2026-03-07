@@ -417,6 +417,8 @@ Accumulated experience and lessons learned from task execution.
 
 
 
+
+
 2026-03-07 - Add caching mechanism to prompt_manager.py (fix-008)
 
 **任务描述**: 当前 prompt_manager.py 每次调用 load_template() 都会读取文件，这对于频繁调用的场景会导致不必要的 I/O 操作。建议添加模板缓存机制，可以设置缓存过期时间或提供手动刷新方法。
@@ -555,7 +557,10 @@ Changes Made
 
 ---
 
-### 2026-03-07 - Standardize error handling across modules (fix-012)
+
+---
+
+2026-03-07 - Standardize error handling across modules (fix-012)
 
 **任务描述**: 当前项目中错误处理不一致：git_helper.py 某些方法静默返回空值；test_runner.py 返回错误消息格式不统一；session_manager.py 某些异常被捕获但不记录。建议制定错误处理规范并在各模块中统一实施。
 
@@ -564,7 +569,10 @@ Changes Made
 
 Successfully completed task **fix-012**: Standardize error handling across modules.
 
-### Changes Made
+
+---
+
+Changes Made
 
 **1. agent/git_helper.py**:
 - Added `logging` import and logger setup
@@ -575,3 +583,24 @@ Successfully completed task **fix-012**: Standardize error handling across modul
   - `get_diff()` - now logs when returning empty string
 
 **2. agent
+
+---
+
+### 2026-03-07 - Unify type annotation style across codebase (fix-013)
+
+**任务描述**: 当前项目中类型注解风格不统一：有些地方使用 Optional[]，有些使用 | None。建议统一使用 Python 3.11+ 的 | None 语法（因为 pyproject.toml 指定 python_version = 3.11）。
+
+**执行结果**: completed
+**执行消息**: ## Summary
+
+I have successfully completed the task of unifying type annotation style across the codebase. Here's what was done:
+
+### Changes Made
+
+1. **Converted 10 Python files** in the `agent/` directory from `Optional[]` to Python 3.11+ `| None` syntax:
+   - `agent/agent_core.py` (7 occurrences)
+   - `agent/config_reloader.py` (5 occurrences)
+   - `agent/git_helper.py` (2 occurrences)
+   - `agent/human_intervention.py` (6 occurrences)
+   - `agent/performance_monitor.py` (5 occurrences)
+   - `

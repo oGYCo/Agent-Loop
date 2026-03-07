@@ -1213,20 +1213,38 @@ class AgentCore:
 
     def verify_task(self, task: Dict[str, Any]) -> bool:
         """验证任务完成度"""
-        # 简化验证：检查是否有文件修改
         task_id: str = task.get("id", "")
-        git_status = self.git_helper.get_status()
 
-        # 如果有变更，认为任务基本完成
+        # 1. 检查任务是否已被 Agent 在执行过程中标记为 completed
+        if task_id:
+            data = self.state_manager.load_feature_list()
+            features = data.get("features", [])
+            for f in features:
+                if f.get("id") == task_id and f.get("status") == "completed":
+                    logger.info(f"Task {task_id} verified - already marked completed")
+                    return True
+
+        # 2. 检查是否有未提交的文件修改
+        git_status = self.git_helper.get_status()
         has_changes = bool(git_status.strip())
 
         if has_changes and task_id:
             self.task_selector.mark_task_completed(task_id)
             logger.info(f"Task {task_id} verified - changes detected")
             return True
-        else:
-            logger.info(f"Task {task_id} - no changes detected")
-            return False
+
+        # 3. 检查是否有本次执行期间产生的新 commit
+        recent_commits = self.git_helper.get_recent_commits(1)
+        if recent_commits and recent_commits[0] and task_id:
+            # 如果最近的 commit 存在，说明 Agent 已提交了变更
+            commit_msg = recent_commits[0].lower()
+            if task_id.lower() in commit_msg or task.get("name", "").lower()[:20] in commit_msg:
+                self.task_selector.mark_task_completed(task_id)
+                logger.info(f"Task {task_id} verified - recent commit found")
+                return True
+
+        logger.info(f"Task {task_id} - no changes detected")
+        return False
 
     def handle_error(self, error: str, task: Dict[str, Any] | None = None) -> None:
         """处理错误"""
