@@ -1,6 +1,7 @@
-"""Main Entry Point - 主入口
+"""Main Entry Point - CLI for Agent-Loop
 
-长程AI Agent系统启动入口
+A long-running autonomous AI agent system with session management,
+task execution, and human intervention capabilities.
 """
 
 import argparse
@@ -20,6 +21,9 @@ from agent.git_helper import GitHelper
 
 # 全局 shutdown 标志
 _shutdown_requested = False
+
+# CLI version
+__version__ = "1.0.0"
 
 
 def _signal_handler(signum: int, frame: Any) -> None:
@@ -197,8 +201,21 @@ def show_status(args: argparse.Namespace) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Long-running AI Agent System",
-        formatter_class=argparse.RawDescriptionHelpFormatter
+        description="Agent-Loop: Autonomous AI Agent System",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  %(prog)s init                 Initialize a new project
+  %(prog)s run                  Run agent with default settings (10 iterations)
+  %(prog)s run --iterations 3   Run agent for 3 iterations
+  %(prog)s run --max-restarts 5 --iterations 20  Run with more restarts
+  %(prog)s list                 List all tasks/features
+  %(prog)s add --name "Add feature" --priority 1  Add a new task
+  %(prog)s status               Show current agent status
+  %(prog)s --version            Show version information
+
+For more information, see: https://github.com/agent-loop/docs
+"""
     )
 
     parser.add_argument(
@@ -207,49 +224,123 @@ def main() -> None:
         help="Project directory (default: current directory)"
     )
 
-    subparsers = parser.add_subparsers(dest="command", help="Commands")
+    parser.add_argument(
+        "--version",
+        action="store_true",
+        help="Show version information"
+    )
+
+    subparsers = parser.add_subparsers(dest="command", help="Available commands")
 
     # init command
-    subparsers.add_parser("init", help="Initialize the project")
+    init_parser = subparsers.add_parser(
+        "init",
+        help="Initialize the project",
+        description="Create initial configuration files and git repository"
+    )
+    init_parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Force reinitialize if already initialized"
+    )
 
     # run command
-    run_parser = subparsers.add_parser("run", help="Run the agent")
+    run_parser = subparsers.add_parser(
+        "run",
+        help="Run the agent",
+        description="Start the autonomous agent loop to execute tasks"
+    )
     run_parser.add_argument(
         "--iterations",
         type=int,
+        default=10,
         help="Maximum iterations (default: 10)"
+    )
+    run_parser.add_argument(
+        "--max-restarts",
+        type=int,
+        default=3,
+        help="Maximum restarts on code changes (default: 3)"
     )
 
     # list command
-    subparsers.add_parser("list", help="List all tasks")
+    list_parser = subparsers.add_parser(
+        "list",
+        help="List all tasks",
+        description="Show all features/tasks from feature_list.json"
+    )
+    list_parser.add_argument(
+        "--filter",
+        type=str,
+        choices=["all", "pending", "completed"],
+        default="all",
+        help="Filter tasks by status (default: all)"
+    )
 
     # add command
-    add_parser = subparsers.add_parser("add", help="Add a new task")
-    add_parser.add_argument("--id", type=str, help="Feature ID")
-    add_parser.add_argument("--name", type=str, required=True, help="Feature name")
-    add_parser.add_argument("--description", type=str, help="Feature description")
-    add_parser.add_argument("--priority", type=int, help="Priority (lower = higher)")
+    add_parser = subparsers.add_parser(
+        "add",
+        help="Add a new task",
+        description="Add a new feature/task to feature_list.json"
+    )
+    add_parser.add_argument(
+        "--id",
+        type=str,
+        help="Feature ID (auto-generated if not provided)"
+    )
+    add_parser.add_argument(
+        "--name",
+        type=str,
+        required=True,
+        help="Feature name (required)"
+    )
+    add_parser.add_argument(
+        "--description",
+        type=str,
+        help="Feature description"
+    )
+    add_parser.add_argument(
+        "--priority",
+        type=int,
+        help="Priority (lower number = higher priority, default: 99)"
+    )
 
     # status command
-    subparsers.add_parser("status", help="Show agent status")
+    status_parser = subparsers.add_parser(
+        "status",
+        help="Show agent status",
+        description="Display current project and agent state"
+    )
+    status_parser.add_argument(
+        "--verbose",
+        "-v",
+        action="store_true",
+        help="Show verbose output"
+    )
 
     # Backwards compatibility: --init and --run flags
-    parser.add_argument("--init", action="store_true", help="Initialize the project")
-    parser.add_argument("--run", action="store_true", help="Run the agent")
+    parser.add_argument("--init", action="store_true", help="Initialize the project (deprecated, use 'init' subcommand)")
+    parser.add_argument("--run", action="store_true", help="Run the agent (deprecated, use 'run' subcommand)")
 
     args = parser.parse_args()
+
+    # Handle version flag
+    if args.version:
+        print(f"Agent-Loop CLI {__version__}")
+        return
 
     # 处理兼容性格式
     if args.init:
         init_project(args)
     elif args.run:
-        run_agent(args)
+        run_agent(args, max_restarts=3)
     elif args.command:
         # 执行子命令
         if args.command == "init":
             init_project(args)
         elif args.command == "run":
-            run_agent(args)
+            max_restarts = getattr(args, 'max_restarts', 3)
+            run_agent(args, max_restarts=max_restarts)
         elif args.command == "list":
             list_tasks(args)
         elif args.command == "add":
