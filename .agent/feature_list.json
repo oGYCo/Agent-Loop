@@ -415,8 +415,8 @@
       "name": "Code review for all modules",
       "description": "对所有核心模块进行代码审查，包括：state_manager, task_selector, git_helper, session_manager, human_intervention。检查代码质量、一致性和潜在问题。",
       "priority": 2,
-      "status": "pending",
-      "passes": false,
+      "status": "completed",
+      "passes": true,
       "verify_command": "python -m mypy agent/",
       "context_files": [
         "agent/"
