@@ -191,9 +191,9 @@
       "name": "Verify and fix any remaining documentation inconsistencies",
       "description": "检查所有文档文件（README.md, README.zh-CN.md, CLAUDE.md）中是否还存在与代码不一致的地方，并进行修正。",
       "priority": 17,
-      "status": "pending",
-      "passes": false,
-      "context": "使用 grep 等工具搜索文档中可能存在的过时引用或不一致之处，特别是检查命令示例、文件路径、模块名称等是否与实际代码匹配。",
+      "status": "completed",
+      "passes": true,
+      "context": "已检查并修复 CLAUDE.md 中的以下问题：1) 修复 Core Modules 表格中重复的 prompt_manager.py 条目 2) 添加缺失的 performance_monitor.py 和 config_reloader.py 条目 3) 修复 mypy 命令路径从 agent_core.py 到 agent/agent_core.py。README.md 和 README.zh-CN.md 无需修改。",
       "created_at": "2026-03-07",
       "updated_at": "2026-03-07"
     }

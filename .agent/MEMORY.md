@@ -4,6 +4,34 @@ Accumulated experience and lessons learned from task execution.
 
 ---
 
+## 2026-03-07 - Verify and Fix Documentation Inconsistencies (fix-016)
+
+**Task Description**: 检查所有文档文件（README.md, README.zh-CN.md, CLAUDE.md）中是否还存在与代码不一致的地方，并进行修正。
+
+**Lessons Learned:**
+
+1. **Documentation Verification Process**:
+   - Read all three main documentation files: CLAUDE.md, README.md, README.zh-CN.md
+   - Verified actual project structure using glob and grep tools
+   - Cross-referenced CLI commands in main.py with documentation
+
+2. **Inconsistencies Found and Fixed**:
+
+   **CLAUDE.md**:
+   - Fixed duplicate `agent/prompt_manager.py` entry in Core Modules table (appeared twice)
+   - Added missing `agent/performance_monitor.py` entry
+   - Added missing `agent/config_reloader.py` entry
+   - Fixed mypy command path from `agent_core.py` to `agent/agent_core.py`
+
+   **README.md and README.zh-CN.md**:
+   - No issues found - these files already had correct module listings
+
+3. **Verification**: All 223 tests pass.
+
+4. **Commit**: Pushed to remote as `docs: fix documentation inconsistencies in CLAUDE.md`
+
+---
+
 ## 2026-03-07 - Update Analysis Report with Completed Fixes (fix-014)
 
 **Task Description**: analysis_report.md 中记录了多个已修复的问题，但报告本身没有更新为已完成状态。需要更新报告，添加修复完成的标记，并清理过时的信息。
@@ -435,3 +463,20 @@ Accumulated experience and lessons learned from task execution.
 *(Add new lessons at the top)*
 
 ## Task Experience Records
+
+### 2026-03-07 - Clean up MEMORY.md duplicate entries (fix-015)
+
+**任务描述**: MEMORY.md 文件中存在重复的条目（例如 fix-008 出现了两次）。需要清理重复内容，保留最新和最完整的版本。
+
+**执行结果**: completed
+**执行消息**: ## Task Completed
+
+Successfully cleaned up the duplicate entries in MEMORY.md. Here's what was done:
+
+### Changes Made
+- **Removed duplicate entries** for fix-008 through fix-014 that appeared twice in the file
+- Each task had two versions: 
+  - A well-organized English version at the top
+  - An incomplete Chinese version in the "Task Experience Records" section
+- Kept only the complete English versions (which are more detailed and better formatted)
+- File reduced from **676 lines to 437 lines**
