@@ -14,6 +14,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 4. **Research first**: Always gather sufficient context before implementing - check documentation and existing code
 5. **System integration**: New modules must integrate properly with the existing system, not just work in isolation
 6. **No TODO shortcuts**: Never use TODO comments to reduce workload - complete all requirements genuinely
+7. **First principles thinking**: You cannot always assume that the person assigning a task knows exactly what they want or how to achieve it. Exercise critical judgment and ground your approach in the fundamental needs and core problems. If the motivations and objectives are ambiguous, prioritize gathering accurate and relevant context by all available means. If the goal is clear but the proposed path is suboptimal, take the initiative to adjust it and implement a more efficient solution.
 
 ## Common Commands
 
@@ -72,7 +73,10 @@ python main.py prompt set <key>           # Set active prompt
 | `agent/test_runner.py` | Test execution wrapper |
 | `agent/performance_monitor.py` | Performance metrics tracking |
 | `agent/config_reloader.py` | Configuration hot reload |
+| `agent/metrics.py` | Prometheus metrics collection and export |
+| `agent/webhook.py` | Webhook notification system |
 | `main.py` | CLI entry point |
+| `api.py` | FastAPI REST API server |
 
 ### Data Flow
 

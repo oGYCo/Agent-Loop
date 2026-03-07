@@ -152,7 +152,7 @@
       "id": "feature-011",
       "name": "任务看板Web界面",
       "description": "在Web Dashboard中添加任务看板功能：可视化任务列表，支持拖拽调整优先级，任务详情展示。需要先完成基础Dashboard和API。",
-      "priority": 11,
+      "priority": 8,
       "status": "pending",
       "passes": false,
       "context_files": [
@@ -167,7 +167,7 @@
       "id": "feature-012",
       "name": "Grafana仪表板模板",
       "description": "创建Grafana仪表板JSON模板，包含预置面板：任务统计、性能指标、会话历史、错误分析。配合Prometheus指标使用。",
-      "priority": 12,
+      "priority": 9,
       "status": "pending",
       "passes": false,
       "context_files": [
@@ -206,7 +206,7 @@
       "id": "feature-017",
       "name": "Metrics收集集成到Agent执行流程",
       "description": "将Prometheus指标收集集成到agent_core.py的执行流程中：任务完成时调用increment_task_completed，任务失败时调用increment_error，会话开始/结束时调用相应方法，使/metrics端点能显示实时更新的指标。",
-      "priority": 7,
+      "priority": 5,
       "status": "pending",
       "passes": false,
       "context_files": [
