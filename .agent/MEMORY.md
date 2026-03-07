@@ -298,7 +298,7 @@ Accumulated experience and lessons learned from task execution.
 
 ## Task Experience Records
 
-### 2026-03-07 - Add caching mechanism to prompt_manager.py (fix-008)
+2026-03-07 - Add caching mechanism to prompt_manager.py (fix-008)
 
 **任务描述**: 当前 prompt_manager.py 每次调用 load_template() 都会读取文件，这对于频繁调用的场景会导致不必要的 I/O 操作。建议添加模板缓存机制，可以设置缓存过期时间或提供手动刷新方法。
 
@@ -307,7 +307,10 @@ Accumulated experience and lessons learned from task execution.
 
 Successfully added caching mechanism to `prompt_manager.py` to avoid unnecessary I/O operations.
 
-### Changes Made:
+
+---
+
+Changes Made:
 
 **`agent/prompt_manager.py`:**
 - Added `cache_ttl` parameter to `PromptManager.__init__()`:
@@ -316,3 +319,48 @@ Successfully added caching mechanism to `prompt_manager.py` to avoid unnecessary
   - `>0`: TTL in seconds for automatic expiration
 - Modified `load_template()` to check cache before reading files
 - Added `_get_cached_template()` helper for cache validat
+
+---
+
+### 2026-03-07 - Refactor run_agent loop state management in main.py (fix-009)
+
+**任务描述**: 在 main.py:149-193 的 run_agent 函数中，每次循环都创建新的 StateManager 实例并重新加载 state，这可能导致覆盖 agent 内部的状态变更。建议在循环外部创建单个 StateManager 实例，并确保状态变更正确同步。
+
+**执行结果**: completed
+**执行消息**: ## Task Completed
+
+I've successfully refactored the `run_agent` loop state management in `main.py`. Here's what was done:
+
+### Changes Made
+
+**File: `main.py`**
+
+1. **Moved StateManager instantiation outside the loop** (lines 149-150)
+   - Before: `StateManager(project_root)` was created on each iteration inside the `for restart_count in range(max_restarts + 1)` loop
+   - After: Created once before the loop starts
+
+2. **Removed redundant state load** 
+   - The `state = state_manager.load_state()
+---
+
+### 2026-03-07 - Improve config validation flexibility in state_manager.py (fix-010)
+
+**任务描述**: 当前 state_manager.py 的 validate_config 对 documentation_urls 字段的验证过于严格（要求非空字典）。这在某些场景下可能导致问题。建议改进验证逻辑，允许空字典，并在注释中说明何时需要填写内容。
+
+**执行结果**: completed
+**执行消息**: Task completed successfully.
+
+### Changes Made
+
+**File: `agent/state_manager.py`:**
+- Removed the validation check that rejected empty dictionaries for documentation_urls
+- Added comment explaining that empty dictionary is allowed and suggesting when to fill in documentation links
+
+**File: `tests/test_state_manager.py`:**
+- Updated test_validate_config_empty_documentation_urls to verify that empty dictionary is now accepted
+
+### Learnings
+
+- Made minimal, focused change to improve validation flexibility
+- Always update corresponding tests when changing validation logic
+- Added helpful comments to explain the expected usage
