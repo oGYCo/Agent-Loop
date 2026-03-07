@@ -152,6 +152,50 @@
       "context": "使用 grep 或其他工具搜索使用 Optional[] 的位置，然后逐个替换为 | None 语法。",
       "created_at": "2026-03-07 21:00:00",
       "updated_at": "2026-03-07"
+    },
+    {
+      "id": "feature-015",
+      "name": "Explore and plan task",
+      "description": "现在请你以工业生产级的代码的视角完整的探索整个仓库的内容(还有各种的文档)，然后识别其中有问题的地方、不合理、需要改进、需要更新、需要删除的地方，制定详细的后续的计划和任务到feature_list.json中，并且按照优先级排序（注意任务的描述一定要先让agent先获取足够的上下文信息之后再开始执行任务）。",
+      "priority": 99,
+      "status": "completed",
+      "passes": true,
+      "context": "已完整探索整个仓库，识别出以下已完成修复的问题：1)版本号统一为1.0.0 2)test_runner.py移除shell=True 3)__init__.py导出完整 4)MEMORY.txt引用修正为MEMORY.md 5)magic number 999替换为常量 6)阻塞input改为异步 7)token估算使用tiktoken 8)文件监控改用watchdog 9)添加config_reloader测试 10)添加performance_monitor测试 11)全局monitor线程安全 12)添加模板缓存 13)状态管理重构 14)配置验证灵活化 15)添加日志配置 16)错误处理标准化 17)类型注解统一",
+      "created_at": "2026-03-07",
+      "updated_at": "2026-03-07"
+    },
+    {
+      "id": "fix-014",
+      "name": "Update analysis_report.md to reflect completed fixes",
+      "description": "analysis_report.md 中记录了多个已修复的问题，但报告本身没有更新为已完成状态。需要更新报告，添加修复完成的标记，并清理过时的信息。",
+      "priority": 15,
+      "status": "pending",
+      "passes": false,
+      "context": "读取 analysis_report.md 文件，识别其中标记为需要修复但实际已完成的条目，将它们更新为已修复状态。确保报告准确反映当前代码状态。",
+      "created_at": "2026-03-07",
+      "updated_at": "2026-03-07"
+    },
+    {
+      "id": "fix-015",
+      "name": "Clean up MEMORY.md duplicate entries",
+      "description": "MEMORY.md 文件中存在重复的条目（例如 fix-008 出现了两次）。需要清理重复内容，保留最新和最完整的版本。",
+      "priority": 16,
+      "status": "pending",
+      "passes": false,
+      "context": "读取 .agent/MEMORY.md 文件，识别重复的任务记录，合并或删除重复条目，确保每个任务只有一条记录。",
+      "created_at": "2026-03-07",
+      "updated_at": "2026-03-07"
+    },
+    {
+      "id": "fix-016",
+      "name": "Verify and fix any remaining documentation inconsistencies",
+      "description": "检查所有文档文件（README.md, README.zh-CN.md, CLAUDE.md）中是否还存在与代码不一致的地方，并进行修正。",
+      "priority": 17,
+      "status": "pending",
+      "passes": false,
+      "context": "使用 grep 等工具搜索文档中可能存在的过时引用或不一致之处，特别是检查命令示例、文件路径、模块名称等是否与实际代码匹配。",
+      "created_at": "2026-03-07",
+      "updated_at": "2026-03-07"
     }
   ]
 }
