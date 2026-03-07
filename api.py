@@ -567,6 +567,26 @@ async def test_webhook(api_key: str = Depends(get_api_key)) -> Dict[str, Any]:
         }
 
 
+@app.post("/email/test")
+async def test_email(api_key: str = Depends(get_api_key)) -> Dict[str, Any]:
+    """Test email notification
+
+    Sends a test email to verify the email configuration.
+    """
+    try:
+        from agent.email_notifier import get_email_notifier
+
+        notifier = get_email_notifier()
+        result = await notifier.test_email()
+        return result
+    except Exception as e:
+        logger.error(f"Error testing email: {e}")
+        return {
+            "success": False,
+            "message": f"Test failed: {type(e).__name__}: {str(e)}"
+        }
+
+
 @app.get("/")
 def serve_dashboard(api_key: str = Depends(get_api_key)):
     """Serve the web dashboard"""
