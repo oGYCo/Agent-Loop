@@ -53,12 +53,15 @@ class TaskSelector:
         )
 
     def get_completed_count(self) -> int:
-        """获取已完成任务数量"""
+        """Get completed task count.
+
+        A task is considered completed if status is 'completed' OR passes is True.
+        """
         data: dict[str, Any] = self.state_manager.load_feature_list()
         features: list[dict[str, Any]] = cast(list[dict[str, Any]], data.get("features", []))
         return sum(
             1 for f in features
-            if f.get("status") == "completed" or f.get("passes", False)
+            if f.get("status") == "completed" or f.get("passes") is True
         )
 
     def get_total_count(self) -> int:
