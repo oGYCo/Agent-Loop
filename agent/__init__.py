@@ -11,7 +11,7 @@ from .task_selector import TaskSelector
 from .session_manager import SessionManager
 from .human_intervention import HumanIntervention
 from .git_helper import GitHelper
-from .test_runner import TestRunner
+from .test_runner import AgentTestRunner
 
 __all__ = [
     "AgentCore",
@@ -20,5 +20,5 @@ __all__ = [
     "SessionManager",
     "HumanIntervention",
     "GitHelper",
-    "TestRunner",
+    "AgentTestRunner",
 ]

@@ -1,4 +1,4 @@
-"""Tests for TestRunner module"""
+"""Tests for AgentTestRunner"""
 
 import pytest
 import json
@@ -10,11 +10,11 @@ import subprocess
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from agent.state_manager import StateManager
-from agent.test_runner import TestRunner
+from agent.test_runner import AgentTestRunner
 
 
-class TestTestRunner:
-    """Test cases for TestRunner"""
+class TestAgentTestRunner:
+    """Test cases for AgentTestRunner"""
 
     @pytest.fixture
     def temp_agent_dir(self):
@@ -29,9 +29,9 @@ class TestTestRunner:
 
     @pytest.fixture
     def test_runner(self, state_manager):
-        """Create TestRunner with test state manager"""
+        """Create AgentTestRunner with test state manager"""
         state_manager.save_config({"test_command": "echo done"})
-        return TestRunner(state_manager)
+        return AgentTestRunner(state_manager)
 
     def test_run_tests_custom_command(self, test_runner):
         """Test running tests with custom command"""
@@ -88,7 +88,7 @@ class TestTestRunner:
         sm = StateManager(agent_dir=temp_agent_dir)
         sm.save_config({"test_command": "echo custom"})
 
-        runner = TestRunner(sm)
+        runner = AgentTestRunner(sm)
         success, output = runner.run_tests()
         assert "custom" in output
 
@@ -97,7 +97,7 @@ class TestTestRunner:
         sm = StateManager(agent_dir=temp_agent_dir)
         sm.save_config({"test_pattern": "test_*.py"})
 
-        runner = TestRunner(sm)
+        runner = AgentTestRunner(sm)
         # Should use the pattern when running tests
         config = runner.config
         assert config["test_pattern"] == "test_*.py"

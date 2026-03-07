@@ -10,7 +10,7 @@ from typing import Tuple, Optional, Dict, Any
 from .state_manager import StateManager
 
 
-class TestRunner:
+class AgentTestRunner:
     """测试运行器"""
 
     def __init__(self, state_manager: Optional[StateManager] = None) -> None:
