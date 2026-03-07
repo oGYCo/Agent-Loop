@@ -12,6 +12,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Dict, Any, List, cast, Callable
 
+from .metrics import get_metrics_collector
+
 from claude_agent_sdk import (
     query,
     ClaudeSDKClient,
@@ -261,6 +263,9 @@ class AgentCore:
 
         # 性能监控
         self.perf_monitor = get_monitor()
+
+        # 指标收集器
+        self.metrics_collector = get_metrics_collector()
 
     def _initial_file_state(self) -> None:
         """记录初始文件状态，用于检测代码变更"""
@@ -1335,6 +1340,13 @@ class AgentCore:
             status = result.get("status", "unknown")
             self.perf_monitor.metrics.record_task(task_id, task_name, duration, status)
 
+            # Record task completion metrics
+            if status == "error":
+                self.metrics_collector.increment_task_completed(success=False)
+                self.metrics_collector.increment_error("task_execution_error")
+            else:
+                self.metrics_collector.increment_task_completed(success=True)
+
             return result
 
     def verify_task(self, task: Dict[str, Any]) -> bool:
@@ -1630,6 +1642,9 @@ class AgentCore:
         # Push session start status to WebSocket
         _push_log_sync("info", f"Session initialized: {init_info['session_id']}", "session")
 
+        # Record session start for metrics
+        self.metrics_collector.start_session(init_info["session_id"])
+
         # 保存会话ID用于可能的恢复
         current_sdk_session_id = resume_session_id
 
@@ -1690,6 +1705,9 @@ class AgentCore:
                     summary["errors"] += 1
                     _push_log_sync("warning", f"Task verification failed: {task_name} ({task_id})", "task")
 
+                    # Record verification failure metrics
+                    self.metrics_collector.increment_error("task_verification_failed")
+
                     # 发送Webhook通知 - 任务失败
                     _send_webhook_notification("task_failed", {
                         "task_id": task_id,
@@ -1725,12 +1743,17 @@ class AgentCore:
                 logger.error(f"Error executing task: {error_msg}")
                 self.handle_error(error_msg, task)
                 summary["errors"] += 1
+                # Record error metrics for unexpected exceptions
+                self.metrics_collector.increment_error(f"loop_exception_{type(e).__name__}")
 
             summary["iterations"] += 1
             self._iteration_count = summary["iterations"]
 
         # Push session completion
         _push_log_sync("info", f"Session completed. Iterations: {summary['iterations']}, Completed: {summary['completed']}, Errors: {summary['errors']}", "session")
+
+        # Record session end for metrics
+        self.metrics_collector.end_session(init_info["session_id"])
 
         self.complete_session(summary)
         return summary
