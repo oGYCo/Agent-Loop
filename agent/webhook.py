@@ -199,7 +199,7 @@ class WebhookNotifier:
         Returns:
             是否发送成功
         """
-        data = {
+        data: Dict[str, Any] = {
             "task_id": task_id,
             "task_name": task_name,
             "status": "completed"
@@ -231,7 +231,7 @@ class WebhookNotifier:
         Returns:
             是否发送成功
         """
-        data = {
+        data: Dict[str, Any] = {
             "task_id": task_id,
             "task_name": task_name,
             "status": "failed",
@@ -261,7 +261,7 @@ class WebhookNotifier:
         Returns:
             是否发送成功
         """
-        data = {
+        data: Dict[str, Any] = {
             "reason": reason,
             "status": "intervention_required"
         }

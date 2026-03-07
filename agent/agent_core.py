@@ -10,7 +10,10 @@ import sys
 import logging
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, Any, List, cast, Callable
+from typing import Dict, Any, List, cast, Callable, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .webhook import WebhookNotifier
 
 from .metrics import get_metrics_collector
 
@@ -41,7 +44,7 @@ from claude_agent_sdk.types import (
 
 # ========== Webhook Notifier (Lazy Import) ==========
 
-def _get_webhook_notifier():
+def _get_webhook_notifier() -> "WebhookNotifier | None":
     """Lazy import to avoid circular dependency"""
     try:
         from .webhook import get_webhook_notifier

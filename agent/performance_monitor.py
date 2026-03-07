@@ -8,7 +8,7 @@ import logging
 import resource
 import threading
 from datetime import datetime
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Generator
 from contextlib import contextmanager
 from functools import wraps
 
@@ -204,7 +204,7 @@ def reset_monitor() -> None:
 
 
 @contextmanager
-def monitor_scope() -> "PerformanceMonitor":
+def monitor_scope() -> Generator["PerformanceMonitor", None, None]:
     """上下文管理器：创建作用域内的性能监控器实例
 
     推荐使用此方法代替全局 get_monitor() 以避免多线程/异步环境中的竞态条件。

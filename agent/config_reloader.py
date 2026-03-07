@@ -258,7 +258,7 @@ class ConfigWatcher:
         self.reloader = reloader
         self.interval = interval
         self._running = False
-        self._observer: Observer | None = None
+        self._observer: "Observer | None" = None  # type: ignore[valid-type]
         self._async_watcher_task: asyncio.Task[None] | None = None
 
     def start(self) -> None:

@@ -448,7 +448,7 @@ class EmailNotifier:
         Returns:
             是否发送成功
         """
-        data = {
+        data: Dict[str, Any] = {
             "reason": reason,
             "status": "intervention_required"
         }

@@ -467,7 +467,7 @@ class PromptManager:
         self.templates_dir = self.agent_dir / "prompt_templates"
 
         # Template cache: {name: {"content": str, "timestamp": float}}
-        self._template_cache: dict[str, dict[str, Any]] = {}
+        self._template_cache: dict[str, dict[str, str | float]] = {}
         self._cache_ttl: int | None = cache_ttl  # None = disabled, 0 = never expire, >0 = TTL in seconds
 
     # ============================================================
@@ -533,16 +533,20 @@ class PromptManager:
 
         # If TTL is 0, cache never expires
         if self._cache_ttl == 0:
-            return self._template_cache[name]["content"]
+            return cast(str, self._template_cache[name]["content"])
+
+        # If TTL is None, caching is disabled (shouldn't happen, but handle gracefully)
+        if self._cache_ttl is None:
+            return None
 
         # Check if cache has expired
         cached_time = self._template_cache[name]["timestamp"]
-        if time.time() - cached_time > self._cache_ttl:
+        if time.time() - cast(float, cached_time) > self._cache_ttl:
             # Cache expired, remove it
             del self._template_cache[name]
             return None
 
-        return self._template_cache[name]["content"]
+        return cast(str, self._template_cache[name]["content"])
 
     def clear_cache(self) -> None:
         """Clear all cached templates."""
@@ -734,7 +738,7 @@ class PromptManager:
         """
         data = self.load_prompts()
         active_key = data.get("active_prompt", "default")
-        prompts = data.get("prompts", {})
+        prompts: dict[str, dict[str, str]] = data.get("prompts", {})
 
         if active_key not in prompts:
             active_key = "default"
