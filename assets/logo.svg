@@ -1,95 +1,29 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 200" width="800" height="200">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 120" width="500" height="120">
   <defs>
-    <!-- Background gradient -->
-    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#0a0a14"/>
-      <stop offset="100%" style="stop-color:#1e1e3f"/>
-    </linearGradient>
-
-    <!-- Main accent gradient -->
-    <linearGradient id="accentGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-      <stop offset="0%" style="stop-color:#00d9ff"/>
+    <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#00d4ff"/>
       <stop offset="100%" style="stop-color:#a855f7"/>
     </linearGradient>
-
-    <!-- Glow filter -->
-    <filter id="glow" x="-100%" y="-100%" width="300%" height="300%">
-      <feGaussianBlur stdDeviation="4" result="coloredBlur"/>
-      <feMerge>
-        <feMergeNode in="coloredBlur"/>
-        <feMergeNode in="SourceGraphic"/>
-      </feMerge>
-    </filter>
-
-    <!-- Strong glow -->
-    <filter id="strongGlow" x="-100%" y="-100%" width="300%" height="300%">
-      <feGaussianBlur stdDeviation="8" result="coloredBlur"/>
-      <feMerge>
-        <feMergeNode in="coloredBlur"/>
-        <feMergeNode in="coloredBlur"/>
-        <feMergeNode in="SourceGraphic"/>
-      </feMerge>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="3" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
     </filter>
   </defs>
 
   <!-- Background -->
-  <rect width="800" height="200" rx="24" fill="url(#bgGrad)"/>
+  <rect width="500" height="120" rx="16" fill="#0f0f1a"/>
 
-  <!-- Large robot icon -->
-  <g transform="translate(60, 40)">
-    <!-- Outer ring -->
-    <circle cx="60" cy="60" r="55" fill="none" stroke="#00d9ff" stroke-width="1.5" opacity="0.2"/>
-    <circle cx="60" cy="60" r="55" fill="none" stroke="#a855f7" stroke-width="1" opacity="0.1">
-      <animate attributeName="r" values="55;60;55" dur="3s" repeatCount="indefinite"/>
-    </circle>
-
-    <!-- Robot head -->
-    <rect x="30" y="35" width="60" height="55" rx="12" fill="url(#accentGrad)" filter="url(#strongGlow)"/>
-
-    <!-- Face -->
-    <rect x="35" y="40" width="50" height="45" rx="8" fill="#0a0a14"/>
-
-    <!-- Eyes -->
-    <circle cx="50" cy="55" r="8" fill="#00ffaa" filter="url(#glow)">
-      <animate attributeName="r" values="8;6;8" dur="2s" repeatCount="indefinite"/>
-    </circle>
-    <circle cx="50" cy="55" r="3" fill="#ffffff"/>
-
-    <circle cx="70" cy="55" r="8" fill="#00ffaa" filter="url(#glow)">
-      <animate attributeName="r" values="8;6;8" dur="2s" repeatCount="indefinite"/>
-    </circle>
-    <circle cx="70" cy="55" r="3" fill="#ffffff"/>
-
-    <!-- Antenna -->
-    <line x1="60" y1="35" x2="60" y2="15" stroke="url(#accentGrad)" stroke-width="3" stroke-linecap="round"/>
-    <circle cx="60" cy="10" r="6" fill="#00d9ff" filter="url(#strongGlow)">
-      <animate attributeName="opacity" values="1;0.5;1" dur="1s" repeatCount="indefinite"/>
-    </circle>
-
-    <!-- Mouth -->
-    <rect x="45" y="70" width="30" height="4" rx="2" fill="#00ffaa" opacity="0.8"/>
+  <!-- Large stylized A -->
+  <g transform="translate(30, 15)" filter="url(#glow)">
+    <path d="M35 0 L70 90 L62 90 L54 70 L16 70 L8 90 L0 90 Z M35 15 L23 55 L47 55 Z"
+          fill="url(#grad)"/>
   </g>
 
-  <!-- Large title -->
-  <text x="200" y="85" font-family="system-ui, -apple-system, sans-serif" font-size="56" font-weight="800" fill="white" filter="url(#glow)">Agent</text>
-  <text x="200" y="145" font-family="system-ui, -apple-system, sans-serif" font-size="56" font-weight="300" fill="url(#accentGrad)" filter="url(#glow)">Loop</text>
+  <!-- Text -->
+  <text x="110" y="72" font-family="system-ui, sans-serif" font-size="42" font-weight="700" fill="white">gent</text>
+  <text x="110" y="72" font-family="system-ui, sans-serif" font-size="42" font-weight="300" fill="url(#grad)">L</text><text x="145" y="72" font-family="system-ui, sans-serif" font-size="42" font-weight="300" fill="white">oop</text>
 
-  <!-- Tagline -->
-  <text x="400" y="80" font-family="ui-monospace, monospace" font-size="14" fill="#00d9ff" letter-spacing="4" opacity="0.9">AUTONOMOUS</text>
-  <text x="400" y="105" font-family="ui-monospace, monospace" font-size="14" fill="#a855f7" letter-spacing="2" opacity="0.9">AI AGENT SYSTEM</text>
-
-  <!-- Decorative line -->
-  <line x1="400" y1="125" x2="550" y2="125" stroke="url(#accentGrad)" stroke-width="1" opacity="0.5"/>
-
-  <!-- Status indicator -->
-  <g transform="translate(700, 100)">
-    <circle r="8" fill="#00ffaa" filter="url(#glow)">
-      <animate attributeName="opacity" values="1;0.4;1" dur="1.5s" repeatCount="indefinite"/>
-    </circle>
-    <text x="0" y="30" font-family="ui-monospace, monospace" font-size="11" fill="#00ffaa" text-anchor="middle" opacity="0.8">ACTIVE</text>
-  </g>
-
-  <!-- Corner decorations -->
-  <path d="M20 40 L20 20 L40 20" fill="none" stroke="#00d9ff" stroke-width="1.5" opacity="0.4"/>
-  <path d="M780 160 L780 180 L760 180" fill="none" stroke="#a855f7" stroke-width="1.5" opacity="0.4"/>
+  <!-- Subtitle -->
+  <text x="280" y="65" font-family="monospace" font-size="11" fill="#00d4ff" letter-spacing="2" opacity="0.8">AUTONOMOUS</text>
+  <text x="280" y="85" font-family="monospace" font-size="11" fill="#a855f7" letter-spacing="1" opacity="0.8">AGENT SYSTEM</text>
 </svg>
