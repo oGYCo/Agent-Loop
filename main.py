@@ -65,6 +65,22 @@ from agent.session_manager import SessionManager
 from agent.git_helper import GitHelper
 from agent.config_reloader import ConfigReloader
 from agent.prompt_manager import PromptManager
+from agent.console import (
+    console,
+    print_header,
+    print_success,
+    print_error,
+    print_warning,
+    print_info,
+    print_task_table,
+    print_status_panel,
+    print_run_summary,
+    create_progress,
+    print_init_info,
+    print_reload_result,
+    print_prompt_list,
+    print_template_list,
+)
 
 # 全局 shutdown 标志
 _shutdown_requested = False
@@ -87,14 +103,14 @@ def _signal_handler(signum: int, frame: Any) -> None:
 
 def init_project(args: argparse.Namespace) -> None:
     """初始化项目"""
-    print("Initializing Agent-Loop project...")
+    print_info("Initializing Agent-Loop project...")
 
     state_manager = StateManager(args.project_dir if args.project_dir else None)
     git_helper = GitHelper(args.project_dir if args.project_dir else None)
 
     # 初始化git仓库
     if not git_helper.is_git_repo():
-        print("Initializing git repository...")
+        print_info("Initializing git repository...")
         git_helper.init_repo()
 
     # 创建 .agent 目录
@@ -161,22 +177,7 @@ def init_project(args: argparse.Namespace) -> None:
     created_templates = prompt_manager.scaffold_templates()
 
     # 显示初始化信息
-    print(f"Project directory: {state_manager.agent_dir}")
-    print("Configuration files created:")
-    print("  - config.json")
-    print("  - feature_list.json")
-    print("  - progress.txt")
-    print("  - session_history.json")
-    print("  - state.json")
-    if created_templates:
-        print(f"  - prompt_templates/ ({len(created_templates)} templates)")
-        for t in created_templates:
-            print(f"      - {t}")
-
-    print("\nProject initialized successfully!")
-    print("\nTo add features, edit .agent/feature_list.json")
-    print("To customize prompts, edit files in .agent/prompt_templates/")
-    print("To run the agent, use: python main.py run")
+    print_init_info(str(state_manager.agent_dir), created_templates)
 
 
 def run_agent(args: argparse.Namespace, max_restarts: int = 3) -> None:
@@ -196,15 +197,13 @@ def run_agent(args: argparse.Namespace, max_restarts: int = 3) -> None:
     for restart_count in range(max_restarts + 1):
         # 检查是否需要优雅关闭
         if _shutdown_requested:
-            print("\n🛑 Shutdown requested, exiting gracefully...")
+            print_warning("Shutdown requested, exiting gracefully...")
             break
 
         if restart_count > 0:
-            print(f"\n{'='*50}")
-            print(f"RESTART {restart_count}/{max_restarts}")
-            print(f"{'='*50}")
+            print_header(f"RESTART {restart_count}/{max_restarts}", style="bold yellow")
 
-        print("Starting agent...")
+        print_info("Starting agent...")
 
         agent = AgentCore(project_root)
         session_manager = SessionManager(agent.state_manager)
@@ -227,22 +226,15 @@ def run_agent(args: argparse.Namespace, max_restarts: int = 3) -> None:
             state_manager.save_state(state)
 
             if restart_count < max_restarts:
-                print(f"\n{'='*50}")
-                print("Code changed, restarting to apply updates...")
-                print(f"{'='*50}\n")
+                print_warning("Code changed, restarting to apply updates...")
                 continue
             else:
-                print("\nMax restarts reached, exiting.")
+                print_error("Max restarts reached, exiting.")
 
         break
 
-    print("\n" + "=" * 50)
-    print("Agent Run Summary")
-    print("=" * 50)
-    print(f"Iterations: {summary['iterations']}")
-    print(f"Tasks completed: {summary['completed']}")
-    print(f"Errors: {summary['errors']}")
-    print("=" * 50)
+    print("\n")
+    print_run_summary(summary['iterations'], summary['completed'], summary['errors'])
 
 
 def list_tasks(args: argparse.Namespace) -> None:
@@ -253,18 +245,18 @@ def list_tasks(args: argparse.Namespace) -> None:
     data = state_manager.load_feature_list()
     features = data.get("features", [])
 
-    print("\nFeature List:")
-    print("-" * 60)
+    # Apply filter if specified
+    filter_type = getattr(args, 'filter', 'all')
+    if filter_type == "pending":
+        features = [f for f in features if not f.get("passes")]
+    elif filter_type == "completed":
+        features = [f for f in features if f.get("passes")]
 
-    for f in features:
-        status_icon = "✓" if f.get("passes") else "○"
-        print(f"{status_icon} [{f.get('id')}] {f.get('name')}")
-        print(f"   Priority: {f.get('priority')}, Status: {f.get('status')}")
-        print(f"   {f.get('description')}")
-        print()
-
-    print("-" * 60)
-    print(f"Total: {len(features)} | Completed: {task_selector.get_completed_count()} | Pending: {task_selector.get_pending_count()}")
+    print_task_table(
+        features,
+        task_selector.get_completed_count(),
+        task_selector.get_pending_count()
+    )
 
 
 def add_feature(args: argparse.Namespace) -> None:
@@ -291,30 +283,36 @@ def show_status(args: argparse.Namespace) -> None:
     state_manager = StateManager(args.project_dir if args.project_dir else None)
     git_helper = GitHelper(args.project_dir if args.project_dir else None)
 
-    print("\nAgent Status")
-    print("=" * 50)
-
     # 配置信息
     config = state_manager.load_config()
-    print(f"Project: {config.get('project_name', 'N/A')}")
-    print(f"Type: {config.get('project_type', 'N/A')}")
-    print(f"Test command: {config.get('test_command', 'N/A')}")
 
     # Git状态
-    print(f"\nGit Branch: {git_helper.get_current_branch()}")
-    print(f"Has changes: {git_helper.has_changes()}")
+    branch = git_helper.get_current_branch()
+    has_changes = git_helper.has_changes()
 
     # 任务统计
     task_selector = TaskSelector(state_manager)
-    print(f"\nTasks: {task_selector.get_completed_count()}/{task_selector.get_total_count()} completed")
-    print(f"Pending: {task_selector.get_pending_count()}")
+    tasks_completed = task_selector.get_completed_count()
+    tasks_total = task_selector.get_total_count()
+    tasks_pending = task_selector.get_pending_count()
 
     # 当前状态
     state = state_manager.load_state()
-    print(f"\nCurrent session: {state.get('current_session', {}).get('id', 'N/A')}")
-    print(f"Error count: {state.get('error_count', 0)}")
+    current_session = state.get('current_session', {}).get('id', 'N/A')
+    error_count = state.get('error_count', 0)
 
-    print("=" * 50)
+    print_status_panel(
+        project_name=config.get('project_name', 'N/A'),
+        project_type=config.get('project_type', 'N/A'),
+        test_command=config.get('test_command', 'N/A'),
+        branch=branch,
+        has_changes=has_changes,
+        tasks_completed=tasks_completed,
+        tasks_total=tasks_total,
+        tasks_pending=tasks_pending,
+        current_session=current_session,
+        error_count=error_count
+    )
 
 
 def reload_config(args: argparse.Namespace) -> None:
@@ -322,31 +320,20 @@ def reload_config(args: argparse.Namespace) -> None:
     state_manager = StateManager(args.project_dir if args.project_dir else None)
     reloader = ConfigReloader(args.project_dir if args.project_dir else None)
 
-    print("\nReloading configuration...")
-    print(f"Config path: {reloader.agent_dir}")
+    print_info(f"Reloading configuration from: {reloader.agent_dir}")
 
     # 执行重载
     force = getattr(args, 'force', False)
     result = reloader.reload(force=force)
 
     # 显示结果
-    print("\nReload Result:")
-    print("-" * 40)
-    if result["success"]:
-        print(f"✓ Success: {result['message']}")
-    else:
-        print(f"✗ Failed: {result['message']}")
-
-    if result.get("reloaded"):
-        print(f"  Reloaded files: {', '.join(result['reloaded'])}")
-
-    if result.get("errors"):
-        print("  Errors:")
-        for error in result["errors"]:
-            print(f"    - {error}")
-
-    print(f"  Timestamp: {result.get('timestamp', 'N/A')}")
-    print("-" * 40)
+    print_reload_result(
+        success=result["success"],
+        message=result["message"],
+        reloaded=result.get("reloaded", []),
+        errors=result.get("errors", []),
+        timestamp=result.get("timestamp", "N/A")
+    )
 
 
 def start_server(args: argparse.Namespace) -> None:
@@ -372,16 +359,7 @@ def list_prompts(args: argparse.Namespace) -> None:
 
     prompts = prompt_manager.list_prompts()
 
-    print("\nAvailable Prompts:")
-    print("-" * 60)
-
-    for p in prompts:
-        active_mark = " [ACTIVE]" if p["is_active"] else ""
-        print(f"[{p['key']}] {p['name']}{active_mark}")
-        print(f"   {p['description']}")
-        print()
-
-    print("-" * 60)
+    print_prompt_list(prompts)
 
 
 def show_prompt(args: argparse.Namespace) -> None:
@@ -454,19 +432,8 @@ def list_templates(args: argparse.Namespace) -> None:
 
     templates = prompt_manager.list_templates()
 
-    print("\nAvailable Templates:")
-    print("-" * 60)
-
-    for t in templates:
-        override_mark = " [OVERRIDE]" if t["has_override"] else ""
-        builtin_mark = " (built-in)" if t["builtin"] else " (custom)"
-        print(f"  {t['name']}{override_mark}{builtin_mark}")
-        if t["path"]:
-            print(f"    Path: {t['path']}")
-
-    print("-" * 60)
-    print("\nTo customize a template, edit: .agent/prompt_templates/<name>.md")
-    print("To scaffold all templates: python main.py template scaffold")
+    console.print("\n[bold magenta]Available Templates:[/bold magenta]")
+    print_template_list(templates)
 
 
 def show_template(args: argparse.Namespace) -> None:
