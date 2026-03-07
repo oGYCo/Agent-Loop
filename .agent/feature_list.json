@@ -182,8 +182,8 @@
       "name": "Improve main.py CLI help",
       "description": "改进 main.py 的命令行参数解析，添加更好的帮助信息和子命令支持。",
       "priority": 3,
-      "status": "pending",
-      "passes": false,
+      "status": "completed",
+      "passes": true,
       "verify_command": "python main.py --help",
       "context_files": [
         "main.py"

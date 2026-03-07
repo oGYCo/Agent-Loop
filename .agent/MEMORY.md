@@ -278,6 +278,8 @@ Or via `env` parameter in ClaudeAgentOptions.
 
 
 
+
+
 2026-03-07: Task Plan Self-Review
 
 When reviewing the task plan (feature_list.json):
@@ -630,7 +632,10 @@ The test file `tests/test_session_manager.py` already existed with **17 comprehe
 
 ---
 
-### 2026-03-07 - Add task retry mechanism (self-026)
+
+---
+
+2026-03-07 - Add task retry mechanism (self-026)
 
 **任务描述**: 为任务执行添加重试机制。当任务失败时，根据配置的重试次数和间隔自动重试。记录重试次数和原因。
 
@@ -639,7 +644,10 @@ The test file `tests/test_session_manager.py` already existed with **17 comprehe
 
 I've successfully implemented the task retry mechanism for the Agent-Loop project. Here's what was done:
 
-### Changes Made
+
+---
+
+Changes Made
 
 1. **Added retry configuration to `config.json`**:
    ```json
@@ -652,3 +660,43 @@ I've successfully implemented the task retry mechanism for the Agent-Loop projec
 
 2. **Implemented retry logic in `execute_task` method** in `agent/agent_core.py`:
    - Retries on task failure (status="error") up to `max_retries` times
+
+---
+
+### 2026-03-07 - Add graceful shutdown handling (self-027)
+
+**任务描述**: 为 agent 添加优雅关闭机制。处理 SIGINT/SIGTERM 信号，确保正在执行的任务能够安全完成或保存状态后再退出。
+
+**执行结果**: completed
+**执行消息**: ## Summary
+
+I've successfully implemented graceful shutdown handling for the Agent-Loop project. Here's what was done:
+
+### Changes Made
+
+1. **main.py** - Added signal handling:
+   - Imported `signal` module
+   - Added global `_shutdown_requested` flag
+   - Added `_signal_handler()` function to catch SIGINT/SIGTERM
+   - Registered signal handlers in `run_agent()` function
+   - Passed shutdown lambda to agent loop
+
+2. **agent/agent_core.py** - Added shutdown check:
+   - Added optional `shutdown_flag` parameter to `run_agent_loop()`
+   - Loop checks flag at start of each iteration
+
+### 2026-03-07: Improving CLI Help with argparse
+
+When improving CLI help in main.py:
+
+1. **Use subparsers**: Create a hierarchical command structure with `parser.add_subparsers()` for better organization.
+
+2. **Add examples**: Use `epilog` parameter with `formatter_class=argparse.RawDescriptionHelpFormatter` to show usage examples.
+
+3. **Version flag**: Add `__version__` variable and `--version` argument for quick version checking.
+
+4. **Improve descriptions**: Add both `help` (short) and `description` (long) for each subcommand.
+
+5. **Add useful options**: Consider what options users actually need (e.g., `--max-restarts`, `--filter`, `--verbose`).
+
+6. **Maintain backward compatibility**: Keep deprecated flags (like `--init`/`--run`) but mark them as deprecated.
