@@ -207,8 +207,8 @@
       "name": "Metrics收集集成到Agent执行流程",
       "description": "将Prometheus指标收集集成到agent_core.py的执行流程中：任务完成时调用increment_task_completed，任务失败时调用increment_error，会话开始/结束时调用相应方法，使/metrics端点能显示实时更新的指标。",
       "priority": 5,
-      "status": "pending",
-      "passes": false,
+      "status": "completed",
+      "passes": true,
       "context_files": [
         "agent/agent_core.py",
         "agent/metrics.py"

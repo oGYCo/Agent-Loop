@@ -95,6 +95,37 @@ Accumulated experience and lessons learned from task execution.
 
 ---
 
+## 2026-03-08 - Metrics Collection Integration (feature-017)
+
+**Task Description**: 将Prometheus指标收集集成到agent_core.py的执行流程中：任务完成时调用increment_task_completed，任务失败时调用increment_error，会话开始/结束时调用相应方法，使/metrics端点能显示实时更新的指标。
+
+**Lessons Learned:**
+
+1. **Integration Points in agent_core.py**:
+   - Added `self.metrics_collector = get_metrics_collector()` in `__init__`
+   - Session start: `metrics_collector.start_session(session_id)` after session initialization
+   - Session end: `metrics_collector.end_session(session_id)` before session completion
+   - Task completion: `increment_task_completed(success=True/False)` after task execution
+   - Error tracking: `increment_error("task_execution_error")` for execution failures
+   - Verification failures: `increment_error("task_verification_failed")` when verification fails
+   - Loop exceptions: `increment_error(f"loop_exception_{type(e).__name__}")` for unexpected errors
+
+2. **Key Integration Locations**:
+   - Line ~1648: Session start in `run_agent_loop()`
+   - Line ~1345-1350: Task completion in `execute_task()` after perf_monitor
+   - Line ~1709-1711: Verification failure in `run_agent_loop()`
+   - Line ~1747-1749: Exception handling in `run_agent_loop()` main try/catch
+   - Line ~1756-1758: Session end in `run_agent_loop()` before complete_session
+
+3. **Verification**:
+   - All 248 tests pass
+   - Import test: `from agent.agent_core import AgentCore` succeeds
+   - Metrics endpoint now shows real-time updated counters
+
+4. **Commit**: Pushed as `feat: integrate Prometheus metrics into agent execution flow`
+
+---
+
 ## 2026-03-08 - Webhook Notification System (feature-005)
 
 **Task Description**: 实现Webhook通知功能：当任务完成/失败/需要人工干预时，发送HTTP POST请求到配置的URL。需要阅读agent/human_intervention.py了解干预触发机制。
@@ -357,3 +388,34 @@ Accumulated experience and lessons learned from task execution.
 
 *(Add new lessons at the top)*
 
+## Task Experience Records
+
+### 2026-03-08 - API密钥认证 (feature-013)
+
+**任务描述**: 为API服务添加API Key认证机制，支持配置多个密钥，实现基本的访问控制。
+
+**执行结果**: completed
+**执行消息**: ## 任务完成 ✓
+
+我已成功实现 **API Key 认证机制** (feature-013)。
+
+### 实现内容
+
+1. **配置文件** (`.agent/config.json`):
+   ```json
+   "api_keys": {
+     "enabled": false,
+     "keys": []
+   }
+   ```
+
+2. **API 认证逻辑** (`api.py`):
+   - 添加 `load_api_keys()` 函数从配置加载密钥
+   - 添加 `get_api_key()` 依赖函数验证 `X-API-Key` 请求头
+   - 认证未启用时允许所有访问
+   - 无密钥时返回 401，密钥无效时返回 403
+
+3. **受保护的端点**:
+   - 所有 API 端点都需要认证（`/status`, `/tasks`, `/run`, `/sessions`, `/metrics`, `/webhook/test`, `/`）
+   - `/health` 端点保持公开
+   - WebSocket (`/ws`) 通过查询参数 `?
