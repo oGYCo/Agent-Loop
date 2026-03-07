@@ -567,3 +567,20 @@ Successfully completed task `self-010`: Add more unit tests for task_selector.
 - 历史记录 (`get_session_summary`, `add_session` 集成测试)
 
 所有 17 个测试均已通过。
+
+### 2026-03-07: Add tests for human_intervention.py (self-023)
+
+**任务**: 为 agent/human_intervention.py 添加单元测试，测试人工干预触发条件和通知机制。
+
+**执行结果**: completed
+
+**验证**: 14 tests pass - `pytest tests/test_human_intervention.py -v`
+
+**发现**: 测试文件 `tests/test_human_intervention.py` 已存在并包含全面的测试，覆盖:
+- 干预触发条件 (error threshold, irreversible operations)
+- 通知机制 (request_intervention, check_and_notify, notify_completion)
+- 配置管理 (custom/ default max_errors)
+
+所有 14 个测试均已通过。
+
+**项目状态**: 165 tests pass overall

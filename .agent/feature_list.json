@@ -325,8 +325,8 @@
       "name": "Add tests for human_intervention.py",
       "description": "为 agent/human_intervention.py 添加单元测试，测试人工干预触发条件和通知机制。",
       "priority": 2,
-      "status": "pending",
-      "passes": false,
+      "status": "completed",
+      "passes": true,
       "verify_command": "pytest tests/test_human_intervention.py -v",
       "context_files": [
         "agent/human_intervention.py",
