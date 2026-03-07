@@ -662,3 +662,55 @@ Task **self-006** (Add type annotations to git_helper.py) completed successfully
 
 **改进建议**:
 - 可以在 main.py 启动时自动调用 validate_config() 确保配置有效
+
+### 2026-03-07 - Create config validation (self-011)
+
+**任务描述**: 为 .agent/config.json 添加验证逻辑，确保必填字段存在且格式正确。
+
+**执行结果**: completed
+**执行消息**: ## Summary
+
+I've completed the config validation task (self-011). Here's what was done:
+
+### Changes Made
+
+1. **Added `ConfigValidationError` exception class** in `agent/state_manager.py`
+
+2. **Added 
+
+**学到的经验**:
+- [待填写]
+
+**改进建议**:
+- [待填写]
+
+### 2026-03-07 - Add task validation (self-012)
+
+**任务描述**: 为 feature_list.json 添加验证逻辑，确保任务定义的完整性和正确性。
+
+**执行结果**: completed
+
+**修改内容**:
+1. 在 `agent/state_manager.py` 添加了 `FeatureListValidationError` 异常类
+2. 添加了 `validate_feature_list()` 方法，验证:
+   - 顶层结构：存在 "features" 键且为列表
+   - 必填字段：id, name, description, priority, status, passes, created_at, updated_at
+   - 类型正确：id/name/description/status/created_at/updated_at 为 str，priority 为 int，passes 为 bool
+   - 数值范围：priority 必须为正整数
+   - status 有效值：pending, completed, failed, in_progress
+   - 可选字段类型：context_files 必须为列表，verify_command 必须为字符串
+   - 重复 ID 检测
+
+**验证结果**:
+- 现有测试全部通过 ✅
+- 验证当前 feature_list.json 成功 ✅
+- 测试各种错误情况（缺少字段、重复ID、无效status、负数priority）全部正确捕获 ✅
+
+**学到的经验**:
+- 验证功能列表时参考了 config 验证的实现模式，保持代码风格一致
+- 使用 seen_ids 集合检测重复 ID，效率高
+- 先检查字段存在和类型，再检查值的有效性，遵循安全检查顺序
+- 使用 f-string 提供清晰的错误信息，包含特征 ID 便于定位问题
+
+**改进建议**:
+- 可以在 main.py 启动时自动调用 validate_feature_list() 确保任务列表有效
