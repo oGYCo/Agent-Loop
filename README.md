@@ -49,6 +49,12 @@ Agent-Loop is an autonomous AI agent system that automates task execution with r
 | **Graceful Shutdown**      | Handle SIGINT/SIGTERM signals safely                            |
 | **Self-Review**            | Automatic task plan review after each task completion           |
 | **Customizable Prompts**   | Template-based prompt system with `{{variable}}` substitution   |
+| **Email Notifications**    | Send email alerts on task completion, failure, or intervention |
+| **Webhook Notifications**  | HTTP POST notifications to external services                    |
+| **Task Board UI**          | Visual Kanban-style task board with drag-and-drop support       |
+| **API Key Authentication** | Secure API access with configurable API keys                    |
+| **Grafana Dashboard**      | Pre-built Grafana dashboard template for monitoring             |
+| **Enhanced Error Handling**| Improved error recovery and graceful degradation                |
 
 ## Quick Start
 
@@ -294,6 +300,53 @@ python main.py --project-dir /path/to/project list
 | `allowed_tools`                  | string[] | SDK tools the agent is allowed to use       |
 | `mcp_servers`                    | object[] | MCP server configurations                   |
 
+### Email Configuration
+
+```json
+{
+  "email": {
+    "enabled": true,
+    "smtp_host": "smtp.gmail.com",
+    "smtp_port": 587,
+    "smtp_user": "your-email@gmail.com",
+    "smtp_password": "your-app-password",
+    "use_tls": true,
+    "from_name": "Agent-Loop",
+    "from_email": "agent-loop@example.com",
+    "to_emails": ["admin@example.com", "team@example.com"],
+    "events": ["task_completed", "task_failed", "human_intervention"],
+    "timeout": 30
+  }
+}
+```
+
+### Webhook Configuration
+
+```json
+{
+  "webhook": {
+    "enabled": true,
+    "url": "https://your-server.com/webhook",
+    "secret": "your-webhook-secret",
+    "timeout": 10,
+    "events": ["task_completed", "task_failed", "human_intervention"],
+    "retry_count": 3,
+    "retry_interval": 2
+  }
+}
+```
+
+### API Key Configuration
+
+```json
+{
+  "api_keys": {
+    "enabled": true,
+    "keys": ["your-api-key-1", "your-api-key-2"]
+  }
+}
+```
+
 ## SDK Usage
 
 ```python
@@ -408,12 +461,23 @@ agent-loop/
 │   ├── git_helper.py           # Git operations
 │   ├── test_runner.py          # Test execution
 │   ├── performance_monitor.py  # Performance tracking
-│   └── config_reloader.py      # Config hot reload
+│   ├── config_reloader.py      # Config hot reload
+│   ├── email_notifier.py       # Email notification service
+│   ├── webhook.py              # Webhook notification service
+│   ├── metrics.py              # Metrics collection
+│   └── console.py              # Console UI
 ├── tests/                      # Unit tests
 │   ├── test_agent_core.py
 │   ├── test_state_manager.py
 │   ├── test_task_selector.py
+│   ├── test_email_notifier.py
+│   ├── test_webhook.py
 │   └── ...
+├── dashboards/                  # Grafana dashboard templates
+│   └── agent-loop-dashboard.json
+├── static/                     # Web dashboard static files
+│   └── index.html
+├── api.py                      # REST API server
 ├── main.py                     # CLI entry point
 ├── pyproject.toml              # Project config (uv)
 ├── README.md                   # English documentation
