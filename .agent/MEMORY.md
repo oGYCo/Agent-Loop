@@ -484,3 +484,49 @@ I successfully verified that the project runs correctly by testing the `init` an
 **改进建议**:
 - 可以考虑将日志配置移到单独的配置模块中，实现更统一的日志管理
 - 可以添加日志文件输出而非仅控制台输出
+
+### 2026-03-07 - Add logging instead of print statements (self-003)
+
+**任务描述**: 将 agent_core.py 中的 print 语句替换为 Python logging 模块。创建统一的日志配置。
+
+**执行结果**: completed
+**执行消息**: Task completed successfully. Here's a summary:
+
+## Summary
+
+### Changes Made
+1. **Added logging import** at the top of `agent/agent_core.py`
+2. **Created logging configuration**:
+   - Added `setup_log
+
+**学到的经验**:
+- [待填写]
+
+**改进建议**:
+- [待填写]
+
+### 2026-03-07 - Add type annotations to state_manager.py (self-004)
+
+**任务描述**: 使用 mypy 检查 agent/state_manager.py 的类型错误，然后添加完整的类型注解。
+
+**执行结果**: completed
+
+**问题分析**:
+- mypy 报错：`Returning Any from function declared to return "dict[str, Any]"`
+- 原因：`json.load()` 返回 `Any` 类型，但函数声明返回 `dict[str, Any]`
+
+**修复内容**:
+- 添加 `from typing import cast` 导入
+- 对所有 `json.load()` 调用使用 `cast(dict[str, Any], json.load(f))` 包装
+- 共修复 5 处类型错误
+
+**验证结果**:
+- `python -m mypy agent/state_manager.py` - state_manager.py 错误已修复 ✅
+- `pytest tests/test_state_manager.py -v` - 所有 19 个测试通过 ✅
+
+**学到的经验**:
+- `json.load()` 返回 `Any` 类型，需要使用 `typing.cast()` 显式转换为目标类型
+- 这是处理 JSON 反序列化类型注解的标准 Python 模式
+
+**改进建议**:
+- 无
