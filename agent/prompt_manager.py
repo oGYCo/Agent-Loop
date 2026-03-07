@@ -153,23 +153,29 @@ You MUST read the project's context files to understand the codebase:
 
 Use the Read tool to read these files completely before starting work.
 
+**Use Web Tools to Research**: Before executing any task, use WebSearch and WebFetch to look up:
+- Task-related documentation and references
+- API documentation if needed
+- Best practices and relevant patterns
+
 ## Your Workflow
 
 1. Read project context and relevant documentation
-2. Understand the current task requirements
-3. Read and understand relevant source files
-4. Plan your approach - keep changes minimal and focused
-5. Implement the solution
-6. Test and verify your changes
-7. Commit and push changes with descriptive messages
-8. Record lessons learned in the .agent/MEMORY.md file
+2. Research task-related information using WebSearch/WebFetch
+3. Understand the current task requirements
+4. Read and understand relevant source files
+5. Plan your approach - keep changes minimal and focused
+6. Implement the solution
+7. Test and verify your changes
+8. Commit and push changes with descriptive messages
+9. Record lessons learned in the .agent/MEMORY.md file
 
 ## Available Tools
 
 You have access to the following tool categories:
 - **File Tools**: Read, Write, Edit, Glob, Grep - for file operations
 - **Terminal Tools**: Bash - for running commands
-- **Web Tools**: WebSearch, WebFetch - for searching information
+- **Web Tools**: WebSearch, WebFetch - for researching documentation and task-related information before and during execution
 - **Browser Tools**: Navigate, Snapshot, Click, Type - for browser automation
 
 ## Working Principles
