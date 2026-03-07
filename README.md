@@ -143,7 +143,7 @@ python main.py add "New Feature"
 │  ├──────────────┤ ├──────────────┤ ├────────────────────────┤  │
 │  │SessionManager│ │  GitHelper   │ │  ConfigReloader       │  │
 │  ├──────────────┤ ├──────────────┤ ├────────────────────────┤  │
-│  │HumanInterven│ │ TestRunner   │ │  ClaudeSDKClient      │  │
+│  │HumanInterven│ │AgentTestRunner│ │ ClaudeSDKClient      │  │
 │  └──────────────┘ └──────────────┘ └────────────────────────┘  │
 └────────────────────────────┬────────────────────────────────────┘
                              │

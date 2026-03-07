@@ -143,7 +143,7 @@ python main.py add "新功能"
 │  ├──────────────┤ ├──────────────┤ ├────────────────────────┤ │
 │  │SessionManager│ │  GitHelper   │ │  ConfigReloader      │ │
 │  ├──────────────┤ ├──────────────┤ ├────────────────────────┤ │
-│  │HumanInterven│ │ TestRunner   │ │  ClaudeSDKClient      │ │
+│  │HumanInterven│ │AgentTestRunner│ │ ClaudeSDKClient      │ │
 │  └──────────────┘ └──────────────┘ └────────────────────────┘ │
 └────────────────────────────┬────────────────────────────────────┘
                              │
