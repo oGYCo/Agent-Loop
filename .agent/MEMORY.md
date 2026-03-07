@@ -4,6 +4,48 @@ Accumulated experience and lessons learned from task execution.
 
 ---
 
+## 2026-03-08 - Interactive CLI with Rich Library (feature-009)
+
+**Task Description**: 使用rich库改进CLI输出：彩色日志、进度条、表格显示任务列表、状态面板。
+
+**Lessons Learned:**
+
+1. **Dependencies**:
+   - Added `rich>=13.0.0` to `pyproject.toml` dependencies
+   - Rich provides rich text formatting, tables, panels, progress bars
+
+2. **Console Utilities Module** (`agent/console.py`):
+   - Created centralized console utilities for rich output
+   - Key functions:
+     - `print_success()`, `print_error()`, `print_warning()`, `print_info()` - colored status messages
+     - `print_task_table()` - displays task list in rich Table
+     - `print_status_panel()` - displays project status in Panel
+     - `print_run_summary()` - shows agent run summary
+     - `print_reload_result()` - shows config reload results
+     - `create_progress()` - creates rich Progress bar instance
+
+3. **CLI Updates**:
+   - `list` command: Now shows rich table with status icons, priorities
+   - `status` command: Shows status panel with project/git/task/session info
+   - `reload` command: Shows reload result in styled panel
+   - `run` command: Shows summary in rich format
+   - `prompt list` / `template list`: Shows tables with rich formatting
+
+4. **Rich Features Used**:
+   - `Table` for tabular data display
+   - `Panel` for bordered content boxes
+   - `RichHandler` for colorful logging
+   - `Text` with style markup like `[bold green]`, `[dim]`, etc.
+
+5. **Testing**:
+   - All 248 tests pass
+   - Manually verified: `status`, `list`, `reload`, `prompt list`, `template list`
+   - Filter functionality (`--filter pending`) still works
+
+6. **Commit**: Pushed as `feat: add rich library for interactive CLI output`
+
+---
+
 ## 2026-03-08 - API Key Authentication (feature-013)
 
 **Task Description**: 为API服务添加API Key认证机制，支持配置多个密钥，实现基本的访问控制。
@@ -390,7 +432,9 @@ Accumulated experience and lessons learned from task execution.
 
 ## Task Experience Records
 
-### 2026-03-08 - API密钥认证 (feature-013)
+
+
+2026-03-08 - API密钥认证 (feature-013)
 
 **任务描述**: 为API服务添加API Key认证机制，支持配置多个密钥，实现基本的访问控制。
 
@@ -399,7 +443,10 @@ Accumulated experience and lessons learned from task execution.
 
 我已成功实现 **API Key 认证机制** (feature-013)。
 
-### 实现内容
+
+---
+
+实现内容
 
 1. **配置文件** (`.agent/config.json`):
    ```json
@@ -419,3 +466,80 @@ Accumulated experience and lessons learned from task execution.
    - 所有 API 端点都需要认证（`/status`, `/tasks`, `/run`, `/sessions`, `/metrics`, `/webhook/test`, `/`）
    - `/health` 端点保持公开
    - WebSocket (`/ws`) 通过查询参数 `?
+
+---
+
+
+---
+
+2026-03-08 - Metrics收集集成到Agent执行流程 (feature-017)
+
+**任务描述**: 将Prometheus指标收集集成到agent_core.py的执行流程中：任务完成时调用increment_task_completed，任务失败时调用increment_error，会话开始/结束时调用相应方法，使/metrics端点能显示实时更新的指标。
+
+**执行结果**: completed
+**执行消息**: ## Summary
+
+I have successfully integrated Prometheus metrics collection into the agent execution flow in `agent_core.py`. Here's what was implemented:
+
+
+---
+
+Changes Made
+
+1. **Added metrics import** - Imported `get_metrics_collector` from the metrics module
+
+2. **Added metrics collector instance** - Initialized `self.metrics_collector` in the `AgentCore.__init__` method
+
+3. **Session metrics**:
+   - `start_session` is called when the session initializes
+   - `end_session` is called when the sess
+---
+
+## 2026-03-08 - Task Board Feature (feature-011)
+
+**Task Description**: 在Web Dashboard中添加任务看板功能：可视化任务列表，支持拖拽调整优先级，任务详情展示。
+
+**Lessons Learned:**
+
+1. **StateManager Updates**:
+   - Extended `update_feature()` to allow `priority` field updates in addition to `passes` and `status`
+   - This enables drag-and-drop priority changes from the UI
+
+2. **New API Endpoints**:
+   - `GET /tasks/{task_id}`: Get single task details with verify_command and context_files
+   - `PATCH /tasks/{task_id}`: Update task priority, status, or passes
+
+3. **Frontend Implementation**:
+   - View toggle between "列表" (list) and "看板" (board) views
+   - Kanban board with 4 columns: Pending, In Progress, Completed, Failed
+   - Drag-and-drop to move tasks between status columns
+   - Click task to open detail modal for editing
+
+4. **API Testing**:
+   - Used FastAPI TestClient for unit testing endpoints
+   - Verified PATCH updates priority correctly in feature_list.json
+
+5. **Commit**: Pushed as `feat: add task board feature to web dashboard`
+
+
+---
+
+### 2026-03-08 - 任务看板Web界面 (feature-011)
+
+**任务描述**: 在Web Dashboard中添加任务看板功能：可视化任务列表，支持拖拽调整优先级，任务详情展示。需要先完成基础Dashboard和API。
+
+**执行结果**: completed
+**执行消息**: ## Task Board Feature Complete
+
+I've successfully implemented the task board (看板) feature for the Web Dashboard. Here's what was added:
+
+### Changes Made
+
+1. **StateManager** (`agent/state_manager.py`)
+   - Extended `update_feature()` to allow `priority` field updates
+
+2. **API Endpoints** (`api.py`)
+   - `GET /tasks/{task_id}` - Get single task details with verify_command and context_files
+   - `PATCH /tasks/{task_id}` - Update task priority, status, or passes
+
+3. **Web Dashboard** (`static/ind
