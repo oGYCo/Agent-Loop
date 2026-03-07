@@ -91,8 +91,8 @@
       "name": "Review and add docstrings",
       "description": "检查所有核心模块的文档字符串，确保每个公共方法都有清晰的 docstring 说明其功能、参数和返回值。",
       "priority": 3,
-      "status": "in_progress",
-      "passes": false,
+      "status": "completed",
+      "passes": true,
       "verify_command": "grep -r 'def.*:' agent/*.py | wc -l",
       "context_files": [
         "agent/agent_core.py",
@@ -216,6 +216,225 @@
       "context_files": [
         "main.py",
         "agent/"
+      ],
+      "created_at": "2026-03-07",
+      "updated_at": "2026-03-07"
+    },
+    {
+      "id": "self-016",
+      "name": "Code review for agent_core.py",
+      "description": "对 agent_core.py 进行全面的代码审查，检查代码质量、潜在 bug、安全问题和性能问题。审查要点：函数长度、圈复杂度、重复代码、命名规范、错误处理完整性。",
+      "priority": 1,
+      "status": "pending",
+      "passes": false,
+      "verify_command": "python -m mypy agent/agent_core.py",
+      "context_files": [
+        "agent/agent_core.py"
+      ],
+      "created_at": "2026-03-07",
+      "updated_at": "2026-03-07"
+    },
+    {
+      "id": "self-017",
+      "name": "Add type annotations to agent_core.py",
+      "description": "使用 mypy 检查 agent_core.py 的类型错误，添加完整的类型注解。确保所有函数有正确的参数和返回值类型。",
+      "priority": 2,
+      "status": "pending",
+      "passes": false,
+      "verify_command": "python -m mypy agent/agent_core.py --strict",
+      "context_files": [
+        "agent/agent_core.py"
+      ],
+      "created_at": "2026-03-07",
+      "updated_at": "2026-03-07"
+    },
+    {
+      "id": "self-018",
+      "name": "Add type annotations to session_manager.py",
+      "description": "使用 mypy 检查 agent/session_manager.py 的类型错误，添加完整的类型注解。",
+      "priority": 2,
+      "status": "pending",
+      "passes": false,
+      "verify_command": "python -m mypy agent/session_manager.py",
+      "context_files": [
+        "agent/session_manager.py"
+      ],
+      "created_at": "2026-03-07",
+      "updated_at": "2026-03-07"
+    },
+    {
+      "id": "self-019",
+      "name": "Add type annotations to human_intervention.py",
+      "description": "使用 mypy 检查 agent/human_intervention.py 的类型错误，添加完整的类型注解。",
+      "priority": 2,
+      "status": "pending",
+      "passes": false,
+      "verify_command": "python -m mypy agent/human_intervention.py",
+      "context_files": [
+        "agent/human_intervention.py"
+      ],
+      "created_at": "2026-03-07",
+      "updated_at": "2026-03-07"
+    },
+    {
+      "id": "self-020",
+      "name": "Add type annotations to main.py",
+      "description": "使用 mypy 检查 main.py 的类型错误，添加完整的类型注解。",
+      "priority": 2,
+      "status": "pending",
+      "passes": false,
+      "verify_command": "python -m mypy main.py",
+      "context_files": [
+        "main.py"
+      ],
+      "created_at": "2026-03-07",
+      "updated_at": "2026-03-07"
+    },
+    {
+      "id": "self-021",
+      "name": "Add comprehensive tests for agent_core.py",
+      "description": "为 agent_core.py 增加全面的单元测试，覆盖核心方法：initialize_session, gather_context, complete_session, execute_task, verify_task。测试各种边界情况和错误处理。",
+      "priority": 2,
+      "status": "pending",
+      "passes": false,
+      "verify_command": "pytest tests/test_agent_core.py -v --cov=agent.agent_core",
+      "context_files": [
+        "agent/agent_core.py",
+        "tests/test_agent_core.py"
+      ],
+      "created_at": "2026-03-07",
+      "updated_at": "2026-03-07"
+    },
+    {
+      "id": "self-022",
+      "name": "Add tests for session_manager.py",
+      "description": "为 agent/session_manager.py 添加单元测试，测试会话创建、状态管理和历史记录功能。",
+      "priority": 3,
+      "status": "pending",
+      "passes": false,
+      "verify_command": "pytest tests/test_session_manager.py -v",
+      "context_files": [
+        "agent/session_manager.py",
+        "tests/test_session_manager.py"
+      ],
+      "created_at": "2026-03-07",
+      "updated_at": "2026-03-07"
+    },
+    {
+      "id": "self-023",
+      "name": "Add tests for human_intervention.py",
+      "description": "为 agent/human_intervention.py 添加单元测试，测试人工干预触发条件和通知机制。",
+      "priority": 3,
+      "status": "pending",
+      "passes": false,
+      "verify_command": "pytest tests/test_human_intervention.py -v",
+      "context_files": [
+        "agent/human_intervention.py",
+        "tests/test_human_intervention.py"
+      ],
+      "created_at": "2026-03-07",
+      "updated_at": "2026-03-07"
+    },
+    {
+      "id": "self-024",
+      "name": "Optimize imports and remove unused code",
+      "description": "审查所有模块的导入语句，移除未使用的导入。检查并删除未使用的函数、变量和常量。使用 isort 优化导入顺序。",
+      "priority": 3,
+      "status": "pending",
+      "passes": false,
+      "verify_command": "python -m py_compile agent/*.py main.py",
+      "context_files": [
+        "agent/",
+        "main.py"
+      ],
+      "created_at": "2026-03-07",
+      "updated_at": "2026-03-07"
+    },
+    {
+      "id": "self-025",
+      "name": "Update README.md with current features",
+      "description": "更新 README.md，添加项目最新功能介绍、使用方法、配置说明和示例。确保文档与代码同步。",
+      "priority": 2,
+      "status": "pending",
+      "passes": false,
+      "verify_command": "cat README.md | head -100",
+      "context_files": [
+        "README.md",
+        "CLAUDE.md"
+      ],
+      "created_at": "2026-03-07",
+      "updated_at": "2026-03-07"
+    },
+    {
+      "id": "self-026",
+      "name": "Add task retry mechanism",
+      "description": "为任务执行添加重试机制。当任务失败时，根据配置的重试次数和间隔自动重试。记录重试次数和原因。",
+      "priority": 3,
+      "status": "pending",
+      "passes": false,
+      "verify_command": "grep -r 'retry' agent/ tests/",
+      "context_files": [
+        "agent/agent_core.py",
+        "agent/state_manager.py"
+      ],
+      "created_at": "2026-03-07",
+      "updated_at": "2026-03-07"
+    },
+    {
+      "id": "self-027",
+      "name": "Add graceful shutdown handling",
+      "description": "为 agent 添加优雅关闭机制。处理 SIGINT/SIGTERM 信号，确保正在执行的任务能够安全完成或保存状态后再退出。",
+      "priority": 3,
+      "status": "pending",
+      "passes": false,
+      "verify_command": "grep -r 'signal' agent/",
+      "context_files": [
+        "agent/agent_core.py",
+        "agent/state_manager.py"
+      ],
+      "created_at": "2026-03-07",
+      "updated_at": "2026-03-07"
+    },
+    {
+      "id": "self-028",
+      "name": "Add performance monitoring",
+      "description": "添加性能监控功能，跟踪任务执行时间、会话时长、系统资源使用等指标。添加日志记录关键性能数据。",
+      "priority": 4,
+      "status": "pending",
+      "passes": false,
+      "verify_command": "grep -r 'performance\\|timing\\|duration' agent/",
+      "context_files": [
+        "agent/agent_core.py",
+        "agent/session_manager.py"
+      ],
+      "created_at": "2026-03-07",
+      "updated_at": "2026-03-07"
+    },
+    {
+      "id": "self-029",
+      "name": "Code review for all modules",
+      "description": "对所有核心模块进行代码审查，包括：state_manager, task_selector, git_helper, session_manager, human_intervention。检查代码质量、一致性和潜在问题。",
+      "priority": 2,
+      "status": "pending",
+      "passes": false,
+      "verify_command": "python -m mypy agent/",
+      "context_files": [
+        "agent/"
+      ],
+      "created_at": "2026-03-07",
+      "updated_at": "2026-03-07"
+    },
+    {
+      "id": "self-030",
+      "name": "Add configuration hot reload",
+      "description": "添加配置热重载功能。在不重启 agent 的情况下重新加载配置文件（config.json, feature_list.json）。使用文件监控或手动触发。",
+      "priority": 4,
+      "status": "pending",
+      "passes": false,
+      "verify_command": "grep -r 'reload\\|watch' agent/",
+      "context_files": [
+        "agent/state_manager.py",
+        "main.py"
       ],
       "created_at": "2026-03-07",
       "updated_at": "2026-03-07"
