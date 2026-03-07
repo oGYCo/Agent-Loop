@@ -5,7 +5,7 @@
 
 from typing import Optional, Any
 
-from state_manager import StateManager
+from .state_manager import StateManager
 
 
 class TaskSelector:

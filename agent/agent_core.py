@@ -86,10 +86,10 @@ async def stop_hook(input_data: dict, tool_use_id: str | None, context: dict) ->
 
     return {}
 
-from state_manager import StateManager
-from task_selector import TaskSelector
-from git_helper import GitHelper
-from human_intervention import HumanIntervention
+from .state_manager import StateManager
+from .task_selector import TaskSelector
+from .git_helper import GitHelper
+from .human_intervention import HumanIntervention
 
 
 class AgentCore:

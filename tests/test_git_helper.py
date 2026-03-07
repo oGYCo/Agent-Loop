@@ -9,7 +9,7 @@ import sys
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from git_helper import GitHelper
+from agent.git_helper import GitHelper
 
 
 class TestGitHelper:

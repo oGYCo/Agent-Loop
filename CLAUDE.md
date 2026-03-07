@@ -52,13 +52,13 @@ python main.py init
 
 | Module | Responsibility |
 |--------|----------------|
-| `agent_core.py` | Core agent logic, SDK integration, task execution |
-| `session_manager.py` | Session lifecycle, context management |
-| `state_manager.py` | State persistence to JSON files in `.agent/` |
-| `task_selector.py` | Priority-based task selection |
-| `human_intervention.py` | Human intervention when error threshold exceeded |
-| `git_helper.py` | Git operations wrapper |
-| `test_runner.py` | Test execution wrapper |
+| `agent/agent_core.py` | Core agent logic, SDK integration, task execution |
+| `agent/session_manager.py` | Session lifecycle, context management |
+| `agent/state_manager.py` | State persistence to JSON files in `.agent/` |
+| `agent/task_selector.py` | Priority-based task selection |
+| `agent/human_intervention.py` | Human intervention when error threshold exceeded |
+| `agent/git_helper.py` | Git operations wrapper |
+| `agent/test_runner.py` | Test execution wrapper |
 | `main.py` | CLI entry point |
 
 ### Data Flow

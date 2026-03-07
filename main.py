@@ -11,11 +11,11 @@ from typing import Any, Dict
 # 添加当前目录到路径
 sys.path.insert(0, str(Path(__file__).parent))
 
-from state_manager import StateManager
-from task_selector import TaskSelector
-from agent_core import AgentCore
-from session_manager import SessionManager
-from git_helper import GitHelper
+from agent.state_manager import StateManager
+from agent.task_selector import TaskSelector
+from agent.agent_core import AgentCore
+from agent.session_manager import SessionManager
+from agent.git_helper import GitHelper
 
 
 def init_project(args: argparse.Namespace) -> None:

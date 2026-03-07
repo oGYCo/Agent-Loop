@@ -9,8 +9,8 @@ import subprocess
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from state_manager import StateManager
-from test_runner import TestRunner
+from agent.state_manager import StateManager
+from agent.test_runner import TestRunner
 
 
 class TestTestRunner:

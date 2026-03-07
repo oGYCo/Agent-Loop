@@ -1,0 +1,24 @@
+"""Agent-Loop - Autonomous AI Agent System
+
+A production-ready autonomous AI agent system built on Claude Agent SDK.
+"""
+
+__version__ = "0.1.0"
+
+from .agent_core import AgentCore
+from .state_manager import StateManager
+from .task_selector import TaskSelector
+from .session_manager import SessionManager
+from .human_intervention import HumanIntervention
+from .git_helper import GitHelper
+from .test_runner import TestRunner
+
+__all__ = [
+    "AgentCore",
+    "StateManager",
+    "TaskSelector",
+    "SessionManager",
+    "HumanIntervention",
+    "GitHelper",
+    "TestRunner",
+]

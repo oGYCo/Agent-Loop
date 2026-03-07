@@ -10,8 +10,8 @@ from datetime import datetime
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from state_manager import StateManager
-from agent_core import AgentCore
+from agent.state_manager import StateManager
+from agent.agent_core import AgentCore
 
 
 class TestAgentCore:

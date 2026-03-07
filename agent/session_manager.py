@@ -8,7 +8,7 @@ from datetime import datetime
 from typing import Optional, List, Dict, Any
 from pathlib import Path
 
-from state_manager import StateManager
+from .state_manager import StateManager
 
 
 class SessionManager:

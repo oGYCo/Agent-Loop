@@ -204,18 +204,21 @@ pytest tests/ --cov=. --cov-report=term-missing
 
 ```
 agent-loop/
-├── agent_core.py           # Core agent logic
-├── session_manager.py      # Session management
-├── state_manager.py        # State persistence
-├── task_selector.py        # Task selection
-├── human_intervention.py   # Human intervention
-├── git_helper.py           # Git operations
-├── test_runner.py          # Test execution
-├── main.py                 # CLI entry
+├── agent/                  # Core package
+│   ├── __init__.py
+│   ├── agent_core.py       # Core agent logic
+│   ├── session_manager.py  # Session management
+│   ├── state_manager.py    # State persistence
+│   ├── task_selector.py    # Task selection
+│   ├── human_intervention.py
+│   ├── git_helper.py       # Git operations
+│   └── test_runner.py      # Test execution
 ├── tests/                  # Unit tests
-├── pyproject.toml          # Project config (uv)
+├── main.py                 # CLI entry
+├── pyproject.toml         # Project config (uv)
 ├── README.md               # English documentation
-└── README.zh-CN.md         # Chinese documentation
+├── README.zh-CN.md         # Chinese documentation
+└── .agent/                 # Configuration directory
 ```
 
 ## License

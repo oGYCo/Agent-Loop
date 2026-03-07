@@ -8,8 +8,8 @@ import sys
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from state_manager import StateManager
-from session_manager import SessionManager
+from agent.state_manager import StateManager
+from agent.session_manager import SessionManager
 
 
 class TestSessionManager:

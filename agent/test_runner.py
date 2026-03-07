@@ -8,7 +8,7 @@ import os
 from pathlib import Path
 from typing import Tuple, Optional, Dict, Any
 
-from state_manager import StateManager
+from .state_manager import StateManager
 
 
 class TestRunner:

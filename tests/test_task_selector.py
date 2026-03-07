@@ -8,8 +8,8 @@ import json
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from state_manager import StateManager
-from task_selector import TaskSelector
+from agent.state_manager import StateManager
+from agent.task_selector import TaskSelector
 
 
 class TestTaskSelector:

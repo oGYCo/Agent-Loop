@@ -8,8 +8,8 @@ import sys
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from state_manager import StateManager
-from human_intervention import HumanIntervention
+from agent.state_manager import StateManager
+from agent.human_intervention import HumanIntervention
 
 
 class TestHumanIntervention:

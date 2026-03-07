@@ -197,18 +197,21 @@ pytest tests/ --cov=. --cov-report=term-missing
 
 ```
 agent-loop/
-├── agent_core.py           # 核心 Agent 逻辑
-├── session_manager.py      # 会话管理
-├── state_manager.py        # 状态持久化
-├── task_selector.py        # 任务选择
-├── human_intervention.py   # 人工干预
-├── git_helper.py           # Git 操作
-├── test_runner.py          # 测试执行
-├── main.py                 # CLI 入口
+├── agent/                  # 核心包
+│   ├── __init__.py
+│   ├── agent_core.py       # 核心 Agent 逻辑
+│   ├── session_manager.py  # 会话管理
+│   ├── state_manager.py    # 状态持久化
+│   ├── task_selector.py    # 任务选择
+│   ├── human_intervention.py
+│   ├── git_helper.py       # Git 操作
+│   └── test_runner.py      # 测试执行
 ├── tests/                  # 单元测试
+├── main.py                 # CLI 入口
 ├── pyproject.toml          # 项目配置 (uv)
 ├── README.md               # 英文文档
-└── README.zh-CN.md        # 中文文档
+├── README.zh-CN.md         # 中文文档
+└── .agent/                 # 配置目录
 ```
 
 ## 许可证
