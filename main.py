@@ -5,6 +5,8 @@ task execution, and human intervention capabilities.
 """
 
 import argparse
+import logging
+import os
 import sys
 import signal
 from datetime import datetime
@@ -13,6 +15,48 @@ from typing import Any, Dict
 
 # 添加当前目录到路径
 sys.path.insert(0, str(Path(__file__).parent))
+
+# Configure logging
+def _configure_logging() -> None:
+    """Configure logging for the application."""
+    # Get log level from environment variable (default: INFO)
+    log_level = os.environ.get("LOG_LEVEL", "INFO").upper()
+    log_level_num = getattr(logging, log_level, logging.INFO)
+
+    # Get log file path from environment variable (optional)
+    log_file = os.environ.get("LOG_FILE", "")
+
+    # Create formatter
+    formatter = logging.Formatter(
+        fmt="%(asctime)s | %(levelname)-8s | %(name)s | %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S"
+    )
+
+    # Configure root logger
+    root_logger = logging.getLogger()
+    root_logger.setLevel(log_level_num)
+
+    # Remove existing handlers
+    for handler in root_logger.handlers[:]:
+        root_logger.removeHandler(handler)
+
+    # Console handler
+    console_handler = logging.StreamHandler(sys.stdout)
+    console_handler.setLevel(log_level_num)
+    console_handler.setFormatter(formatter)
+    root_logger.addHandler(console_handler)
+
+    # File handler (if LOG_FILE is set)
+    if log_file:
+        log_path = Path(log_file)
+        log_path.parent.mkdir(parents=True, exist_ok=True)
+        file_handler = logging.FileHandler(log_file, encoding="utf-8")
+        file_handler.setLevel(log_level_num)
+        file_handler.setFormatter(formatter)
+        root_logger.addHandler(file_handler)
+
+# Initialize logging
+_configure_logging()
 
 from agent.state_manager import StateManager
 from agent.task_selector import TaskSelector
