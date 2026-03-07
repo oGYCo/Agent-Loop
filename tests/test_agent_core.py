@@ -31,8 +31,8 @@ class TestAgentCore:
     @pytest.fixture
     def agent_core(self, temp_agent_dir, state_manager):
         """Create AgentCore with mocked dependencies"""
-        with patch('agent_core.GitHelper') as mock_git:
-            with patch('agent_core.HumanIntervention'):
+        with patch('agent.agent_core.GitHelper') as mock_git:
+            with patch('agent.agent_core.HumanIntervention'):
                 # Configure mock to return empty status
                 mock_git_instance = mock_git.return_value
                 mock_git_instance.get_status.return_value = ""
@@ -41,22 +41,22 @@ class TestAgentCore:
                 core = AgentCore(project_root=temp_agent_dir)
                 core.state_manager = state_manager
                 # Also replace task_selector's state_manager to use the test one
-                from task_selector import TaskSelector
+                from agent.task_selector import TaskSelector
                 core.task_selector = TaskSelector(state_manager)
                 return core
 
     def test_init(self, temp_agent_dir):
         """Test AgentCore initialization"""
-        with patch('agent_core.GitHelper'):
-            with patch('agent_core.HumanIntervention'):
-                with patch('agent_core.StateManager'):
+        with patch('agent.agent_core.GitHelper'):
+            with patch('agent.agent_core.HumanIntervention'):
+                with patch('agent.agent_core.StateManager'):
                     core = AgentCore(project_root=temp_agent_dir)
                     assert core.project_root == temp_agent_dir
 
     def test_get_system_prompt(self, agent_core):
         """Test getting system prompt"""
         prompt = agent_core.get_system_prompt()
-        assert "你是一个高效的长程AI编程助手" in prompt
+        assert "You are an autonomous AI agent for the Agent-Loop project" in prompt
         assert "Browser Navigate" in prompt
         assert "WebSearch" in prompt
 
@@ -181,7 +181,7 @@ class TestAgentCore:
         assert "completed_count" in context
         assert "total_count" in context
 
-    @patch('agent_core.asyncio')
+    @patch('agent.agent_core.asyncio')
     def test_execute_task(self, mock_asyncio, agent_core):
         """Test execute task (synchronous wrapper)"""
         # Mock the async execution
@@ -219,7 +219,7 @@ class TestAgentCore:
             content = f.read()
         assert "Test Task" in content
 
-    @patch('agent_core.GitHelper')
+    @patch('agent.agent_core.GitHelper')
     def test_complete_session(self, mock_git, agent_core, state_manager):
         """Test completing session"""
         # Setup
@@ -259,8 +259,8 @@ class TestAgentCore:
         state_manager.save_config({"model": "test-model"})
 
         # Recreate agent core to load config
-        with patch('agent_core.GitHelper'):
-            with patch('agent_core.HumanIntervention'):
+        with patch('agent.agent_core.GitHelper'):
+            with patch('agent.agent_core.HumanIntervention'):
                 core = AgentCore(project_root=agent_core.project_root)
                 core.state_manager = state_manager
                 # Config should be accessible
