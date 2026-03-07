@@ -4,6 +4,97 @@ Accumulated experience and lessons learned from task execution.
 
 ---
 
+## 2026-03-08 - API Key Authentication (feature-013)
+
+**Task Description**: 为API服务添加API Key认证机制，支持配置多个密钥，实现基本的访问控制。
+
+**Lessons Learned:**
+
+1. **Configuration**:
+   - Added `api_keys` section to `.agent/config.json`:
+     ```json
+     "api_keys": {
+       "enabled": false,
+       "keys": []
+     }
+     ```
+   - Note: config.json is in .gitignore (local config), won't be committed
+
+2. **FastAPI Authentication**:
+   - Used FastAPI's `Depends()` for dependency injection
+   - Added `Header` and `Depends` imports from fastapi
+   - Created `get_api_key()` dependency that validates X-API-Key header
+
+3. **API Key Validation**:
+   - Returns 401 if API key is required but not provided
+   - Returns 403 if API key is invalid
+   - Allows access if authentication is disabled (enabled=false)
+
+4. **Endpoints Protected**:
+   - GET /status, /tasks, /sessions, /metrics
+   - POST /tasks, /run, /webhook/test
+   - GET / (dashboard)
+   - WebSocket /ws (via query parameter)
+   - Health endpoint /health remains public
+
+5. **WebSocket Authentication**:
+   - WebSocket doesn't support Depends(), so handled manually
+   - API key passed via query parameter: `ws://host:port/ws?api_key=your-key`
+   - Closes with code 4001 if key missing, 4003 if invalid
+
+6. **Testing**:
+   - All 201 tests pass
+   - Tested without auth: 401/403 as expected
+   - Tested with valid key: 200 OK
+
+7. **Commit**: Pushed as `feat: add API key authentication for API service`
+
+---
+
+## 2026-03-08 - Prometheus Metrics Export (feature-006)
+
+**Task Description**: 添加 /metrics 端点暴露Prometheus格式的指标，包括：任务完成数、错误数、会话时长、API调用次数等。需要先了解prometheus-client库的使用方式。
+
+**Lessons Learned:**
+
+1. **Prometheus Client Library**:
+   - Used `prometheus-client` library for Python
+   - Added dependency: `prometheus-client>=0.19.0` to pyproject.toml
+
+2. **Metrics Implemented**:
+   - `agent_tasks_completed_total`: Counter with status label (success/error)
+   - `agent_tasks_pending`: Gauge for pending tasks
+   - `agent_tasks_total`: Gauge for total tasks
+   - `agent_session_duration_seconds`: Histogram for session duration
+   - `agent_sessions_active`: Gauge for active sessions
+   - `agent_sessions_total`: Counter for total sessions
+   - `agent_errors_total`: Counter with error type label
+   - `agent_api_calls_total`: Counter with endpoint label
+   - `agent_api_duration_seconds`: Histogram for API request duration
+   - `agent_status`: Gauge (0=idle, 1=running, 2=error)
+   - `agent_iterations_total`: Counter for agent iterations
+   - `agent_task_duration_seconds`: Histogram for task execution duration
+
+3. **API Integration**:
+   - Added GET /metrics endpoint in api.py
+   - Returns Prometheus text format with Content-Type: text/plain
+   - Automatically updates task counts from StateManager
+   - Increments API call counter for /metrics itself
+
+4. **Singleton Pattern**:
+   - Created MetricsCollector class with singleton pattern
+   - Thread-safe with double-check locking
+   - Provides methods for incrementing/updating all metrics
+
+5. **Verification**:
+   - All 248 tests pass
+   - Tested: curl http://localhost:8000/metrics returns Prometheus format
+   - Metrics include: agent_tasks_pending, agent_tasks_total, agent_status, etc.
+
+6. **Commit**: Pushed as `feat: add Prometheus metrics endpoint (/metrics)`
+
+---
+
 ## 2026-03-08 - Webhook Notification System (feature-005)
 
 **Task Description**: 实现Webhook通知功能：当任务完成/失败/需要人工干预时，发送HTTP POST请求到配置的URL。需要阅读agent/human_intervention.py了解干预触发机制。
@@ -740,6 +831,10 @@ Accumulated experience and lessons learned from task execution.
 
 
 
+
+
+
+
 2026-03-07 - Clean up MEMORY.md duplicate entries (fix-015)
 
 **任务描述**: MEMORY.md 文件中存在重复的条目（例如 fix-008 出现了两次）。需要清理重复内容，保留最新和最完整的版本。
@@ -998,7 +1093,10 @@ Implementation
 
 ---
 
-### 2026-03-08 - 基础Web Dashboard界面 (feature-004)
+
+---
+
+2026-03-08 - 基础Web Dashboard界面 (feature-004)
 
 **任务描述**: 创建简单的Web Dashboard展示：1) Agent当前状态 2) 任务列表和进度 3) 实时日志输出。可以使用HTML+JavaScript实现，需要先了解API端点设计。
 
@@ -1007,10 +1105,61 @@ Implementation
 
 I've successfully created a basic Web Dashboard for Agent-Loop (feature-004). Here's what was done:
 
-### Implementation
+
+---
+
+Implementation
 
 1. **Created Web Dashboard** (`static/index.html`):
    - **Status Panel**: Shows project name, type, git branch, uncommitted changes, task progress bar
    - **Task List**: Displays all tasks with priority badges (color-coded) and status badges
    - **Real-time Logs**: Connects to WebSocket for live log streaming with auto-reconnect
    - Auto-refresh: Statu
+
+---
+
+
+---
+
+2026-03-08 - Webhook通知系统 (feature-005)
+
+**任务描述**: 实现Webhook通知功能：当任务完成/失败/需要人工干预时，发送HTTP POST请求到配置的URL。需要阅读agent/human_intervention.py了解干预触发机制。
+
+**执行结果**: completed
+**执行消息**: ## Summary
+
+I have successfully implemented the **Webhook notification system** (feature-005) with the following changes:
+
+
+---
+
+New Files Created:
+1. **agent/webhook.py** - WebhookNotifier class with:
+   - Support for three event types: `task_completed`, `task_failed`, `human_intervention`
+   - Configurable via `webhook` section in config.json
+   - Retry with exponential backoff
+   - Secret-based authentication via headers
+   - Async HTTP client using httpx
+
+2. **tests/test_webhook.py** - 16 unit
+
+---
+
+### 2026-03-08 - Prometheus指标导出 (feature-006)
+
+**任务描述**: 添加 /metrics 端点暴露Prometheus格式的指标，包括：任务完成数、错误数、会话时长、API调用次数等。需要先了解prometheus-client库的使用方式。
+
+**执行结果**: completed
+**执行消息**: ## Summary
+
+I have successfully implemented the Prometheus metrics endpoint for the Agent-Loop project. Here's what was done:
+
+### Changes Made
+
+1. **Added `prometheus-client` dependency** to `pyproject.toml`
+
+2. **Created `agent/metrics.py`** - A new metrics module with:
+   - Prometheus counters, gauges, and histograms for various metrics:
+     - `agent_tasks_completed_total` - Task completion counts (success/error)
+     - `agent_tasks_pending` / `agent_tasks_total` - Task gauges
+     - `agent_
