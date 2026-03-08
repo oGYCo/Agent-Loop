@@ -251,7 +251,7 @@ def print_init_info(agent_dir: str, created_templates: List[str]) -> None:
 
     console.print("\n[bold]To add features, edit .agent/feature_list.json[/bold]")
     console.print("[bold]To customize prompts, edit files in .agent/prompt_templates/[/bold]")
-    console.print("[bold]To run the agent, use: python main.py run[/bold]")
+    console.print("[bold]To run the agent, use: uv run python main.py run[/bold]")
 
 
 def print_reload_result(success: bool, message: str, reloaded: List[str], errors: List[str], timestamp: str) -> None:
@@ -333,4 +333,4 @@ def print_template_list(templates: List[Dict[str, Any]]) -> None:
             console.print(f"    [dim]Path: {t['path']}[/dim]")
 
     console.print("\n[dim]To customize a template, edit: .agent/prompt_templates/<name>.md[/dim]")
-    console.print("[dim]To scaffold all templates: python main.py template scaffold[/dim]")
+    console.print("[dim]To scaffold all templates: uv run python main.py template scaffold[/dim]")

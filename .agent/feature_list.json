@@ -102,7 +102,7 @@
         "agent/state_manager.py",
         "agent/email_notifier.py"
       ],
-      "verify_command": "pytest tests/test_email_notifier.py -v",
+      "verify_command": "uv run pytest tests/test_email_notifier.py -v",
       "created_at": "2026-03-07",
       "updated_at": "2026-03-08"
     },
@@ -118,7 +118,7 @@
         "agent/slack_notifier.py",
         "tests/test_slack_notifier.py"
       ],
-      "verify_command": "pytest tests/test_slack_notifier.py -v",
+      "verify_command": "uv run pytest tests/test_slack_notifier.py -v",
       "created_at": "2026-03-07",
       "updated_at": "2026-03-08"
     },
@@ -133,7 +133,7 @@
         "main.py",
         "agent/console.py"
       ],
-      "verify_command": "python main.py status",
+      "verify_command": "uv run python main.py status",
       "created_at": "2026-03-07",
       "updated_at": "2026-03-08"
     },
@@ -337,7 +337,7 @@
         "tests/test_state_manager.py",
         "tests/test_api.py"
       ],
-      "verify_command": "pytest tests/test_api.py -v",
+      "verify_command": "uv run pytest tests/test_api.py -v",
       "created_at": "2026-03-08",
       "updated_at": "2026-03-08"
     },
@@ -353,7 +353,7 @@
         "main.py",
         "api.py"
       ],
-      "verify_command": "mypy agent/ --ignore-missing-imports",
+      "verify_command": "uv run mypy agent/ --ignore-missing-imports",
       "created_at": "2026-03-08",
       "updated_at": "2026-03-08"
     },
@@ -383,7 +383,7 @@
         "pyproject.toml",
         "tests/"
       ],
-      "verify_command": "pytest tests/ --cov=agent --cov-report=term-missing",
+      "verify_command": "uv run pytest tests/ --cov=agent --cov-report=term-missing",
       "created_at": "2026-03-08",
       "updated_at": "2026-03-08"
     },
@@ -399,7 +399,7 @@
         "agent/state_manager.py",
         "tests/test_agent_core.py"
       ],
-      "verify_command": "pytest tests/test_integration.py -v",
+      "verify_command": "uv run pytest tests/test_integration.py -v",
       "created_at": "2026-03-08",
       "updated_at": "2026-03-08"
     },
@@ -417,6 +417,16 @@
         "README.md"
       ],
       "verify_command": "定期审查和更新文档",
+      "created_at": "2026-03-08",
+      "updated_at": "2026-03-08"
+    },
+    {
+      "id": "feature-028",
+      "name": "New Feature: support openai and anthropic provider",
+      "description": "Add a highly extensible, production-grade model provider system to the project. This system should allow users to configure model providers themselves, including information such as the provider, API key, model name, and other related settings, so they can switch to different models as the source for subsequent execution.Note that user configuration data must be handled with proper privacy protection.\nThe system should initially support API formats compatible with OpenAI and Anthropic. Before starting the task, make sure to gather sufficient project-related context. In addition, you must regularly consult the relevant documentation:\nhttps://developers.openai.com/api/docs/quickstart\nhttps://platform.claude.com/docs/en/home",
+      "priority": 1,
+      "status": "pending",
+      "passes": false,
       "created_at": "2026-03-08",
       "updated_at": "2026-03-08"
     }

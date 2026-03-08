@@ -84,42 +84,42 @@ export ANTHROPIC_BASE_URL="https://api.minimaxi.com/anthropic"
 
 ```bash
 # Initialize project (creates .agent/ directory)
-python main.py init
+uv run python main.py init
 
 # Run agent (default: 10 iterations)
-python main.py run
+uv run python main.py run
 
 # Or specify iterations
-python main.py run --iterations 3
+uv run python main.py run --iterations 3
 ```
 
 ## CLI Reference
 
 ```bash
 # Core commands
-python main.py init                          # Initialize project structure
-python main.py run                           # Start agent loop (default: 10 iterations)
-python main.py run --iterations N           # Run N iterations
-python main.py list                         # List all tasks
-python main.py status                       # Show project status
-python main.py add "Task Name" -d "Desc" -p 1  # Add new task
+uv run python main.py init                          # Initialize project structure
+uv run python main.py run                           # Start agent loop (default: 10 iterations)
+uv run python main.py run --iterations N           # Run N iterations
+uv run python main.py list                         # List all tasks
+uv run python main.py status                       # Show project status
+uv run python main.py add "Task Name" -d "Desc" -p 1  # Add new task
 
 # Prompt management
-python main.py prompt list                  # List all prompt presets
-python main.py prompt show <key>            # Show prompt details
-python main.py prompt set <key>             # Set active prompt
-python main.py prompt add <key> -n "Name"   # Add new prompt preset
-python main.py prompt delete <key>          # Delete a prompt preset
+uv run python main.py prompt list                  # List all prompt presets
+uv run python main.py prompt show <key>            # Show prompt details
+uv run python main.py prompt set <key>             # Set active prompt
+uv run python main.py prompt add <key> -n "Name"   # Add new prompt preset
+uv run python main.py prompt delete <key>          # Delete a prompt preset
 
 # Template management
-python main.py template list                # List all templates
-python main.py template show <name>         # Show template content
-python main.py template scaffold            # Export all templates to .agent/prompt_templates/
-python main.py template reset <name>        # Reset template to built-in default
+uv run python main.py template list                # List all templates
+uv run python main.py template show <name>         # Show template content
+uv run python main.py template scaffold            # Export all templates to .agent/prompt_templates/
+uv run python main.py template reset <name>        # Reset template to built-in default
 
 # Options
-python main.py --project-dir /path          # Specify project directory
-python main.py --help                       # Show help message
+uv run python main.py --project-dir /path          # Specify project directory
+uv run python main.py --help                       # Show help message
 ```
 
 ### Command Details
@@ -138,10 +138,10 @@ python main.py --help                       # Show help message
 
 ```bash
 # Add task with all options
-python main.py add "Add user auth" -d "Implement login/logout" -p 1 --id "feat-101"
+uv run python main.py add "Add user auth" -d "Implement login/logout" -p 1 --id "feat-101"
 
 # Add task with just name (priority defaults to 3)
-python main.py add "New Feature"
+uv run python main.py add "New Feature"
 ```
 
 ## Architecture
@@ -206,16 +206,16 @@ python main.py add "New Feature"
 
 ```bash
 # 1. Initialize the project
-python main.py init
+uv run python main.py init
 
 # 2. Check existing tasks
-python main.py list
+uv run python main.py list
 
 # 3. Run the agent
-python main.py run --iterations 5
+uv run python main.py run --iterations 5
 
 # 4. Check status
-python main.py status
+uv run python main.py status
 ```
 
 ### Task Management
@@ -250,13 +250,13 @@ Tasks are managed in `.agent/feature_list.json`:
 
 ```bash
 # Run agent on a different project
-python main.py --project-dir /path/to/project run --iterations 3
+uv run python main.py --project-dir /path/to/project run --iterations 3
 
 # Check status of a specific project
-python main.py --project-dir /path/to/project status
+uv run python main.py --project-dir /path/to/project status
 
 # List tasks in another project
-python main.py --project-dir /path/to/project list
+uv run python main.py --project-dir /path/to/project list
 ```
 
 ## Configuration
@@ -286,7 +286,7 @@ python main.py --project-dir /path/to/project list
   "model": "MiniMax-M2.5-highspeed",
   "session_type": "coder",
   "context_files": ["README.md", "CLAUDE.md"],
-  "verify_command": "pytest tests/ -x -q",
+  "verify_command": "uv run pytest tests/ -x -q",
   "allowed_tools": ["Read", "Write", "Edit", "Bash", "Glob", "Grep", "MultiEdit"],
   "mcp_servers": []
 }
@@ -418,7 +418,7 @@ Set the variant via `session_type` in config.json.
 
 ```bash
 # Export all templates to .agent/prompt_templates/
-python main.py template scaffold
+uv run python main.py template scaffold
 
 # Edit any template file, e.g.:
 # .agent/prompt_templates/system.md
@@ -434,23 +434,23 @@ python main.py template scaffold
 # {{feature_list_path}}  - Path to feature_list.json
 
 # Reset a template to built-in default
-python main.py template reset system
+uv run python main.py template reset system
 ```
 
 ## Testing
 
 ```bash
 # Run all tests
-pytest tests/ -v
+uv run pytest tests/ -v
 
 # Run specific module
-pytest tests/test_agent_core.py -v
+uv run pytest tests/test_agent_core.py -v
 
 # With coverage
-pytest tests/ --cov=agent --cov-report=term-missing
+uv run pytest tests/ --cov=agent --cov-report=term-missing
 
 # Quick test (fail-fast)
-pytest tests/ -x -q
+uv run pytest tests/ -x -q
 ```
 
 ## Project Structure

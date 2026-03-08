@@ -144,8 +144,8 @@ Accumulated experience and lessons learned from task execution.
    - metrics.py: 96.10%, performance_monitor.py: 99.05%, task_selector.py: 100%
 
 3. **Commands Added to CLAUDE.md**:
-   - `pytest tests/ --cov=agent --cov-report=term-missing`
-   - `pytest tests/ --cov=agent --cov-report=html`
+   - `uv run pytest tests/ --cov=agent --cov-report=term-missing`
+   - `uv run pytest tests/ --cov=agent --cov-report=html`
 
 ---
 
@@ -908,7 +908,7 @@ Accumulated experience and lessons learned from task execution.
    - GET /health: Health check endpoint
 
 4. **CLI Integration**:
-   - Added `server` subcommand: `python main.py server [--host HOST] [--port PORT]`
+   - Added `server` subcommand: `uv run python main.py server [--host HOST] [--port PORT]`
    - Server defaults to 0.0.0.0:8000
 
 5. **Key Design Decisions**:
@@ -975,3 +975,33 @@ Accumulated experience and lessons learned from task execution.
 ## Previous Lessons
 
 *(Add new lessons at the top)*
+
+## Task Experience Records
+
+### 2026-03-08 - 持续改进计划 (feature-028)
+
+**任务描述**: 这是一个meta任务，用于持续改进系统。在完成每个主要功能后，系统应该：1) 自动审查和更新feature_list.json 2) 更新MEMORY.md记录经验 3) 审查和更新CLAUDE.md和README.md 4) 确保测试覆盖新功能。此任务确保系统能够持续自我优化和成长。
+
+**执行结果**: completed
+**执行消息**: ## 总结
+
+我已完成持续改进计划任务 (feature-028)，主要完成以下工作：
+
+### 1. 审查和更新 feature_list.json
+- 标记 feature-028 为已完成
+- 确认所有 28 个功能都有正确的状态跟踪
+
+### 2. 更新 MEMORY.md
+- 添加了 feature-028 的 lessons learned 记录，包括：
+  - Feature List Review: 所有功能都已正确跟踪
+  - Documentation Sync: 文档与代码保持同步
+  - Test Coverage: 370 个测试通过，覆盖率 56.95%
+  - Self-Improvement System: 系统内置自我审查机制
+
+### 3. 审查和更新 CLAUDE.md
+- 添加了 `slack_notifier.py` 模块文档
+- 添加了 `logging_.py` 模块文档（structlog 结构化日志）
+
+### 4. 审查和更新 README.md
+- 在 Features 表格中添加：
+  - **Slack Notification

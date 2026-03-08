@@ -94,12 +94,12 @@ def init_project(args: argparse.Namespace) -> None:
             "project_type": "python",
             "model": "MiniMax-M2.5-highspeed",
             "session_type": "coder",
-            "test_command": "pytest tests/ -v",
+            "test_command": "uv run pytest tests/ -v",
             "test_pattern": "test_*.py",
             "max_errors_before_intervention": 3,
             "context_window_limit": 100000,
             "context_files": ["CLAUDE.md", "README.md"],
-            "verify_command": "pytest tests/ -x -q",
+            "verify_command": "uv run pytest tests/ -x -q",
             "allowed_tools": [
                 "Read", "Write", "Edit", "Bash", "Glob", "Grep",
                 "WebSearch", "WebFetch", "AskUserQuestion",
@@ -432,7 +432,7 @@ def scaffold_templates(args: argparse.Namespace) -> None:
         print("\nEdit these files to customize prompts for your project.")
     else:
         print("\nAll template files already exist. No new files created.")
-        print("To reset a template to default, use: python main.py template reset <name>")
+        print("To reset a template to default, use: uv run python main.py template reset <name>")
 
 
 def reset_template(args: argparse.Namespace) -> None:

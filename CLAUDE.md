@@ -23,42 +23,42 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 uv sync
 
 # Run all tests
-pytest tests/ -v
+uv run pytest tests/ -v
 
 # Run specific test file
-pytest tests/test_agent_core.py -v
+uv run pytest tests/test_agent_core.py -v
 
 # Quick test with fail-fast
-pytest tests/ -x -q
+uv run pytest tests/ -x -q
 
 # Run tests with coverage
-pytest tests/ --cov=agent --cov-report=term-missing
-pytest tests/ --cov=agent --cov-report=html  # HTML report in htmlcov/
+uv run pytest tests/ --cov=agent --cov-report=term-missing
+uv run pytest tests/ --cov=agent --cov-report=html  # HTML report in htmlcov/
 
 # Type checking
-mypy agent/agent_core.py
+uv run mypy agent/agent_core.py
 
 # Run agent
-python main.py run --iterations 3
+uv run python main.py run --iterations 3
 
 # List tasks
-python main.py list
+uv run python main.py list
 
 # Check status
-python main.py status
+uv run python main.py status
 
 # Initialize project
-python main.py init
+uv run python main.py init
 
 # Template management
-python main.py template list              # List all prompt templates
-python main.py template show <name>       # Show template content
-python main.py template scaffold          # Export templates to .agent/prompt_templates/
-python main.py template reset <name>      # Reset template to built-in default
+uv run python main.py template list              # List all prompt templates
+uv run python main.py template show <name>       # Show template content
+uv run python main.py template scaffold          # Export templates to .agent/prompt_templates/
+uv run python main.py template reset <name>      # Reset template to built-in default
 
 # Prompt preset management
-python main.py prompt list                # List prompt presets
-python main.py prompt set <key>           # Set active prompt
+uv run python main.py prompt list                # List prompt presets
+uv run python main.py prompt set <key>           # Set active prompt
 ```
 
 ## Architecture
@@ -164,7 +164,7 @@ Configuration URLs are also available in `.agent/config.json` under `documentati
 - Use `type: ignore[valid-type]` for third-party library type issues
 - Use `cast()` for complex type narrowing
 - Use explicit `Dict[str, Any]` for heterogeneous dictionaries
-- Run `mypy agent/ --ignore-missing-imports` to check types
+- Run `uv run mypy agent/ --ignore-missing-imports` to check types
 
 ### Documentation Maintenance
 - Update MEMORY.md after completing important tasks
@@ -188,7 +188,7 @@ ANTHROPIC_BASE_URL      # API endpoint (default: https://api.minimaxi.com/anthro
 
 ## Current Tasks
 
-Run `python main.py list` to see pending refactoring tasks in `.agent/feature_list.json`.
+Run `uv run python main.py list` to see pending refactoring tasks in `.agent/feature_list.json`.
 
 ## Self-Improvement Features
 

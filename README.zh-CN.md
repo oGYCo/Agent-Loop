@@ -83,42 +83,42 @@ export ANTHROPIC_BASE_URL="https://api.minimaxi.com/anthropic"
 
 ```bash
 # 初始化项目（创建 .agent/ 目录）
-python main.py init
+uv run python main.py init
 
 # 运行 Agent（默认 10 次迭代）
-python main.py run
+uv run python main.py run
 
 # 指定迭代次数
-python main.py run --iterations 3
+uv run python main.py run --iterations 3
 ```
 
 ## CLI 命令参考
 
 ```bash
 # 核心命令
-python main.py init                          # 初始化项目结构
-python main.py run                           # 启动 Agent 循环（默认 10 次迭代）
-python main.py run --iterations N           # 运行 N 次迭代
-python main.py list                         # 列出所有任务
-python main.py status                       # 显示项目状态
-python main.py add "任务名称" -d "描述" -p 1 # 添加新任务
+uv run python main.py init                          # 初始化项目结构
+uv run python main.py run                           # 启动 Agent 循环（默认 10 次迭代）
+uv run python main.py run --iterations N           # 运行 N 次迭代
+uv run python main.py list                         # 列出所有任务
+uv run python main.py status                       # 显示项目状态
+uv run python main.py add "任务名称" -d "描述" -p 1 # 添加新任务
 
 # 提示词管理
-python main.py prompt list                  # 列出所有提示词预设
-python main.py prompt show <key>            # 显示提示词详情
-python main.py prompt set <key>             # 设置活跃提示词
-python main.py prompt add <key> -n "名称"   # 添加新的提示词预设
-python main.py prompt delete <key>          # 删除提示词预设
+uv run python main.py prompt list                  # 列出所有提示词预设
+uv run python main.py prompt show <key>            # 显示提示词详情
+uv run python main.py prompt set <key>             # 设置活跃提示词
+uv run python main.py prompt add <key> -n "名称"   # 添加新的提示词预设
+uv run python main.py prompt delete <key>          # 删除提示词预设
 
 # 模板管理
-python main.py template list                # 列出所有模板
-python main.py template show <name>         # 显示模板内容
-python main.py template scaffold            # 导出所有模板到 .agent/prompt_templates/
-python main.py template reset <name>        # 重置模板为内置默认值
+uv run python main.py template list                # 列出所有模板
+uv run python main.py template show <name>         # 显示模板内容
+uv run python main.py template scaffold            # 导出所有模板到 .agent/prompt_templates/
+uv run python main.py template reset <name>        # 重置模板为内置默认值
 
 # 选项
-python main.py --project-dir /path          # 指定项目目录
-python main.py --help                       # 显示帮助信息
+uv run python main.py --project-dir /path          # 指定项目目录
+uv run python main.py --help                       # 显示帮助信息
 ```
 
 ### 命令详情
@@ -137,10 +137,10 @@ python main.py --help                       # 显示帮助信息
 
 ```bash
 # 添加带所有选项的任务
-python main.py add "添加用户认证" -d "实现登录/登出" -p 1 --id "feat-101"
+uv run python main.py add "添加用户认证" -d "实现登录/登出" -p 1 --id "feat-101"
 
 # 仅添加名称的任务（优先级默认为 3）
-python main.py add "新功能"
+uv run python main.py add "新功能"
 ```
 
 ## 架构设计
@@ -200,16 +200,16 @@ python main.py add "新功能"
 
 ```bash
 # 1. 初始化项目
-python main.py init
+uv run python main.py init
 
 # 2. 查看现有任务
-python main.py list
+uv run python main.py list
 
 # 3. 运行 Agent
-python main.py run --iterations 5
+uv run python main.py run --iterations 5
 
 # 4. 查看状态
-python main.py status
+uv run python main.py status
 ```
 
 ### 任务管理
@@ -244,13 +244,13 @@ python main.py status
 
 ```bash
 # 在其他项目上运行 Agent
-python main.py --project-dir /path/to/project run --iterations 3
+uv run python main.py --project-dir /path/to/project run --iterations 3
 
 # 查看特定项目状态
-python main.py --project-dir /path/to/project status
+uv run python main.py --project-dir /path/to/project status
 
 # 列出其他项目的任务
-python main.py --project-dir /path/to/project list
+uv run python main.py --project-dir /path/to/project list
 ```
 
 ## 配置
@@ -280,7 +280,7 @@ python main.py --project-dir /path/to/project list
   "model": "MiniMax-M2.5-highspeed",
   "session_type": "coder",
   "context_files": ["README.md", "CLAUDE.md"],
-  "verify_command": "pytest tests/ -x -q",
+  "verify_command": "uv run pytest tests/ -x -q",
   "allowed_tools": ["Read", "Write", "Edit", "Bash", "Glob", "Grep", "MultiEdit"],
   "mcp_servers": []
 }
@@ -412,7 +412,7 @@ Agent-Loop 使用基于模板的提示词系统。所有提示词支持 `{{varia
 
 ```bash
 # 导出所有模板到 .agent/prompt_templates/
-python main.py template scaffold
+uv run python main.py template scaffold
 
 # 编辑任意模板文件，例如：
 # .agent/prompt_templates/system.md
@@ -428,23 +428,23 @@ python main.py template scaffold
 # {{feature_list_path}}  - feature_list.json 的路径
 
 # 重置模板为内置默认值
-python main.py template reset system
+uv run python main.py template reset system
 ```
 
 ## 测试
 
 ```bash
 # 运行所有测试
-pytest tests/ -v
+uv run pytest tests/ -v
 
 # 运行特定模块
-pytest tests/test_agent_core.py -v
+uv run pytest tests/test_agent_core.py -v
 
 # 带覆盖率
-pytest tests/ --cov=agent --cov-report=term-missing
+uv run pytest tests/ --cov=agent --cov-report=term-missing
 
 # 快速测试（快速失败）
-pytest tests/ -x -q
+uv run pytest tests/ -x -q
 ```
 
 ## 项目结构
