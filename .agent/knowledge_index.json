@@ -1,0 +1,124 @@
+{
+  "version": "1.0",
+  "description": "Knowledge index for Agent-Loop project - provides fast topic-based retrieval of MEMORY.md insights",
+  "topics": {
+    "architecture": {
+      "tags": ["architecture", "core", "agent", "sdk"],
+      "description": "Core agent architecture and SDK integration patterns",
+      "related_files": ["agent/agent_core.py", "agent/prompt_manager.py", "agent/session_manager.py"],
+      "memory_section": "Core Architecture Knowledge"
+    },
+    "state_management": {
+      "tags": ["state", "persistence", "json", "atomic", "file"],
+      "description": "State persistence, atomic writes, file locking",
+      "related_files": ["agent/state_manager.py"],
+      "memory_section": "Core Architecture Knowledge"
+    },
+    "configuration": {
+      "tags": ["config", "settings", "pydantic", "environment"],
+      "description": "Configuration management with Pydantic and environment variables",
+      "related_files": ["agent/config_model.py", "agent/config_reloader.py"],
+      "memory_section": "Core Architecture Knowledge"
+    },
+    "api": {
+      "tags": ["rest", "fastapi", "endpoint", "http"],
+      "description": "REST API design, versioning, middleware",
+      "related_files": ["api.py"],
+      "memory_section": "API & Web Services"
+    },
+    "websocket": {
+      "tags": ["websocket", "realtime", "push", "streaming"],
+      "description": "WebSocket real-time event push",
+      "related_files": ["api.py"],
+      "memory_section": "API & Web Services"
+    },
+    "dashboard": {
+      "tags": ["ui", "web", "frontend", "dashboard"],
+      "description": "Web dashboard and UI implementation",
+      "related_files": ["static/index.html"],
+      "memory_section": "API & Web Services"
+    },
+    "webhook": {
+      "tags": ["webhook", "notification", "http", "callback"],
+      "description": "Webhook notification system",
+      "related_files": ["agent/webhook.py"],
+      "memory_section": "Notifications"
+    },
+    "email": {
+      "tags": ["email", "smtp", "notification"],
+      "description": "Email notification with SMTP",
+      "related_files": ["agent/email_notifier.py"],
+      "memory_section": "Notifications"
+    },
+    "slack": {
+      "tags": ["slack", "notification", "block-kit"],
+      "description": "Slack notification with Block Kit formatting",
+      "related_files": ["agent/slack_notifier.py"],
+      "memory_section": "Notifications"
+    },
+    "logging": {
+      "tags": ["log", "structlog", "json", "audit"],
+      "description": "Structured logging with structlog, correlation IDs",
+      "related_files": ["agent/logging_.py"],
+      "memory_section": "Observability"
+    },
+    "metrics": {
+      "tags": ["prometheus", "metrics", "monitoring"],
+      "description": "Prometheus metrics collection and export",
+      "related_files": ["agent/metrics.py"],
+      "memory_section": "Observability"
+    },
+    "grafana": {
+      "tags": ["grafana", "dashboard", "visualization"],
+      "description": "Grafana dashboard templates",
+      "related_files": ["dashboards/agent-loop-dashboard.json"],
+      "memory_section": "Observability"
+    },
+    "security": {
+      "tags": ["security", "owasp", "auth", "rate-limit", "cors"],
+      "description": "Security best practices, rate limiting, CORS, input validation",
+      "related_files": ["api.py", "agent/webhook.py"],
+      "memory_section": "Security"
+    },
+    "exceptions": {
+      "tags": ["exception", "error", "error-code"],
+      "description": "Exception hierarchy and error code system",
+      "related_files": ["agent/exceptions.py"],
+      "memory_section": "Security"
+    },
+    "testing": {
+      "tags": ["test", "pytest", "coverage", "fixture"],
+      "description": "Testing patterns, fixtures, coverage",
+      "related_files": ["tests/"],
+      "memory_section": "Testing & Quality"
+    },
+    "types": {
+      "tags": ["typing", "type", "annotation", "mypy"],
+      "description": "Type annotations and mypy checking",
+      "related_files": ["agent/"],
+      "memory_section": "Testing & Quality"
+    },
+    "docker": {
+      "tags": ["docker", "container", "deployment"],
+      "description": "Docker containerization and deployment",
+      "related_files": ["Dockerfile", "docker-compose.yml"],
+      "memory_section": "Deployment & DevOps"
+    },
+    "dependencies": {
+      "tags": ["task", "dependency", "dag", "topological"],
+      "description": "Task dependencies and DAG execution",
+      "related_files": ["agent/task_selector.py"],
+      "memory_section": "Deployment & DevOps"
+    }
+  },
+  "quick_reference": {
+    "atomic_write": "Use tempfile.NamedTemporaryFile + os.replace() pattern",
+    "file_locking": "Use portalocker for cross-platform file locks",
+    "async_context": "Use async with for resource management",
+    "error_handling": "Never use except Exception: pass - always log",
+    "config_override": "AGENT_LOOP_PROVIDERS__DEFAULT__MODEL for nested env vars",
+    "api_versioning": "Use /api/v1/ prefix with 301 redirects",
+    "pagination": "page (default 1), per_page (default 20, max 100)",
+    "websocket_reconnect": "Exponential backoff: 1s->2s->4s->8s->16s->30s max"
+  }
+}

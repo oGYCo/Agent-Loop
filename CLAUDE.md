@@ -43,12 +43,33 @@ uv run python main.py run --iterations 3
 
 # List tasks
 uv run python main.py list
+uv run python main.py list --filter pending        # Filter by status
+uv run python main.py list --tree                 # Show dependency tree
 
 # Check status
 uv run python main.py status
 
 # Initialize project
 uv run python main.py init
+
+# Config management
+uv run python main.py config get <key>            # Get config value
+uv run python main.py config set <key> <value>    # Set config value
+uv run python main.py config validate             # Validate config
+uv run python main.py config export               # Export config
+uv run python main.py config import <file>       # Import config
+
+# Provider management
+uv run python main.py provider list               # List all providers
+uv run python main.py provider switch <name>     # Switch provider
+uv run python main.py provider health [name]     # Check provider health
+
+# API server
+uv run python main.py server                     # Start API server
+uv run python main.py server --host 0.0.0.0 --port 8000
+
+# Reload config
+uv run python main.py reload
 
 # Template management
 uv run python main.py template list              # List all prompt templates
@@ -69,20 +90,26 @@ uv run python main.py prompt set <key>           # Set active prompt
 |--------|----------------|
 | `agent/agent_core.py` | Core agent logic, SDK integration, task execution |
 | `agent/prompt_manager.py` | Template engine, prompt presets, user-overridable prompt templates |
-| `agent/session_manager.py` | Session lifecycle, context management |
+| `agent/session_manager.py` | Session lifecycle, context management, archiving |
 | `agent/state_manager.py` | State persistence to JSON files in `.agent/` |
-| `agent/task_selector.py` | Priority-based task selection |
+| `agent/task_selector.py` | Priority-based task selection with DAG support |
 | `agent/human_intervention.py` | Human intervention when error threshold exceeded |
 | `agent/git_helper.py` | Git status, branch, and diff operations |
 | `agent/test_runner.py` | Test execution wrapper |
 | `agent/performance_monitor.py` | Performance metrics tracking |
 | `agent/config_reloader.py` | Configuration hot reload |
+| `agent/config_model.py` | Pydantic configuration model with env var support |
+| `agent/constants.py` | Centralized constants, enums for config keys, paths, events |
 | `agent/metrics.py` | Prometheus metrics collection and export |
 | `agent/webhook.py` | Webhook notification system |
 | `agent/email_notifier.py` | Email notification service with SMTP support |
 | `agent/slack_notifier.py` | Slack notification service with Block Kit formatting |
+| `agent/notification_router.py` | Routes notifications to appropriate channels |
+| `agent/notification_queue.py` | Async notification queue for batching |
 | `agent/logging_.py` | Structured logging with structlog (JSON for file, console for terminal) |
 | `agent/console.py` | Rich console utilities for interactive CLI output |
+| `agent/exceptions.py` | Exception hierarchy and error code system |
+| `agent/model_provider.py` | Multi-provider support (OpenAI, Anthropic, MiniMax) |
 | `main.py` | CLI entry point |
 | `api.py` | FastAPI REST API server |
 
