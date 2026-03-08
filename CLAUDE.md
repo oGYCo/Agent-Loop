@@ -80,6 +80,8 @@ python main.py prompt set <key>           # Set active prompt
 | `agent/metrics.py` | Prometheus metrics collection and export |
 | `agent/webhook.py` | Webhook notification system |
 | `agent/email_notifier.py` | Email notification service with SMTP support |
+| `agent/slack_notifier.py` | Slack notification service with Block Kit formatting |
+| `agent/logging_.py` | Structured logging with structlog (JSON for file, console for terminal) |
 | `agent/console.py` | Rich console utilities for interactive CLI output |
 | `main.py` | CLI entry point |
 | `api.py` | FastAPI REST API server |

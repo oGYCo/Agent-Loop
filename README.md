@@ -50,7 +50,9 @@ Agent-Loop is an autonomous AI agent system that automates task execution with r
 | **Self-Review**            | Automatic task plan review after each task completion           |
 | **Customizable Prompts**   | Template-based prompt system with `{{variable}}` substitution   |
 | **Email Notifications**    | Send email alerts on task completion, failure, or intervention |
+| **Slack Notifications**    | Send Slack messages with Block Kit formatting                   |
 | **Webhook Notifications**  | HTTP POST notifications to external services                    |
+| **Structured Logging**      | JSON logging with structlog for log analysis tools              |
 | **Task Board UI**          | Visual Kanban-style task board with drag-and-drop support       |
 | **API Key Authentication** | Secure API access with configurable API keys                    |
 | **Grafana Dashboard**      | Pre-built Grafana dashboard template for monitoring             |
@@ -192,6 +194,11 @@ python main.py add "New Feature"
 | `test_runner.py`         | Test execution wrapper                               |
 | `performance_monitor.py` | Performance metrics tracking                         |
 | `config_reloader.py`     | Configuration hot reload                             |
+| `metrics.py`             | Prometheus metrics collection and export             |
+| `webhook.py`             | Webhook notification service                         |
+| `email_notifier.py`      | Email notification service with SMTP support         |
+| `slack_notifier.py`      | Slack notification with Block Kit formatting         |
+| `logging_.py`            | Structured logging with structlog (JSON/console)     |
 
 ## Usage Examples
 

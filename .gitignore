@@ -51,9 +51,12 @@ dmypy.json
 .agent/session_history.json
 .agent/progress.txt
 
+# Project specific - exceptions (must be before .agent/)
+!.agent/feature_list.json
+!.agent/MEMORY.md
+
 # OS
 .DS_Store
 Thumbs.db
 .agent/
-!.agent/feature_list.json
 .playwright-mcp/
