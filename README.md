@@ -17,6 +17,7 @@
 <p align="center">
   <a href="#quick-start"><strong>Get Started</strong></a> ·
   <a href="#cli-reference"><strong>CLI Reference</strong></a> ·
+  <a href="#docker-deployment"><strong>Docker</strong></a> ·
   <a href="#configuration"><strong>Configuration</strong></a>
 </p>
 
@@ -510,6 +511,154 @@ agent-loop/
 - [Streaming Output](https://platform.claude.com/docs/en/agent-sdk/streaming-output)
 - [Session Management](https://platform.claude.com/docs/en/agent-sdk/sessions)
 - [MCP Protocol](https://modelcontextprotocol.io/introduction)
+
+## Docker Deployment
+
+Agent-Loop can be deployed using Docker and Docker Compose for a complete containerized environment with monitoring.
+
+### Prerequisites
+
+- Docker 20.10+
+- Docker Compose 2.0+
+- At least 2GB RAM available
+
+### Quick Start
+
+```bash
+# 1. Clone the repository
+git clone https://github.com/your-repo/agent-loop.git
+cd agent-loop
+
+# 2. Copy environment template
+cp .env.example .env
+
+# 3. Edit .env with your API credentials
+nano .env
+
+# 4. Build and start all services
+docker-compose up -d
+
+# 5. Check service status
+docker-compose ps
+
+# 6. View logs
+docker-compose logs -f
+```
+
+### Services
+
+The Docker Compose stack includes:
+
+| Service     | Port | Description                          |
+| ----------- | ---- | ------------------------------------ |
+| `agent-loop` | -    | Main Agent CLI (runs agent loop)     |
+| `agent-api`  | 8000 | FastAPI server with web dashboard    |
+| `prometheus` | 9090 | Metrics collection and monitoring    |
+| `grafana`    | 3000 | Visualization dashboard              |
+
+### Configuration
+
+Edit the `.env` file to configure:
+
+```bash
+# Required: API Authentication
+ANTHROPIC_AUTH_TOKEN=your-api-token-here
+ANTHROPIC_BASE_URL=https://api.minimaxi.com/anthropic
+
+# Optional: Logging
+LOG_LEVEL=INFO
+LOG_FILE=/app/logs/agent.log
+
+# Optional: Grafana
+GRAFANA_USER=admin
+GRAFANA_PASSWORD=admin
+```
+
+### Accessing Services
+
+- **API Dashboard**: http://localhost:8000
+- **API Docs**: http://localhost:8000/docs
+- **Prometheus**: http://localhost:9090
+- **Grafana**: http://localhost:3000 (admin/admin)
+
+### Common Commands
+
+```bash
+# Start all services
+docker-compose up -d
+
+# Stop all services
+docker-compose down
+
+# Rebuild images
+docker-compose build --no-cache
+
+# View logs for specific service
+docker-compose logs -f agent-api
+
+# View logs for all services
+docker-compose logs -f
+
+# Restart a specific service
+docker-compose restart agent-api
+
+# Scale agent-loop (run multiple instances)
+docker-compose up -d --scale agent-loop=2
+```
+
+### Data Persistence
+
+The `.agent/` directory is persisted using Docker volumes:
+
+- `agent-data` volume stores task lists, configuration, and session history
+- Logs are stored in `./logs` directory on host
+
+### Health Checks
+
+- **agent-api**: HTTP GET `http://localhost:8000/health`
+- **prometheus**: Scrapes `/metrics` endpoint every 10 seconds
+- **grafana**: Pre-configured with Agent-Loop dashboard
+
+### Customization
+
+#### Custom Grafana Dashboard
+
+1. Log into Grafana (http://localhost:3000)
+2. Import `dashboards/agent-loop-dashboard.json`
+3. Configure data source to Prometheus (`http://prometheus:9090`)
+
+#### Running Only the API Server
+
+```bash
+docker build -t agent-loop .
+docker run -p 8000:8000 --env-file .env agent-loop
+```
+
+### Troubleshooting
+
+```bash
+# Check container health
+docker inspect agent-api | grep -A 20 Health
+
+# View container logs
+docker-compose logs agent-api
+
+# Access container shell
+docker exec -it agent-api /bin/bash
+
+# Check disk usage
+docker system df
+
+# Clean up unused images
+docker image prune -f
+```
+
+### Security Notes
+
+- The container runs as a non-root user (`agent`)
+- Secrets are loaded from `.env` file
+- No credentials are baked into the image
+- Use Docker secrets in production deployments
 
 ---
 

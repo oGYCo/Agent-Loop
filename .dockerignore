@@ -1,0 +1,79 @@
+# Version Control
+.git
+.gitignore
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+*.egg
+dist/
+build/
+eggs/
+parts/
+var/
+sdist/
+develop-eggs/
+.installed.cfg
+lib/
+lib64/
+pip-log.txt
+pip-delete-this-directory.txt
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.hatch/
+.tox/
+.coverage
+.coverage.*
+htmlcov/
+*.cover
+.hypothesis/
+
+# Virtual Environments
+.venv/
+venv/
+ENV/
+env/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Testing
+htmlcov/
+.coverage*
+.tox/
+.nox/
+
+# Documentation
+docs/_build/
+
+# Logs
+logs/*.log
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Project specific
+.agent/
+!/.agent/config.docker.json
+static/dashboard.db
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+Jenkinsfile
+
+# Temporary
+*.tmp
+*.temp
+*.bak

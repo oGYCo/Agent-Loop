@@ -1,0 +1,119 @@
+version: "3.8"
+
+services:
+  # ============================================
+  # Agent-Loop CLI Service (main agent loop)
+  # ============================================
+  agent-loop:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: agent-loop
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      - ./logs:/app/logs
+      - agent-data:/app/.agent  # Mount .agent directory for persistence
+    command: python main.py run --iterations 10
+    environment:
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - LOG_FILE=/app/logs/agent.log
+    networks:
+      - agent-network
+    healthcheck:
+      test: ["CMD", "python", "-c", "import sys; sys.exit(0)"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # ============================================
+  # Agent-Loop API Service (FastAPI + Dashboard)
+  # ============================================
+  agent-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: agent-api
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      - ./logs:/app/logs
+      - agent-data:/app/.agent
+    ports:
+      - "8000:8000"
+    environment:
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - API_HOST=0.0.0.0
+      - API_PORT=8000
+    command: python api.py
+    networks:
+      - agent-network
+    depends_on:
+      agent-loop:
+        condition: service_started
+
+  # ============================================
+  # Prometheus Monitoring Service
+  # ============================================
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    restart: unless-stopped
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+      - '--web.enable-lifecycle'
+    ports:
+      - "9090:9090"
+    networks:
+      - agent-network
+    depends_on:
+      - agent-api
+
+  # ============================================
+  # Grafana Visualization Service
+  # ============================================
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    restart: unless-stopped
+    environment:
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_USER:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin}
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_SERVER_ROOT_URL=${GRAFANA_ROOT_URL:-http://localhost:3000}
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./dashboards:/etc/grafana/provisioning/dashboards:ro
+    ports:
+      - "3000:3000"
+    networks:
+      - agent-network
+    depends_on:
+      - prometheus
+
+# ============================================
+# Networks
+# ============================================
+networks:
+  agent-network:
+    driver: bridge
+
+# ============================================
+# Volumes (for data persistence)
+# ============================================
+volumes:
+  agent-data:
+    driver: local
+  prometheus-data:
+    driver: local
+  grafana-data:
+    driver: local
