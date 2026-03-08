@@ -543,14 +543,15 @@
       "name": "Console与CLI模块测试覆盖率提升",
       "description": "当前console.py测试覆盖率仅16%，需要全面提升。同时补充main.py CLI命令的端到端测试。具体包括：\n\n1) **Console捕获测试**：使用rich.console.Console(file=io.StringIO())捕获输出，验证：\n   - print_header()输出包含正确标题\n   - print_task_table()表格包含所有任务列且格式正确\n   - print_status_panel()面板包含项目名、分支、错误计数等\n   - print_run_summary()正确显示迭代次数、完成数、错误数\n   - print_success/error/warning/info()使用正确的颜色标记\n   - create_progress()返回有效的Progress对象\n2) **CLI端到端测试**：创建tests/test_cli.py，使用subprocess运行main.py命令并验证输出：\n   - `init`命令创建.agent/目录和所有必要文件\n   - `list`命令正确显示任务列表（含--filter参数测试）\n   - `add`命令成功添加新任务到feature_list.json\n   - `status`命令显示正确的状态信息\n   - `template list/show`命令输出模板信息\n   - `prompt list/set`命令管理提示词预设\n   - 各命令在.agent/不存在时的优雅错误处理\n3) **边界测试**：空任务列表、超长任务名、特殊字符任务名（emoji、中文、换行符）的显示处理。\n\n**关键指令**：使用临时目录隔离测试环境。目标覆盖率：console.py 70%+。",
       "priority": 3,
-      "status": "pending",
-      "passes": false,
+      "status": "completed",
+      "passes": true,
       "context_files": [
         "agent/console.py",
         "main.py",
-        "tests/test_agent_core.py"
+        "tests/test_console.py",
+        "tests/test_cli.py"
       ],
-      "verify_command": "uv run pytest tests/test_cli.py -v --cov=agent/console --cov-report=term-missing",
+      "verify_command": "uv run pytest tests/test_cli.py tests/test_console.py -v --cov=agent.console --cov-report=term-missing",
       "created_at": "2026-03-08",
       "updated_at": "2026-03-08"
     },
