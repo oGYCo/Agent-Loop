@@ -4,6 +4,51 @@ Accumulated experience and lessons learned from task execution.
 
 ---
 
+## 2026-03-08 - StateManager File Safety (feature-030 Implementation)
+
+**任务描述**: 为StateManager实现生产级的文件安全操作，解决当前存在的竞态条件和数据损坏风险。
+
+**Lessons Learned:**
+
+1. **Atomic Writes**:
+   - Implemented using `tempfile.NamedTemporaryFile` + `os.replace()` pattern
+   - Writes to temp file first, then atomically replaces target file
+   - Prevents file truncation if process is killed during write
+
+2. **File Locking**:
+   - Added `portalocker>=2.8.0` dependency for cross-platform file locking
+   - Used `portalocker.Lock()` context manager for read/write operations
+   - Prevents data corruption from concurrent access by multiple processes/instances
+
+3. **Backup Mechanism**:
+   - Creates `.bak` backup files before each write
+   - On write failure, automatically rolls back to backup version
+   - Backup contains the previous valid state
+
+4. **Round-trip Validation**:
+   - After each write, reads back the file and validates JSON integrity
+   - Ensures serializedeserialize consistency
+   - Triggers rollback if validation fails
+
+5. **Schema Versioning**:
+   - Added `schema_version` field to config.json
+   - Current version: 1
+   - Implemented `migrate_config_schema()` for future migrations
+   - `save_config()` automatically adds schema_version if missing
+
+6. **Implementation Details**:
+   - New helper methods: `_get_backup_path()`, `_atomic_write_json()`, `_read_json_with_lock()`, `_write_json_with_lock()`, `_ensure_schema_version()`, `migrate_config_schema()`
+   - New exception class: `FileOperationError`
+   - Fallback to direct file operations if locking fails
+   - All 46 state_manager tests pass
+
+7. **Verification**:
+   - All 46 state_manager tests pass
+   - All 29 config_reloader tests pass
+   - No breaking changes to existing functionality
+
+---
+
 ## 2026-03-08 - Security Audit and Fixes (feature-029 Implementation)
 
 **任务描述**: 以OWASP Top 10为标准，对整个代码库进行全面的安全审计并修复所有发现的安全问题。
@@ -1104,6 +1149,8 @@ Accumulated experience and lessons learned from task execution.
 
 ## Task Experience Records
 
+
+
 2026-03-08 - 持续改进计划 (feature-028)
 
 **任务描述**: 这是一个meta任务，用于持续改进系统。在完成每个主要功能后，系统应该：1) 自动审查和更新feature_list.json 2) 更新MEMORY.md记录经验 3) 审查和更新CLAUDE.md和README.md 4) 确保测试覆盖新功能。此任务确保系统能够持续自我优化和成长。
@@ -1146,7 +1193,10 @@ Accumulated experience and lessons learned from task execution.
 
 ---
 
-### 2026-03-08 - New Feature: support openai and anthropic provider (feature-028)
+
+---
+
+2026-03-08 - New Feature: support openai and anthropic provider (feature-028)
 
 **任务描述**: Add a highly extensible, production-grade model provider system to the project. This system should allow users to configure model providers themselves, including information such as the provider, API key, model name, and other related settings, so they can switch to different models as the source for subsequent execution.Note that user configuration data must be handled with proper privacy protection.
 The system should initially support API formats compatible with OpenAI and Anthropic. Before starting the task, make sure to gather sufficient project-related context. In addition, you must regularly consult the relevant documentation:
@@ -1158,7 +1208,10 @@ https://platform.claude.com/docs/en/home
 
 ## Summary
 
-### Implementation Completed
+
+---
+
+Implementation Completed
 
 1. **Created `agent/model_provider.py`** - A new module with:
    - `ProviderType` enum (openai, anthropic, minimax)
@@ -1166,3 +1219,32 @@ https://platform.claude.com/docs/en/home
    - `ModelProviderManager` class for managing multiple providers
    - `mask_api_key()` function for privacy protection
    - Default base URLs and models for each provi
+
+---
+
+### 2026-03-08 - 工业级代码安全审计与修复 (feature-029)
+
+**任务描述**: 以OWASP Top 10为标准，对整个代码库进行全面的安全审计并修复所有发现的安全问题。具体包括：
+
+1) **API认证强化**：修复api.py中API Key认证的降级漏洞（api_keys.enabled=false时允许任何访问），WebSocket连接需要在握手时验证API Key而非连接后发送close code；统一401/403响应格式防止端点枚举攻击。
+2) **速率限制中间件**：使用slowapi库（https://github.com/laurentS/slowapi）为所有API端点添加速率限制，防止DoS攻击，配置可通过config.json调整。
+3) **CORS安全配置**：为FastAPI添加CORSMiddleware，可配置allowed_origins，默认严格模式（仅允许同源），参考FastAPI CORS文档：https://fastapi.tiangolo.com/tutorial/cors/
+4) **输入验证与清洗**：对所有API传入的task name、description等字段进行严格验证和XSS清洗，使用Pydantic模型的validator；对来自config文件的shell命令（如test_command）添加白名单验证。
+5) **CSP安全头**：为Dashboard页面添加Content-Security-Policy头，防止XSS注入，禁止inline scripts（将JS外联）。
+6) **敏感数据保护**：审查所有日志输出确保不会意外记录API Key或密码；在model_provider.py中确保api_key永远不会出现在日志中；添加.gitignore检查确保.agent/config.json不会被意外提交（如包含直接api_key）。
+7) **状态文件安全**：为state_manager.py添加文件权限控制（0o600），确保状态文件不可被其他用户读取。
+
+**关键指令**：执行前必须阅读OWASP Top 10文档了解最新安全标准。参考FastAPI安全最佳实践：https://fastapi.tiangolo.com/tutorial/security/ 。每项修复必须附带对应的安全测试用例。
+
+**执行结果**: completed
+**执行消息**: ## Security Audit Complete
+
+I've successfully implemented comprehensive security fixes for the Agent-Loop project based on OWASP Top 10 standards. Here's a summary:
+
+### Changes Made
+
+| Security Feature | Implementation |
+|-----------------|----------------|
+| **Rate Limiting** | Added slowapi with configurable limits (10-60/minute per endpoint) |
+| **CORS** | CORSMiddleware with configurable origins (strict by default) |
+| **Input Validation** | Pydantic validators for task name, description, p
