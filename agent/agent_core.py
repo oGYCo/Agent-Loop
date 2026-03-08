@@ -514,45 +514,77 @@ class AgentCore:
             del tool_results[oldest_key]
         tool_results[tool_use_id] = result_str
 
-    def _handle_stream_event(self, event: Dict[str, Any]) -> None:
+    def _handle_stream_event(self, event: Dict[str, Any]) -> set[str]:
         """Render Claude SDK stream events to the unified console."""
         event_type = event.get("type", "")
+        streamed_block_types: set[str] = set()
+
+        if event_type == "content_block_start":
+            content_block = event.get("content_block", {})
+            block_type = content_block.get("type", "")
+            if block_type == "thinking":
+                thinking = content_block.get("thinking", "")
+                if thinking:
+                    agent_output.stream_thinking_text(thinking)
+                    streamed_block_types.add("thinking")
+            elif block_type == "redacted_thinking":
+                agent_output.stream_thinking_text("[redacted thinking]")
+                streamed_block_types.add("thinking")
+            elif block_type == "text":
+                text = content_block.get("text", "")
+                if text:
+                    agent_output.stream_assistant_text(text)
+                    streamed_block_types.add("text")
+            return streamed_block_types
 
         if event_type == "content_block_delta":
             delta = event.get("delta", {})
             delta_type = delta.get("type", "")
             if delta_type == "text_delta":
                 agent_output.stream_assistant_text(delta.get("text", ""))
-            return
+                streamed_block_types.add("text")
+            elif delta_type == "thinking_delta":
+                thinking = delta.get("thinking", "")
+                if thinking:
+                    agent_output.stream_thinking_text(thinking)
+                    streamed_block_types.add("thinking")
+            return streamed_block_types
 
         if event_type == "content_block_stop":
             agent_output.finish_stream()
-            return
+            return streamed_block_types
 
         if event_type == "message_delta":
             delta = event.get("delta", {})
             agent_output.render_stop_reason(delta.get("stop_reason", ""))
+        return streamed_block_types
 
     def _handle_assistant_message(
         self,
         message: AssistantMessage,
         tool_results: dict[str, str],
         max_tool_results: int,
+        streamed_block_types: set[str] | None = None,
     ) -> None:
         """Handle assistant message blocks without duplicating tool logs."""
         content = message.content
         if not isinstance(content, list):
             return
 
+        streamed_block_types = streamed_block_types or set()
         for block in content:
             block_type = getattr(block, 'type', None)
             if block_type == "tool_result":
                 tool_use_id = getattr(block, 'tool_use_id', '')
                 result_content = getattr(block, 'content', '')
                 self._remember_tool_result(tool_results, tool_use_id, result_content, max_tool_results)
+            elif block_type == "text":
+                text = getattr(block, 'text', '')
+                if text and "text" not in streamed_block_types:
+                    agent_output.stream_assistant_text(text)
             elif block_type == "thinking":
                 thinking = getattr(block, 'thinking', '')
-                if thinking:
+                if thinking and "thinking" not in streamed_block_types:
                     agent_output.stream_thinking_text(thinking)
 
     def _handle_user_message(
@@ -585,11 +617,17 @@ class AgentCore:
         await client.query(prompt, session_id=session_id)
 
         tool_results: dict[str, str] = {}
+        streamed_block_types: set[str] = set()
         async for follow_up_msg in client.receive_response():
             if isinstance(follow_up_msg, StreamEvent):
-                self._handle_stream_event(follow_up_msg.event)
+                streamed_block_types.update(self._handle_stream_event(follow_up_msg.event))
             elif isinstance(follow_up_msg, AssistantMessage):
-                self._handle_assistant_message(follow_up_msg, tool_results, 10)
+                self._handle_assistant_message(
+                    follow_up_msg,
+                    tool_results,
+                    10,
+                    streamed_block_types,
+                )
             elif isinstance(follow_up_msg, UserMessage):
                 self._handle_user_message(follow_up_msg, tool_results, 10)
             elif isinstance(follow_up_msg, ResultMessage):
@@ -1185,15 +1223,21 @@ class AgentCore:
         try:
             async with ClaudeSDKClient(options=options) as client:
                 await client.query(user_prompt)
+                streamed_block_types: set[str] = set()
 
                 async for message in client.receive_response():
                     # 处理流事件 - 实时显示 AI 思考过程和工具调用
                     if isinstance(message, StreamEvent):
-                        self._handle_stream_event(message.event)
+                        streamed_block_types.update(self._handle_stream_event(message.event))
 
                     # 处理 AssistantMessage - 完整消息
                     elif isinstance(message, AssistantMessage):
-                        self._handle_assistant_message(message, tool_results, MAX_TOOL_RESULTS)
+                        self._handle_assistant_message(
+                            message,
+                            tool_results,
+                            MAX_TOOL_RESULTS,
+                            streamed_block_types,
+                        )
 
                     # 处理 UserMessage - 工具结果（来自工具执行）
                     elif isinstance(message, UserMessage):

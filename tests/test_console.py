@@ -802,6 +802,17 @@ class TestAgentConsoleRenderer:
         assert "Notification" in result
         assert "Resource usage high" in result
 
+    def test_stream_thinking_text_is_visible(self, renderer_with_console):
+        """Thinking output should be explicitly labeled and readable."""
+        output, renderer = renderer_with_console
+
+        renderer.stream_thinking_text("Analyzing the task before picking a tool.")
+        renderer.finish_stream()
+
+        result = output.getvalue()
+        assert "Thinking:" in result
+        assert "Analyzing the task" in result
+
 
 class TestConsoleModuleLevel:
     """Test module-level console instance."""

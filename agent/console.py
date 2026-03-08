@@ -77,8 +77,8 @@ class AgentConsoleRenderer:
         self.stream_text(text, label="Agent", style="bold cyan")
 
     def stream_thinking_text(self, text: str) -> None:
-        preview = self._truncate_text(text, max_chars=220, max_lines=3)
-        self.stream_text(preview, label="Thinking", style="dim italic")
+        preview = self._truncate_text(text, max_chars=400, max_lines=6)
+        self.stream_text(preview, label="Thinking", style="bold yellow")
 
     def render_tool_call(
         self,
