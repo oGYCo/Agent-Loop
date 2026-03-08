@@ -17,6 +17,7 @@ if TYPE_CHECKING:
     from .slack_notifier import SlackNotifier
 
 from .metrics import get_metrics_collector
+from .model_provider import ModelProviderManager, create_provider_manager
 
 from claude_agent_sdk import (
     query,
@@ -291,6 +292,9 @@ class AgentCore:
         self.prompt_manager = PromptManager()
         self.config = self.state_manager.load_config()
         self.project_root = project_root or str(Path(__file__).parent.parent)
+
+        # Initialize model provider manager
+        self.provider_manager = create_provider_manager(self.config)
 
         # 缓存 CLAUDE.md 内容
         self._claude_md_cache: str | None = None
@@ -940,12 +944,9 @@ class AgentCore:
         system_prompt = self.get_system_prompt()
         user_prompt = self.get_task_prompt(task)
 
-        # 配置选项 - 模型从配置文件读取
-        model = self.config.get("model", "MiniMax-M2.5-highspeed")
-
-        # 获取环境变量
-        api_key = os.environ.get("ANTHROPIC_AUTH_TOKEN", "")
-        base_url = os.environ.get("ANTHROPIC_BASE_URL", "https://api.minimaxi.com/anthropic")
+        # 使用模型提供者系统获取配置
+        model = self.provider_manager.get_model()
+        provider_env = self.provider_manager.get_sdk_env_vars()
 
         # 从配置文件加载工具列表和 MCP 服务器（而非硬编码）
         default_tools = [
@@ -960,11 +961,8 @@ class AgentCore:
         options = ClaudeAgentOptions(
             model=model,
             system_prompt=system_prompt,
-            # 通过 env 传递 API 配置
-            env={
-                "ANTHROPIC_AUTH_TOKEN": api_key,
-                "ANTHROPIC_BASE_URL": base_url,
-            },
+            # 通过 env 传递 API 配置 (from provider manager)
+            env=provider_env,
             # 工具列表从配置加载
             allowed_tools=allowed_tools,
             # 启用完整流式输出

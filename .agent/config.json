@@ -2,6 +2,15 @@
   "project_name": "Agent-Loop",
   "project_type": "python",
   "model": "MiniMax-M2.5-highspeed",
+  "active_provider": "default",
+  "providers": {
+    "default": {
+      "provider": "minimax",
+      "model": "MiniMax-M2.5-highspeed",
+      "api_key_env": "ANTHROPIC_AUTH_TOKEN",
+      "base_url_env": "ANTHROPIC_BASE_URL"
+    }
+  },
   "session_type": "coder",
   "test_command": "pytest tests/ -v",
   "test_pattern": "test_*.py",

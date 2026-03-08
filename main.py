@@ -98,6 +98,15 @@ def init_project(args: argparse.Namespace) -> None:
             "test_pattern": "test_*.py",
             "max_errors_before_intervention": 3,
             "context_window_limit": 100000,
+            "active_provider": "default",
+            "providers": {
+                "default": {
+                    "provider": "minimax",
+                    "model": "MiniMax-M2.5-highspeed",
+                    "api_key_env": "ANTHROPIC_AUTH_TOKEN",
+                    "base_url_env": "ANTHROPIC_BASE_URL"
+                }
+            },
             "context_files": ["CLAUDE.md", "README.md"],
             "verify_command": "uv run pytest tests/ -x -q",
             "allowed_tools": [
