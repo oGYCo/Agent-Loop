@@ -4,6 +4,7 @@ import pytest
 import json
 import tempfile
 from pathlib import Path
+from datetime import datetime, timedelta
 import sys
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -197,3 +198,459 @@ class TestSessionManager:
 
         session_manager = SessionManager(sm)
         assert session_manager.context_limit == 50000
+
+
+class TestSessionTagging:
+    """Test cases for session tagging features"""
+
+    @pytest.fixture
+    def temp_agent_dir(self):
+        """Create a temporary directory for testing"""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            yield tmpdir
+
+    @pytest.fixture
+    def state_manager(self, temp_agent_dir):
+        """Create StateManager with temporary directory"""
+        return StateManager(agent_dir=temp_agent_dir)
+
+    @pytest.fixture
+    def session_manager(self, state_manager):
+        """Create SessionManager with test state manager"""
+        return SessionManager(state_manager)
+
+    def test_add_session_tag(self, session_manager, state_manager):
+        """Test adding a tag to a session"""
+        state_manager.add_session({"id": "session-001", "status": "completed"})
+
+        success = session_manager.add_session_tag("session-001", "bugfix")
+        assert success is True
+
+        # Verify tag was added
+        session = session_manager.get_session_summary("session-001")
+        assert "bugfix" in session.get("tags", [])
+
+    def test_add_session_tag_not_found(self, session_manager):
+        """Test adding a tag to a non-existent session"""
+        success = session_manager.add_session_tag("non-existent", "bugfix")
+        assert success is False
+
+    def test_remove_session_tag(self, session_manager, state_manager):
+        """Test removing a tag from a session"""
+        state_manager.add_session({
+            "id": "session-001",
+            "status": "completed",
+            "tags": ["bugfix", "urgent"]
+        })
+
+        success = session_manager.remove_session_tag("session-001", "bugfix")
+        assert success is True
+
+        # Verify tag was removed
+        session = session_manager.get_session_summary("session-001")
+        assert "bugfix" not in session.get("tags", [])
+        assert "urgent" in session.get("tags", [])
+
+    def test_get_sessions_by_tag(self, session_manager, state_manager):
+        """Test getting sessions by tag"""
+        state_manager.add_session({
+            "id": "session-001",
+            "status": "completed",
+            "tags": ["bugfix"]
+        })
+        state_manager.add_session({
+            "id": "session-002",
+            "status": "completed",
+            "tags": ["feature"]
+        })
+        state_manager.add_session({
+            "id": "session-003",
+            "status": "completed",
+            "tags": ["bugfix", "urgent"]
+        })
+
+        sessions = session_manager.get_sessions_by_tag("bugfix")
+        assert len(sessions) == 2
+        ids = [s["id"] for s in sessions]
+        assert "session-001" in ids
+        assert "session-003" in ids
+
+    def test_get_all_tags(self, session_manager, state_manager):
+        """Test getting all tags with counts"""
+        state_manager.add_session({
+            "id": "session-001",
+            "status": "completed",
+            "tags": ["bugfix", "urgent"]
+        })
+        state_manager.add_session({
+            "id": "session-002",
+            "status": "completed",
+            "tags": ["feature", "bugfix"]
+        })
+        state_manager.add_session({
+            "id": "session-003",
+            "status": "completed",
+            "tags": []
+        })
+
+        tags = session_manager.get_all_tags()
+        assert tags.get("bugfix", 0) == 2
+        assert tags.get("urgent", 0) == 1
+        assert tags.get("feature", 0) == 1
+
+
+class TestSessionArchiving:
+    """Test cases for session archiving features"""
+
+    @pytest.fixture
+    def temp_agent_dir(self):
+        """Create a temporary directory for testing"""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            yield tmpdir
+
+    @pytest.fixture
+    def state_manager(self, temp_agent_dir):
+        """Create StateManager with temporary directory"""
+        return StateManager(agent_dir=temp_agent_dir)
+
+    @pytest.fixture
+    def session_manager(self, state_manager):
+        """Create SessionManager with test state manager"""
+        return SessionManager(state_manager)
+
+    def test_archive_old_sessions_by_age(self, session_manager, state_manager):
+        """Test archiving sessions older than threshold"""
+        # Create old session (35 days ago)
+        old_date = (datetime.now() - timedelta(days=35)).isoformat()
+        state_manager.add_session({
+            "id": "old-session",
+            "status": "completed",
+            "created_at": old_date
+        })
+
+        # Create recent session
+        state_manager.add_session({
+            "id": "recent-session",
+            "status": "completed",
+            "created_at": datetime.now().isoformat()
+        })
+
+        # Archive old sessions
+        archived = session_manager.archive_old_sessions()
+        assert archived == 1
+
+        # Verify old session was archived
+        remaining = session_manager.get_session_stats()
+        assert remaining["total_sessions"] == 1
+
+    def test_archive_old_sessions_by_count(self, session_manager, state_manager):
+        """Test archiving sessions when count exceeds limit"""
+        # Override max sessions setting
+        session_manager.max_sessions_before_archive = 3
+
+        # Add more sessions than limit
+        for i in range(5):
+            state_manager.add_session({
+                "id": f"session-{i:03d}",
+                "status": "completed",
+                "created_at": datetime.now().isoformat()
+            })
+
+        # Archive
+        archived = session_manager.archive_old_sessions()
+        assert archived == 2  # 5 - 3 = 2 should be archived
+
+        # Verify
+        remaining = session_manager.get_session_stats()
+        assert remaining["total_sessions"] == 3
+
+    def test_get_archived_sessions(self, session_manager, state_manager, temp_agent_dir):
+        """Test retrieving archived sessions"""
+        # First archive a session
+        old_date = (datetime.now() - timedelta(days=35)).isoformat()
+        state_manager.add_session({
+            "id": "old-session",
+            "status": "completed",
+            "created_at": old_date
+        })
+        session_manager.archive_old_sessions()
+
+        # Get archived sessions
+        archived = session_manager.get_archived_sessions()
+        assert len(archived) >= 1
+
+    def test_archive_dir_creation(self, session_manager, temp_agent_dir):
+        """Test archive directory is created"""
+        session_manager._ensure_archive_dir()
+        assert session_manager.archive_dir.exists()
+        assert session_manager.archive_dir.is_dir()
+
+
+class TestSmartCompression:
+    """Test cases for smart context compression"""
+
+    @pytest.fixture
+    def temp_agent_dir(self):
+        """Create a temporary directory for testing"""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            yield tmpdir
+
+    @pytest.fixture
+    def state_manager(self, temp_agent_dir):
+        """Create StateManager with temporary directory"""
+        return StateManager(agent_dir=temp_agent_dir)
+
+    @pytest.fixture
+    def session_manager(self, state_manager):
+        """Create SessionManager with test state manager"""
+        return SessionManager(state_manager)
+
+    def test_is_important_message_error(self, session_manager):
+        """Test detecting error messages as important"""
+        msg = {"role": "assistant", "content": "Error: Something went wrong"}
+        assert session_manager._is_important_message(msg) is True
+
+    def test_is_important_message_code(self, session_manager):
+        """Test detecting code content as important"""
+        msg = {"role": "assistant", "content": "```python\ndef hello():\n    pass\n```"}
+        assert session_manager._is_important_message(msg) is True
+
+    def test_is_important_message_decision(self, session_manager):
+        """Test detecting decisions as important"""
+        msg = {"role": "assistant", "content": "We decided to use the new API"}
+        assert session_manager._is_important_message(msg) is True
+
+    def test_is_important_message_routine(self, session_manager):
+        """Test routine messages are not marked important"""
+        msg = {"role": "user", "content": "Hello, how are you?"}
+        assert session_manager._is_important_message(msg) is False
+
+    def test_compress_preserves_important_messages(self, session_manager):
+        """Test compression preserves important content"""
+        messages = [
+            {"role": "user", "content": f"Message {i}"}
+            for i in range(15)
+        ]
+        # Add an important message
+        messages[5] = {"role": "assistant", "content": "Error: Failed to process"}
+
+        result = session_manager.summarize_old_messages(messages, keep_recent=5)
+
+        # Should have summary + important + recent
+        assert len(result) < len(messages)
+        # Check that important message is preserved
+        content = " ".join(str(m) for m in result)
+        assert "Error" in content
+
+
+class TestIncrementalTokenCounting:
+    """Test cases for incremental token counting"""
+
+    @pytest.fixture
+    def temp_agent_dir(self):
+        """Create a temporary directory for testing"""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            yield tmpdir
+
+    @pytest.fixture
+    def state_manager(self, temp_agent_dir):
+        """Create StateManager with temporary directory"""
+        return StateManager(agent_dir=temp_agent_dir)
+
+    @pytest.fixture
+    def session_manager(self, state_manager):
+        """Create SessionManager with test state manager"""
+        return SessionManager(state_manager)
+
+    def test_incremental_token_counting(self, session_manager):
+        """Test incremental token counting"""
+        messages = [
+            {"role": "user", "content": "Hello"},
+            {"role": "assistant", "content": "Hi!"}
+        ]
+
+        # First call - full count
+        is_over, count1 = session_manager.check_context_usage(messages)
+        assert count1 > 0
+
+        # Add a message and call again - should be incremental
+        messages.append({"role": "user", "content": "How are you?"})
+        is_over, count2 = session_manager.check_context_usage(messages)
+        assert count2 > count1
+
+    def test_force_recalculate(self, session_manager):
+        """Test force recalculate option"""
+        messages = [
+            {"role": "user", "content": "Hello"},
+        ]
+
+        # First call
+        _, count1 = session_manager.check_context_usage(messages)
+
+        # Force recalculate
+        _, count2 = session_manager.check_context_usage(messages, force_recalculate=True)
+        assert count1 == count2
+
+
+class TestSessionStats:
+    """Test cases for session statistics"""
+
+    @pytest.fixture
+    def temp_agent_dir(self):
+        """Create a temporary directory for testing"""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            yield tmpdir
+
+    @pytest.fixture
+    def state_manager(self, temp_agent_dir):
+        """Create StateManager with temporary directory"""
+        return StateManager(agent_dir=temp_agent_dir)
+
+    @pytest.fixture
+    def session_manager(self, state_manager):
+        """Create SessionManager with test state manager"""
+        return SessionManager(state_manager)
+
+    def test_get_detailed_stats_empty(self, session_manager):
+        """Test detailed stats with no sessions"""
+        stats = session_manager.get_detailed_stats()
+        assert stats["summary"]["total_sessions"] == 0
+        assert "duration" in stats
+        assert "errors" in stats
+
+    def test_get_detailed_stats_with_sessions(self, session_manager, state_manager):
+        """Test detailed stats with sessions"""
+        # Add completed sessions with durations
+        now = datetime.now()
+        state_manager.add_session({
+            "id": "session-001",
+            "status": "completed",
+            "created_at": now.isoformat(),
+            "start_time": (now - timedelta(hours=1)).isoformat(),
+            "end_time": now.isoformat(),
+            "last_error": "timeout error"
+        })
+        state_manager.add_session({
+            "id": "session-002",
+            "status": "failed",
+            "created_at": now.isoformat(),
+            "last_error": "connection failed"
+        })
+        state_manager.add_session({
+            "id": "session-003",
+            "status": "in_progress",
+            "created_at": now.isoformat()
+        })
+
+        stats = session_manager.get_detailed_stats()
+        assert stats["summary"]["total_sessions"] == 3
+        assert stats["summary"]["completed_sessions"] == 1
+        assert stats["summary"]["failed_sessions"] == 1
+        assert stats["summary"]["in_progress_sessions"] == 1
+
+        # Check error types
+        assert "timeout" in stats["errors"]
+        assert "connection" in stats["errors"]
+
+
+class TestBackwardCompatibility:
+    """Test cases for backward compatibility"""
+
+    @pytest.fixture
+    def temp_agent_dir(self):
+        """Create a temporary directory for testing"""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            yield tmpdir
+
+    @pytest.fixture
+    def state_manager(self, temp_agent_dir):
+        """Create StateManager with temporary directory"""
+        return StateManager(agent_dir=temp_agent_dir)
+
+    @pytest.fixture
+    def session_manager(self, state_manager):
+        """Create SessionManager with test state manager"""
+        return SessionManager(state_manager)
+
+    def test_migrate_session_format(self, session_manager):
+        """Test migration of old session format"""
+        old_session = {
+            "id": "old-session",
+            "status": "completed",
+            # Missing: tags, created_at
+        }
+
+        migrated = session_manager.migrate_session_format(old_session)
+
+        assert "tags" in migrated
+        assert migrated["tags"] == []
+        assert "created_at" in migrated
+        assert "status" in migrated
+
+    def test_load_and_migrate_history(self, session_manager, state_manager):
+        """Test loading and migrating old history"""
+        # Add old format sessions
+        state_manager.add_session({
+            "id": "session-001",
+            "status": "completed"
+            # No tags, created_at
+        })
+
+        # Load and migrate
+        history = session_manager.load_and_migrate_history()
+
+        # Should have migrated data
+        assert len(history["sessions"]) == 1
+        assert "tags" in history["sessions"][0]
+
+
+class TestEnhancedSessionResume:
+    """Test cases for enhanced session resume"""
+
+    @pytest.fixture
+    def temp_agent_dir(self):
+        """Create a temporary directory for testing"""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            yield tmpdir
+
+    @pytest.fixture
+    def state_manager(self, temp_agent_dir):
+        """Create StateManager with temporary directory"""
+        return StateManager(agent_dir=temp_agent_dir)
+
+    @pytest.fixture
+    def session_manager(self, state_manager):
+        """Create SessionManager with test state manager"""
+        return SessionManager(state_manager)
+
+    def test_get_session_for_resume(self, session_manager, state_manager):
+        """Test getting enhanced session data for resume"""
+        # Add session
+        state_manager.add_session({
+            "id": "session-001",
+            "status": "in_progress",
+            "created_at": datetime.now().isoformat()
+        })
+
+        # Update state with additional info
+        state_manager.update_state({
+            "error_count": 3,
+            "current_task": {"id": "task-001", "name": "Test task"},
+            "last_error": "timeout"
+        })
+
+        # Create checkpoint
+        session_manager.create_checkpoint("session-001", {"progress": 50})
+
+        # Get session for resume
+        resume_data = session_manager.get_session_for_resume("session-001")
+
+        assert resume_data is not None
+        assert resume_data.get("error_count") == 3
+        assert resume_data.get("current_task") == {"id": "task-001", "name": "Test task"}
+        assert resume_data.get("checkpoint_data", {}).get("progress") == 50
+
+    def test_get_session_for_resume_not_found(self, session_manager):
+        """Test getting resume data for non-existent session"""
+        result = session_manager.get_session_for_resume("non-existent")
+        assert result is None

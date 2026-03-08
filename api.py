@@ -757,6 +757,16 @@ class PaginatedSessionResponse(BaseModel):
     total_pages: int
 
 
+class SessionStatsResponse(BaseModel):
+    """Session statistics response"""
+    summary: Dict[str, Any]
+    duration: Dict[str, Any]
+    errors: Dict[str, int]
+    tags: Dict[str, int]
+    trends: Dict[str, List[Dict[str, Any]]]
+    archive_info: Dict[str, Any]
+
+
 class TaskDeleteResponse(BaseModel):
     """Task deletion response"""
     success: bool
@@ -1564,6 +1574,148 @@ def get_sessions(
         raise handle_agent_error(e)
     except Exception as e:
         logger.error(f"Error getting sessions: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/sessions/stats", response_model=SessionStatsResponse)
+@app.get("/api/v1/sessions/stats", response_model=SessionStatsResponse, tags=["Sessions"])
+@limiter.limit("60/minute")
+def get_session_stats(
+    request: Request,
+    detailed: bool = Query(False, description="Get detailed statistics"),
+    api_key: str = Depends(get_api_key)
+) -> SessionStatsResponse:
+    """Get session statistics.
+
+    - **detailed**: If true, returns comprehensive statistics including trends, errors, and tags
+    """
+    try:
+        state_manager = StateManager()
+        session_manager = SessionManager(state_manager)
+
+        # Archive old sessions before getting stats
+        session_manager.archive_old_sessions()
+
+        if detailed:
+            stats = session_manager.get_detailed_stats()
+        else:
+            stats = session_manager.get_session_stats()
+
+        return SessionStatsResponse(
+            summary=stats.get("summary", {}),
+            duration=stats.get("duration", {}),
+            errors=stats.get("errors", {}),
+            tags=stats.get("tags", {}),
+            trends=stats.get("trends", {}),
+            archive_info=stats.get("archive_info", {}),
+        )
+    except AgentLoopError as e:
+        logger.error(f"Agent error getting session stats: {e}")
+        raise handle_agent_error(e)
+    except Exception as e:
+        logger.error(f"Error getting session stats: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/sessions/{session_id}/tags/{tag}", tags=["Sessions"])
+@app.post("/api/v1/sessions/{session_id}/tags/{tag}", tags=["Sessions"])
+@limiter.limit("60/minute")
+def add_session_tag(
+    request: Request,
+    session_id: str,
+    tag: str,
+    api_key: str = Depends(get_api_key)
+) -> Dict[str, Any]:
+    """Add a tag to a session.
+
+    - **session_id**: Session ID
+    - **tag**: Tag to add
+    """
+    try:
+        state_manager = StateManager()
+        session_manager = SessionManager(state_manager)
+
+        success = session_manager.add_session_tag(session_id, tag)
+
+        if success:
+            return {"success": True, "message": f"Tag '{tag}' added to session {session_id}"}
+        else:
+            raise HTTPException(status_code=404, detail=f"Session {session_id} not found")
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error adding session tag: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.delete("/sessions/{session_id}/tags/{tag}", tags=["Sessions"])
+@app.delete("/api/v1/sessions/{session_id}/tags/{tag}", tags=["Sessions"])
+@limiter.limit("60/minute")
+def remove_session_tag(
+    request: Request,
+    session_id: str,
+    tag: str,
+    api_key: str = Depends(get_api_key)
+) -> Dict[str, Any]:
+    """Remove a tag from a session.
+
+    - **session_id**: Session ID
+    - **tag**: Tag to remove
+    """
+    try:
+        state_manager = StateManager()
+        session_manager = SessionManager(state_manager)
+
+        success = session_manager.remove_session_tag(session_id, tag)
+
+        if success:
+            return {"success": True, "message": f"Tag '{tag}' removed from session {session_id}"}
+        else:
+            raise HTTPException(status_code=404, detail=f"Session {session_id} not found")
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error removing session tag: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/sessions/tags", response_model=Dict[str, int])
+@app.get("/api/v1/sessions/tags", response_model=Dict[str, int], tags=["Sessions"])
+@limiter.limit("60/minute")
+def get_all_tags(
+    request: Request,
+    api_key: str = Depends(get_api_key)
+) -> Dict[str, int]:
+    """Get all session tags and their usage counts."""
+    try:
+        state_manager = StateManager()
+        session_manager = SessionManager(state_manager)
+
+        return session_manager.get_all_tags()
+    except Exception as e:
+        logger.error(f"Error getting tags: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/sessions/by-tag/{tag}", response_model=List[Dict[str, Any]])
+@app.get("/api/v1/sessions/by-tag/{tag}", response_model=List[Dict[str, Any]], tags=["Sessions"])
+@limiter.limit("60/minute")
+def get_sessions_by_tag(
+    request: Request,
+    tag: str,
+    api_key: str = Depends(get_api_key)
+) -> List[Dict[str, Any]]:
+    """Get all sessions with a specific tag.
+
+    - **tag**: Tag to filter by
+    """
+    try:
+        state_manager = StateManager()
+        session_manager = SessionManager(state_manager)
+
+        return session_manager.get_sessions_by_tag(tag)
+    except Exception as e:
+        logger.error(f"Error getting sessions by tag: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
