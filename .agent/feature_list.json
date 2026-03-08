@@ -388,14 +388,14 @@
       "name": "添加更多集成测试",
       "description": "添加端到端集成测试：1) 测试Agent完整执行流程 2) 测试状态管理器的持久化 3) 测试Git集成。确保各模块协同工作正常。",
       "priority": 8,
-      "status": "pending",
-      "passes": false,
+      "status": "completed",
+      "passes": true,
       "context_files": [
         "agent/agent_core.py",
         "agent/state_manager.py",
         "tests/test_agent_core.py"
       ],
-      "verify_command": "pytest tests/test_agent_core.py -v",
+      "verify_command": "pytest tests/test_integration.py -v",
       "created_at": "2026-03-08",
       "updated_at": "2026-03-08"
     },
