@@ -4,6 +4,71 @@ Accumulated experience and lessons learned from task execution.
 
 ---
 
+## 2026-03-08 - Web Dashboard Comprehensive Upgrade (feature-041)
+
+**任务描述**: 将当前基础的单页面Dashboard升级为功能丰富、用户友好的管理界面，包括搜索过滤、分页、图表、会话历史、暗黑模式、键盘快捷键、导出功能、Toast通知、WebSocket重连优化、响应式布局、DOM性能优化。
+
+**Lessons Learned:**
+
+1. **Dashboard Architecture**:
+   - Single-page application with vanilla JavaScript (no framework)
+   - Uses CSS variables for theming (dark/light mode)
+   - Chart.js CDN for performance monitoring charts
+
+2. **Search and Filtering**:
+   - Real-time search with debouncing via input event
+   - Filters by name, description, ID, status, and priority ranges
+   - Combined filtering (search + status + priority)
+
+3. **Pagination**:
+   - Server-side pagination via /tasks API (page, per_page params)
+   - Client-side pagination display with 10/20/50 per page options
+
+4. **Performance Monitoring Charts**:
+   - Task completion rate trend (line chart)
+   - Average task duration (bar chart)
+   - Error rate (line chart)
+   - Provider response time (line chart)
+
+5. **Session History Browser**:
+   - Sessions page with list of historical sessions
+   - Modal for session details with logs and summary
+
+6. **Theme Toggle**:
+   - CSS custom properties for all colors
+   - localStorage persistence for user preference
+
+7. **Keyboard Shortcuts**:
+   - `/` - Focus search input, `j/k` - Navigate, `Enter` - Open, `Esc` - Close
+
+8. **Export Functionality**:
+   - JSON export with full task data
+   - CSV export with headers and proper escaping
+
+9. **Toast Notifications**:
+   - Custom toast container in top-right
+   - Types: success, error, warning, info
+   - Auto-dismiss after 5 seconds
+
+10. **WebSocket Exponential Backoff**:
+    - Start with 1s delay, double each attempt (1->2->4->8->16->30s max)
+    - Shows countdown in UI before reconnect
+
+11. **Responsive Layout**:
+    - CSS Grid for main layout
+    - Mobile breakpoint at 768px
+    - Board view switches to list view on mobile
+
+12. **DOM Performance**:
+    - Incremental updates - compare and update only changed items
+
+**Technical Notes**:
+- API endpoints use redirect (301) from /tasks to /api/v1/tasks
+- fetch() follows redirects automatically in browsers
+- API key authentication is disabled by default (accepts any non-empty key)
+
+---
+
 ## 2026-03-08 - Configuration Management Refactoring (feature-040)
 
 **任务描述**: 重构配置管理系统，使用Pydantic BaseSettings替代手动JSON解析，实现环境变量覆盖、配置迁移、CLI命令、热重载验证、导出/导入等功能。
@@ -1599,6 +1664,8 @@ Accumulated experience and lessons learned from task execution.
 
 
 
+
+
 2026-03-08 - 持续改进计划 (feature-028)
 
 **任务描述**: 这是一个meta任务，用于持续改进系统。在完成每个主要功能后，系统应该：1) 自动审查和更新feature_list.json 2) 更新MEMORY.md记录经验 3) 审查和更新CLAUDE.md和README.md 4) 确保测试覆盖新功能。此任务确保系统能够持续自我优化和成长。
@@ -2032,7 +2099,10 @@ I have successfully implemented the model provider failover and load balancing f
 
 ---
 
-### 2026-03-08 - 会话管理系统增强 (feature-039)
+
+---
+
+2026-03-08 - 会话管理系统增强 (feature-039)
 
 **任务描述**: 增强session_manager.py的会话管理能力，解决当前会话归档、恢复和上下文压缩的不足。具体包括：
 
@@ -2052,8 +2122,37 @@ I have successfully implemented the model provider failover and load balancing f
 
 I've successfully enhanced the session management system in `session_manager.py` with the following features:
 
-### 1. Session Archiving Mechanism
+
+---
+
+1. Session Archiving Mechanism
 - Sessions older than 30 days (configurable) are automatically archived
 - When exceeding 100 sessions (configurable), oldest sessions are archived
 - Archived to `.agent/archive/` directory in monthly files (e.g., `archive_2026-03.json`)
 - Archive retrieval API: `get_archived_s
+
+---
+
+### 2026-03-08 - 配置管理系统重构 (feature-040)
+
+**任务描述**: 重构配置管理系统，解决当前配置分散、缺乏校验、无迁移路径的问题。具体包括：
+
+1) **Pydantic配置模型**：使用Pydantic BaseSettings替代手动JSON解析，创建agent/config_model.py定义完整的配置数据模型（ProjectConfig、ProviderConfig、NotificationConfig、APIConfig等），自带类型检查和默认值。参考Pydantic Settings文档：https://docs.pydantic.dev/latest/concepts/pydantic_settings/
+2) **环境变量覆盖**：所有配置项支持通过环境变量覆盖（如AGENT_LOOP_PROJECT_NAME覆盖config.json中的project_name），便于容器化部署。
+3) **配置迁移引擎**：实现config migration机制——config.json中添加schema_version字段（初始值"1.0"），当检测到旧版本时自动执行迁移函数链（v1.0→v1.1→v1.2...），输出迁移日志。
+4) **CLI config命令**：添加`config get <key>`、`config set <key> <value>`、`config validate`子命令，允许通过CLI直接查看和修改配置而不手动编辑JSON。
+5) **配置热重载增强**：config_reloader.py当前不验证重载后的配置有效性，添加验证步骤——如果新配置无效则保持旧配置并发出warning。
+6) **配置导出/导入**：`config export`导出当前配置（脱敏版，隐藏API Key），`config import <file>`导入配置文件。
+7) **默认配置优化**：审查所有默认值是否合理，context_window_limit根据选择的model自动调整（GPT-4: 128K, Claude: 200K）。
+
+**关键指令**：确保向后兼容——新系统必须能读取没有schema_version的旧config.json。所有配置变更通过audit log记录。
+
+**执行结果**: completed
+**执行消息**: ## Summary
+
+I have successfully completed the configuration management system refactoring (feature-040). Here's what was implemented:
+
+### 1. **Pydantic Configuration Model** (`agent/config_model.py`)
+- Created comprehensive Pydantic models: `ProjectConfig`, `ProviderConfig`, `RateLimitConfig`, `CORSConfig`, `RetryConfig`, `WebhookConfig`, `EmailConfig`, `SlackConfig`, etc.
+- Uses `pydantic-settings` for environment variable support
+- Auto-adjusts `context_window_limit` based on model (GPT-4: 12
