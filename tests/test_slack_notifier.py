@@ -746,3 +746,215 @@ class TestSlackRetryMechanism:
 
         # With exponential backoff: 0.1 + 0.2 + 0.4 = 0.7s (approximately)
         assert elapsed >= 0.6  # Allow some margin
+
+
+class TestSlackEdgeCases:
+    """Test cases for Slack edge cases"""
+
+    @pytest.fixture
+    def temp_agent_dir(self):
+        """Create a temporary directory for testing"""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            yield tmpdir
+
+    def test_default_config_values(self, temp_agent_dir):
+        """Test Slack has correct default config values"""
+        reset_slack_notifier()
+        sm = StateManager(agent_dir=temp_agent_dir)
+        sm.save_config({})  # Empty config
+
+        notifier = SlackNotifier(sm)
+
+        assert notifier.enabled is False
+        assert notifier.webhook_url == ""
+        assert notifier.channel == ""
+        assert notifier.username == "Agent-Loop"
+        assert notifier.icon_emoji == ":robot_face:"
+        assert notifier.timeout == 10
+        assert notifier.retry_count == 3
+        assert notifier.retry_interval == 2
+
+    def test_config_with_custom_values(self, temp_agent_dir):
+        """Test Slack loads custom config values"""
+        reset_slack_notifier()
+        sm = StateManager(agent_dir=temp_agent_dir)
+        sm.save_config({
+            "slack": {
+                "enabled": True,
+                "webhook_url": "https://custom.hooks.slack.com/test",
+                "channel": "#custom",
+                "username": "CustomBot",
+                "icon_emoji": ":star:",
+                "events": ["custom_event"],
+                "timeout": 30,
+                "retry_count": 5,
+                "retry_interval": 10
+            }
+        })
+
+        notifier = SlackNotifier(sm)
+
+        assert notifier.enabled is True
+        assert notifier.webhook_url == "https://custom.hooks.slack.com/test"
+        assert notifier.channel == "#custom"
+        assert notifier.username == "CustomBot"
+        assert notifier.icon_emoji == ":star:"
+        assert notifier.timeout == 30
+        assert notifier.retry_count == 5
+        assert notifier.retry_interval == 10
+
+    @pytest.mark.asyncio
+    async def test_test_slack_disabled(self, temp_agent_dir):
+        """Test test_slack when Slack is disabled"""
+        reset_slack_notifier()
+        sm = StateManager(agent_dir=temp_agent_dir)
+        sm.save_config({
+            "slack": {
+                "enabled": False,
+                "webhook_url": "https://hooks.slack.com/test"
+            }
+        })
+
+        notifier = SlackNotifier(sm)
+        result = await notifier.test_slack()
+
+        assert result["success"] is False
+        assert "not enabled" in result["message"]
+
+    @pytest.mark.asyncio
+    async def test_test_slack_success(self, temp_agent_dir):
+        """Test test_slack when successful"""
+        reset_slack_notifier()
+        sm = StateManager(agent_dir=temp_agent_dir)
+        sm.save_config({
+            "slack": {
+                "enabled": True,
+                "webhook_url": "https://hooks.slack.com/test"
+            }
+        })
+
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.text = "ok"
+
+        mock_client = AsyncMock()
+        mock_client.post = AsyncMock(return_value=mock_response)
+        mock_client.aclose = AsyncMock()
+
+        notifier = SlackNotifier(sm)
+        notifier._client = mock_client
+
+        result = await notifier.test_slack()
+
+        assert result["success"] is True
+
+    @pytest.mark.asyncio
+    async def test_test_slack_failure(self, temp_agent_dir):
+        """Test test_slack when it fails"""
+        reset_slack_notifier()
+        sm = StateManager(agent_dir=temp_agent_dir)
+        sm.save_config({
+            "slack": {
+                "enabled": True,
+                "webhook_url": "https://hooks.slack.com/test"
+            }
+        })
+
+        mock_response = MagicMock()
+        mock_response.status_code = 500
+        mock_response.text = "Internal Server Error"
+
+        mock_client = AsyncMock()
+        mock_client.post = AsyncMock(return_value=mock_response)
+        mock_client.aclose = AsyncMock()
+
+        notifier = SlackNotifier(sm)
+        notifier._client = mock_client
+
+        result = await notifier.test_slack()
+
+        assert result["success"] is False
+
+    @pytest.mark.asyncio
+    async def test_slack_with_extra_data(self, temp_agent_dir):
+        """Test Slack sends extra data in payload"""
+        reset_slack_notifier()
+        sm = StateManager(agent_dir=temp_agent_dir)
+        sm.save_config({
+            "slack": {
+                "enabled": True,
+                "webhook_url": "https://hooks.slack.com/test"
+            }
+        })
+
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.text = "ok"
+
+        mock_client = AsyncMock()
+        mock_client.post = AsyncMock(return_value=mock_response)
+        mock_client.aclose = AsyncMock()
+
+        notifier = SlackNotifier(sm)
+        notifier._client = mock_client
+
+        extra_data = {"custom_field": "custom_value", "metrics": {"cpu": 50}}
+        await notifier.notify_task_completed(
+            task_id="test-001",
+            task_name="Test Task",
+            duration=10.5,
+            extra_data=extra_data
+        )
+
+        call_args = mock_client.post.call_args
+        payload = call_args.kwargs.get("json", {})
+
+        assert "attachments" in payload
+
+
+class TestSlackTemplateEdgeCases:
+    """Test cases for Slack template edge cases"""
+
+    @pytest.fixture
+    def temp_agent_dir(self):
+        """Create a temporary directory for testing"""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            yield tmpdir
+
+    def test_build_message_with_minimal_data(self, slack_notifier_enabled):
+        """Test building message with minimal data"""
+        data = {
+            "task_id": "test-001"
+        }
+        payload = slack_notifier_enabled._build_message_blocks("task_completed", data)
+
+        assert "attachments" in payload
+        assert len(payload["attachments"]) == 1
+        # Should still have header and section
+        assert len(payload["attachments"][0]["blocks"]) == 2
+
+    def test_build_message_with_all_optional_fields(self, slack_notifier_enabled):
+        """Test building message with all optional fields"""
+        data = {
+            "task_id": "test-001",
+            "task_name": "Complete Task",
+            "duration_seconds": 120.5,
+            "status": "completed",
+            "custom_field": "value"
+        }
+        payload = slack_notifier_enabled._build_message_blocks("task_completed", data)
+
+        assert "attachments" in payload
+        fields = payload["attachments"][0]["blocks"][1]["fields"]
+        # Should have multiple fields
+        assert len(fields) > 2
+
+    def test_unknown_event_type_uses_default_template(self, slack_notifier_enabled):
+        """Test unknown event type uses default template"""
+        data = {"task_id": "test-001"}
+        payload = slack_notifier_enabled._build_message_blocks("unknown_event", data)
+
+        # Should use default template (no specific emoji/color)
+        assert "attachments" in payload
+        # Default color should be #333333
+        assert payload["attachments"][0]["color"] == "#333333"
