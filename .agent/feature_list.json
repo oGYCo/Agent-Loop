@@ -373,8 +373,8 @@
       "name": "添加代码覆盖率报告",
       "description": "配置代码覆盖率报告：1) 在pyproject.toml中添加coverage配置 2) 确保测试覆盖关键模块 3) 设置覆盖率目标。运行coverage报告并分析结果。",
       "priority": 8,
-      "status": "pending",
-      "passes": false,
+      "status": "completed",
+      "passes": true,
       "context_files": [
         "pyproject.toml",
         "tests/"
