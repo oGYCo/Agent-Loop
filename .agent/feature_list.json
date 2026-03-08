@@ -916,8 +916,8 @@
     {
       "id": "feature-057",
       "name": "config_reloader测试覆盖率提升与稳健性增强",
-      "description": "当前config_reloader.py测试覆盖率仅72%，需要提升并修复已知的可靠性问题。具体包括：\n\n1) **测试覆盖提升**（目标90%+）：\n   - 测试ConfigWatcher的异步监控模式（start_async）\n   - 测试并发reload请求的处理（多线程同时调用reload）\n   - 测试文件修改检测（触发watchdog事件后callback被调用）\n   - 测试无效JSON文件的重载行为（期望保持旧配置、记录错误）\n   - 测试reload_callback链的执行顺序\n   - 测试force=True强制重载（忽略mtime检查）\n2) **竞态条件修复**：当文件正在被写入时触发重载可能读到不完整JSON：\n   - 增加写入完成检测（等待文件mtime稳定200ms后再读取）\n   - 使用重试机制处理JSON解析失败（最多重试3次，每次间隔100ms）\n3) **配置验证集成**：重载后自动调用config validation，无效配置不生效并记录警告。\n4) **回滚支持**：保存最后3个有效配置的副本，reload失败时自动回退到上一个有效版本。\n5) **事件通知**：重载成功/失败后通过WebSocket推送事件到Dashboard。\n\n**关键指令**：使用临时目录隔离测试。watcdog的测试需要等待文件系统事件（加适当的timeout）。",
-      "priority": 9,
+      "description": "当前config_reloader.py测试覆盖率仅72%，需要提升并修复已知的可靠性问题。具体包括：\n\n1) **测试覆盖提升**（目标90%+）：\n   - 测试ConfigWatcher的异步监控模式（start_async）\n   - 测试并发reload请求的处理（多线程同时调用reload）\n   - 测试文件修改检测（触发watchdog事件后callback被调用）\n   - 测试无效JSON文件的重载行为（期望保持旧配置、记录错误）\n   - 测试reload_callback链的执行顺序\n   - 测试force=True强制重载（忽略mtime检查）\n2) **竞态条件修复**：当文件正在被写入时触发重载可能读到不完整JSON：\n   - 增加写入完成检测（等待文件mtime稳定200ms后再读取）\n   - 使用重试机制处理JSON解析失败（最多重试3次，每次间隔100ms）\n3) **配置验证集成**：重载后自动调用config validation，无效配置不生效并记录警告。（✅ 已实现于feature-040）\n4) **回滚支持**：保存最后3个有效配置的副本，reload失败时自动回退到上一个有效版本。\n5) **事件通知**：重载成功/失败后通过WebSocket推送事件到Dashboard。\n\n**关键指令**：使用临时目录隔离测试。watcdog的测试需要等待文件系统事件（加适当的timeout）。注：配置验证集成已实现于feature-040。",
+      "priority": 7,
       "status": "pending",
       "passes": false,
       "context_files": [
