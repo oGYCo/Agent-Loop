@@ -221,23 +221,29 @@ class TestTasksEndpoint:
         response = client.get("/tasks")
         assert response.status_code == 200
         data = response.json()
-        assert len(data) == 2
+        # Now returns paginated response format
+        assert "items" in data
+        assert len(data["items"]) == 2
 
     def test_get_tasks_filter_by_status(self, client, mock_state_manager):
         """Test filtering tasks by status"""
         response = client.get("/tasks?status_filter=pending")
         assert response.status_code == 200
         data = response.json()
-        assert len(data) == 1
-        assert data[0]["status"] == "pending"
+        # Now returns paginated response format
+        assert "items" in data
+        assert len(data["items"]) == 1
+        assert data["items"][0]["status"] == "pending"
 
     def test_get_tasks_filter_completed(self, client, mock_state_manager):
         """Test filtering tasks by completed status"""
         response = client.get("/tasks?status_filter=completed")
         assert response.status_code == 200
         data = response.json()
-        assert len(data) == 1
-        assert data[0]["status"] == "completed"
+        # Now returns paginated response format
+        assert "items" in data
+        assert len(data["items"]) == 1
+        assert data["items"][0]["status"] == "completed"
 
     def test_get_tasks_sorted_by_priority(self, client, mock_state_manager):
         """Test that tasks are sorted by priority"""
@@ -245,7 +251,7 @@ class TestTasksEndpoint:
         assert response.status_code == 200
         data = response.json()
         # First task should have priority 1 (lowest number = highest priority)
-        assert data[0]["priority"] == 1
+        assert data["items"][0]["priority"] == 1
 
     def test_create_task(self, client, mock_state_manager):
         """Test creating a new task"""
@@ -335,9 +341,10 @@ class TestSessionsEndpoint:
         response = client.get("/sessions")
         assert response.status_code == 200
         data = response.json()
-        assert data["total_sessions"] == 1
-        assert data["completed_sessions"] == 1
-        assert len(data["sessions"]) == 1
+        # Now returns paginated response format
+        assert "items" in data
+        assert data["total"] == 1
+        assert len(data["items"]) == 1
 
     def test_get_sessions_error_handling(self, client, mock_state_manager):
         """Test sessions endpoint error handling"""

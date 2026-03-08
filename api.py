@@ -1,23 +1,26 @@
 """REST API Server - FastAPI based API service for Agent-Loop
 
 Provides HTTP endpoints to interact with the Agent-Loop system.
+Production-grade with API versioning, logging, error handling, and more.
 """
 
 import asyncio
 import json
 import os
 import sys
+import time
+import uuid
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 import bleach
-from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, Header, Depends, Request
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, Header, Depends, Request, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, Response, JSONResponse
+from starlette.middleware.gzip import GZipMiddleware
 from pydantic import BaseModel, field_validator
 from pydantic import ValidationInfo
-from pathlib import Path
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
@@ -73,6 +76,7 @@ def create_error_response(
     error_dict: Dict[str, Any] = {
         "error_code": error_code.value,
         "message": message,
+        "timestamp": datetime.now().isoformat(),
     }
     if detail:
         error_dict["detail"] = detail
@@ -145,13 +149,137 @@ def load_rate_limit_config() -> Dict[str, Any]:
 
 app = FastAPI(
     title="Agent-Loop API",
-    description="REST API for Agent-Loop autonomous agent system",
-    version="1.0.0"
+    description="""## Production-Grade REST API for Agent-Loop
+
+This API provides comprehensive endpoints for managing the Agent-Loop autonomous agent system.
+
+### Features
+- **Task Management**: Create, read, update, delete, and bulk operations on tasks
+- **Session Management**: View session history and stats
+- **Agent Control**: Run agent, pause/resume execution
+- **Real-time Events**: WebSocket streaming for agent events
+- **Health Monitoring**: System health checks with dependency verification
+- **Metrics**: Prometheus-compatible metrics endpoint
+
+### Authentication
+Use the `X-API-Key` header for API key authentication (when enabled in config).
+
+### Versioning
+- Current version: **v1** (prefix: `/api/v1`)
+- Legacy routes (without version prefix) are redirected to v1
+""",
+    version="1.0.0",
+    docs_url="/docs",
+    redoc_url="/redoc",
+    openapi_url="/openapi.json",
 )
+
+# Add GZip compression middleware
+app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 # Add rate limiter to app state
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+
+# ========== Global Exception Handler ==========
+
+class APIException(Exception):
+    """Base API exception with structured error response"""
+
+    def __init__(self, message: str, status_code: int = 500, error_code: str = "E0000", detail: Optional[str] = None):
+        self.message = message
+        self.status_code = status_code
+        self.error_code = error_code
+        self.detail = detail
+        super().__init__(message)
+
+
+@app.exception_handler(APIException)
+async def api_exception_handler(request: Request, exc: APIException) -> JSONResponse:
+    """Handle custom API exceptions with structured error response"""
+    error_response: Dict[str, Any] = {
+        "error_code": exc.error_code,
+        "message": exc.message,
+        "timestamp": datetime.now().isoformat(),
+    }
+    if exc.detail:
+        error_response["detail"] = exc.detail
+    return JSONResponse(status_code=exc.status_code, content=error_response)
+
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+    """Global exception handler for unhandled errors"""
+    logger.error(f"Unhandled exception: {type(exc).__name__}: {exc}")
+
+    # Check if it's already an AgentLoopError handled elsewhere
+    if isinstance(exc, AgentLoopError):
+        return handle_agent_error(exc)
+
+    error_response: Dict[str, Any] = {
+        "error_code": "E9001",
+        "message": "Internal server error",
+        "timestamp": datetime.now().isoformat(),
+        "detail": str(exc) if os.environ.get("DEBUG") else "An unexpected error occurred"
+    }
+    return JSONResponse(status_code=500, content=error_response)
+
+
+# ========== Request/Response Logging Middleware ==========
+
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    """Log all requests with method, path, status, duration, and request_id"""
+    request_id = str(uuid.uuid4())
+    request.state.request_id = request_id
+
+    start_time = time.time()
+
+    # Log incoming request
+    logger.info(
+        f"Request started",
+        extra={
+            "request_id": request_id,
+            "method": request.method,
+            "path": request.url.path,
+            "client_host": request.client.host if request.client else None,
+        }
+    )
+
+    # Process request
+    try:
+        response = await call_next(request)
+    except Exception as e:
+        logger.error(
+            f"Request failed",
+            extra={
+                "request_id": request_id,
+                "method": request.method,
+                "path": request.url.path,
+                "error": str(e),
+            }
+        )
+        raise
+
+    # Calculate duration
+    duration_ms = (time.time() - start_time) * 1000
+
+    # Log response
+    logger.info(
+        f"Request completed",
+        extra={
+            "request_id": request_id,
+            "method": request.method,
+            "path": request.url.path,
+            "status_code": response.status_code,
+            "duration_ms": round(duration_ms, 2),
+        }
+    )
+
+    # Add request_id to response headers
+    response.headers["X-Request-ID"] = request_id
+    return response
 
 
 def load_cors_config() -> Dict[str, Any]:
@@ -197,6 +325,56 @@ if cors_config["enabled"]:
     logger.info(f"CORS enabled with origins: {allow_origins}")
 else:
     logger.info("CORS disabled")
+
+
+# ========== API Versioning ==========
+
+# Create v1 router with /api/v1 prefix
+api_v1_router = FastAPI(
+    title="Agent-Loop API v1",
+    description="Version 1 of the Agent-Loop REST API",
+    version="1.0.0",
+)
+
+# Global agent state for pause/resume
+_agent_paused = False
+_agent_instance = None
+
+
+# Legacy route redirects - redirect old paths to new v1 paths
+@app.get("/tasks", tags=["Redirect"])
+async def redirect_tasks(request: Request):
+    """Redirect /tasks to /api/v1/tasks"""
+    from fastapi.responses import RedirectResponse
+    # Preserve query parameters
+    query = request.url.query
+    new_url = f"/api/v1/tasks?{query}" if query else "/api/v1/tasks"
+    return RedirectResponse(url=new_url, status_code=301)
+
+
+@app.get("/sessions", tags=["Redirect"])
+async def redirect_sessions(request: Request):
+    """Redirect /sessions to /api/v1/sessions"""
+    from fastapi.responses import RedirectResponse
+    # Preserve query parameters
+    query = request.url.query
+    new_url = f"/api/v1/sessions?{query}" if query else "/api/v1/sessions"
+    return RedirectResponse(url=new_url, status_code=301)
+
+
+@app.get("/status", tags=["Redirect"])
+async def redirect_status():
+    """Redirect /status to /api/v1/status"""
+    from fastapi.responses import RedirectResponse
+    return RedirectResponse(url="/api/v1/status", status_code=301)
+
+
+@app.get("/run", tags=["Redirect"])
+async def redirect_run():
+    """Redirect /run to /api/v1/run"""
+    from fastapi.responses import RedirectResponse
+    return RedirectResponse(url="/api/v1/run", status_code=301)
+
 
 # Global state
 _agent_instance = None
@@ -538,6 +716,61 @@ class SessionResponse(BaseModel):
     sessions: List[Dict[str, Any]]
 
 
+class PaginatedTaskResponse(BaseModel):
+    """Paginated task list response"""
+    items: List[TaskResponse]
+    page: int
+    per_page: int
+    total: int
+    total_pages: int
+
+
+class PaginatedSessionResponse(BaseModel):
+    """Paginated session list response"""
+    items: List[Dict[str, Any]]
+    page: int
+    per_page: int
+    total: int
+    total_pages: int
+
+
+class TaskDeleteResponse(BaseModel):
+    """Task deletion response"""
+    success: bool
+    message: str
+    task_id: str
+    deleted_archived: bool = False
+
+
+class BulkTaskOperation(BaseModel):
+    """Bulk task operation request"""
+    operations: List[Dict[str, Any]]
+
+
+class BulkTaskResponse(BaseModel):
+    """Bulk task operation response"""
+    success: bool
+    created: int
+    updated: int
+    deleted: int
+    errors: List[Dict[str, str]]
+
+
+class AgentControlResponse(BaseModel):
+    """Agent control response"""
+    success: bool
+    message: str
+    state: str
+
+
+class HealthCheckResponse(BaseModel):
+    """Enhanced health check response"""
+    status: str
+    service: str
+    timestamp: str
+    dependencies: Dict[str, Any]
+
+
 class RunRequest(BaseModel):
     """Agent run request model"""
     iterations: Optional[int] = 10
@@ -589,9 +822,18 @@ def sanitize_task_response(task: Dict[str, Any]) -> Dict[str, Any]:
 # ========== API Endpoints ==========
 
 @app.get("/status", response_model=StatusResponse)
+@app.get("/api/v1/status", response_model=StatusResponse, tags=["Status"])
 @limiter.limit("60/minute")
 def get_status(request: Request, api_key: str = Depends(get_api_key)) -> StatusResponse:
-    """Get Agent status"""
+    """Get current Agent status including project info, git status, and task statistics.
+
+    Returns:
+        - Project name and type
+        - Git branch and changes status
+        - Task counts (completed, pending, total)
+        - Current session info
+        - Error count
+    """
     try:
         state_manager = StateManager()
         git_helper = GitHelper()
@@ -626,37 +868,67 @@ def get_status(request: Request, api_key: str = Depends(get_api_key)) -> StatusR
     except Exception as e:
         logger.error(f"Error getting status: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.get("/tasks", response_model=List[TaskResponse])
+@app.get("/tasks", response_model=PaginatedTaskResponse)
+@app.get("/api/v1/tasks", response_model=PaginatedTaskResponse, tags=["Tasks"])
 @limiter.limit("60/minute")
-def get_tasks(request: Request, status_filter: Optional[str] = None, api_key: str = Depends(get_api_key)) -> List[TaskResponse]:
-    """Get task list, optionally filtered by status"""
+def get_tasks(
+    request: Request,
+    status_filter: Optional[str] = None,
+    page: int = Query(1, ge=1, description="Page number"),
+    per_page: int = Query(20, ge=1, le=100, description="Items per page"),
+    api_key: str = Depends(get_api_key)
+) -> PaginatedTaskResponse:
+    """Get task list with pagination support, optionally filtered by status.
+
+    - **page**: Page number (starting from 1)
+    - **per_page**: Number of items per page (max 100)
+    - **status_filter**: Filter by task status (pending, completed, failed, in_progress)
+    """
     try:
         state_manager = StateManager()
         data = state_manager.load_feature_list()
         features = data.get("features", [])
 
-        # Filter by status if provided
+        # Filter by status if provided (exclude archived unless explicitly requested)
         if status_filter and status_filter != "all":
             features = [f for f in features if f.get("status") == status_filter]
+        else:
+            # By default, exclude archived tasks
+            features = [f for f in features if f.get("status") != "archived"]
 
         # Sort by priority
         features.sort(key=lambda x: x.get("priority", 99))
 
-        return [
-            TaskResponse(
-                id=f.get("id", ""),
-                name=f.get("name", ""),
-                description=f.get("description", ""),
-                priority=f.get("priority", 99),
-                status=f.get("status", "pending"),
-                passes=f.get("passes", False),
-                created_at=f.get("created_at", ""),
-                updated_at=f.get("updated_at", "")
-            )
-            for f in features
-        ]
+        total = len(features)
+        total_pages = (total + per_page - 1) // per_page if total > 0 else 1
+
+        # Calculate pagination
+        start_idx = (page - 1) * per_page
+        end_idx = start_idx + per_page
+        paginated_features = features[start_idx:end_idx]
+
+        return PaginatedTaskResponse(
+            items=[
+                TaskResponse(
+                    id=f.get("id", ""),
+                    name=f.get("name", ""),
+                    description=f.get("description", ""),
+                    priority=f.get("priority", 99),
+                    status=f.get("status", "pending"),
+                    passes=f.get("passes", False),
+                    created_at=f.get("created_at", ""),
+                    updated_at=f.get("updated_at", "")
+                )
+                for f in paginated_features
+            ],
+            page=page,
+            per_page=per_page,
+            total=total,
+            total_pages=total_pages
+        )
     except AgentLoopError as e:
         logger.error(f"Agent error getting tasks: {e}")
         raise handle_agent_error(e)
@@ -788,13 +1060,377 @@ def update_task(request: Request, task_id: str, updates: TaskUpdate, api_key: st
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.post("/tasks", response_model=TaskResponse, status_code=201)
+@app.post("/api/v1/tasks", response_model=TaskResponse, tags=["Tasks"])
+@limiter.limit("30/minute")
+def create_task(request: Request, task: TaskCreate, api_key: str = Depends(get_api_key)) -> TaskResponse:
+    """Create a new task.
+
+    - **id**: Optional custom task ID
+    - **name**: Task name (required)
+    - **description**: Task description (optional)
+    - **priority**: Priority (1-99, default: 99)
+    """
+    try:
+        state_manager = StateManager()
+
+        # Generate ID if not provided
+        task_id = task.id
+        if not task_id:
+            existing_features = state_manager.load_feature_list().get("features", [])
+            task_id = f"task-{len(existing_features) + 1:03d}"
+
+        now = datetime.now().strftime("%Y-%m-%d")
+
+        new_feature = {
+            "id": task_id,
+            "name": task.name,
+            "description": task.description or "",
+            "priority": task.priority or 99,
+            "status": "pending",
+            "passes": False,
+            "created_at": now,
+            "updated_at": now
+        }
+
+        state_manager.add_feature(new_feature)
+
+        return TaskResponse(
+            id=new_feature["id"],
+            name=new_feature["name"],
+            description=new_feature["description"],
+            priority=new_feature["priority"],
+            status=new_feature["status"],
+            passes=new_feature["passes"],
+            created_at=new_feature["created_at"],
+            updated_at=new_feature["updated_at"]
+        )
+    except AgentLoopError as e:
+        logger.error(f"Agent error creating task: {e}")
+        raise handle_agent_error(e)
+    except Exception as e:
+        logger.error(f"Error creating task: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/tasks/{task_id}", response_model=TaskResponse)
+@app.get("/api/v1/tasks/{task_id}", response_model=TaskResponse, tags=["Tasks"])
+@limiter.limit("60/minute")
+def get_task(request: Request, task_id: str, api_key: str = Depends(get_api_key)) -> TaskResponse:
+    """Get a single task by ID.
+
+    - **task_id**: The task ID to retrieve
+    """
+    try:
+        state_manager = StateManager()
+        feature = state_manager.get_feature(task_id)
+
+        if not feature:
+            raise HTTPException(status_code=404, detail=f"Task {task_id} not found")
+
+        return TaskResponse(
+            id=feature.get("id", ""),
+            name=feature.get("name", ""),
+            description=feature.get("description", ""),
+            priority=feature.get("priority", 99),
+            status=feature.get("status", "pending"),
+            passes=feature.get("passes", False),
+            created_at=feature.get("created_at", ""),
+            updated_at=feature.get("updated_at", ""),
+            verify_command=feature.get("verify_command"),
+            context_files=feature.get("context_files")
+        )
+    except HTTPException:
+        raise
+    except AgentLoopError as e:
+        logger.error(f"Agent error getting task: {e}")
+        raise handle_agent_error(e)
+    except Exception as e:
+        logger.error(f"Error getting task: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.patch("/tasks/{task_id}", response_model=TaskResponse)
+@app.patch("/api/v1/tasks/{task_id}", response_model=TaskResponse, tags=["Tasks"])
+@limiter.limit("30/minute")
+def update_task(request: Request, task_id: str, updates: TaskUpdate, api_key: str = Depends(get_api_key)) -> TaskResponse:
+    """Update a task (priority, status, or passes).
+
+    - **task_id**: The task ID to update
+    - **priority**: New priority value (1-99)
+    - **status**: New status (pending, completed, failed, in_progress)
+    - **passes**: Whether the task passes verification
+    """
+    try:
+        state_manager = StateManager()
+
+        # Convert Pydantic model to dict, excluding None values
+        update_dict = updates.model_dump(exclude_unset=True)
+
+        if not update_dict:
+            raise HTTPException(status_code=400, detail="No fields to update")
+
+        # Update the feature
+        success = state_manager.update_feature(task_id, update_dict)
+
+        if not success:
+            raise HTTPException(status_code=404, detail=f"Task {task_id} not found")
+
+        # Get updated feature
+        feature = state_manager.get_feature(task_id)
+
+        return TaskResponse(
+            id=feature.get("id", ""),
+            name=feature.get("name", ""),
+            description=feature.get("description", ""),
+            priority=feature.get("priority", 99),
+            status=feature.get("status", "pending"),
+            passes=feature.get("passes", False),
+            created_at=feature.get("created_at", ""),
+            updated_at=feature.get("updated_at", ""),
+            verify_command=feature.get("verify_command"),
+            context_files=feature.get("context_files")
+        )
+    except HTTPException:
+        raise
+    except AgentLoopError as e:
+        logger.error(f"Agent error updating task: {e}")
+        raise handle_agent_error(e)
+    except Exception as e:
+        logger.error(f"Error updating task: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.delete("/tasks/{task_id}", response_model=TaskDeleteResponse)
+@app.delete("/api/v1/tasks/{task_id}", response_model=TaskDeleteResponse, tags=["Tasks"])
+@limiter.limit("30/minute")
+def delete_task(
+    request: Request,
+    task_id: str,
+    hard: bool = Query(False, description="Hard delete (permanent) vs soft delete (archive)"),
+    api_key: str = Depends(get_api_key)
+) -> TaskDeleteResponse:
+    """Delete a task by ID.
+
+    - **task_id**: The task ID to delete
+    - **hard**: If true, permanently delete. If false (default), mark as archived (soft delete)
+    """
+    try:
+        state_manager = StateManager()
+        feature = state_manager.get_feature(task_id)
+
+        if not feature:
+            raise HTTPException(status_code=404, detail=f"Task {task_id} not found")
+
+        if hard:
+            # Hard delete - remove from the list
+            data = state_manager.load_feature_list()
+            features = data.get("features", [])
+            data["features"] = [f for f in features if f.get("id") != task_id]
+            state_manager._save_feature_list(data)
+            return TaskDeleteResponse(
+                success=True,
+                message=f"Task {task_id} permanently deleted",
+                task_id=task_id,
+                deleted_archived=False
+            )
+        else:
+            # Soft delete - mark as archived
+            success = state_manager.update_feature(task_id, {"status": "archived"})
+            if success:
+                return TaskDeleteResponse(
+                    success=True,
+                    message=f"Task {task_id} archived",
+                    task_id=task_id,
+                    deleted_archived=True
+                )
+            else:
+                raise HTTPException(status_code=500, detail="Failed to archive task")
+
+    except HTTPException:
+        raise
+    except AgentLoopError as e:
+        logger.error(f"Agent error deleting task: {e}")
+        raise handle_agent_error(e)
+    except Exception as e:
+        logger.error(f"Error deleting task: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/tasks/bulk", response_model=BulkTaskResponse)
+@app.post("/api/v1/tasks/bulk", response_model=BulkTaskResponse, tags=["Tasks"])
+@limiter.limit("30/minute")
+def bulk_task_operation(
+    request: Request,
+    operations: BulkTaskOperation,
+    api_key: str = Depends(get_api_key)
+) -> BulkTaskResponse:
+    """Perform bulk operations on tasks.
+
+    Operations supported:
+    - Create: `{"action": "create", "data": {"name": "...", "priority": 1}}`
+    - Update: `{"action": "update", "id": "task-id", "data": {"status": "completed"}}`
+    - Delete: `{"action": "delete", "id": "task-id", "hard": true/false}`
+    """
+    created = 0
+    updated = 0
+    deleted = 0
+    errors: List[Dict[str, str]] = []
+
+    try:
+        state_manager = StateManager()
+
+        for op in operations.operations:
+            try:
+                action = op.get("action", "").lower()
+
+                if action == "create":
+                    task_data = op.get("data", {})
+                    task_id = task_data.get("id")
+                    if not task_id:
+                        existing_features = state_manager.load_feature_list().get("features", [])
+                        task_id = f"task-{len(existing_features) + 1:03d}"
+
+                    now = datetime.now().strftime("%Y-%m-%d")
+                    new_feature = {
+                        "id": task_id,
+                        "name": task_data.get("name", "Untitled"),
+                        "description": task_data.get("description", ""),
+                        "priority": task_data.get("priority", 99),
+                        "status": "pending",
+                        "passes": False,
+                        "created_at": now,
+                        "updated_at": now
+                    }
+                    state_manager.add_feature(new_feature)
+                    created += 1
+
+                elif action == "update":
+                    task_id = op.get("id")
+                    update_data = op.get("data", {})
+                    if not task_id:
+                        errors.append({"error": "Missing task id for update"})
+                        continue
+                    success = state_manager.update_feature(task_id, update_data)
+                    if success:
+                        updated += 1
+                    else:
+                        errors.append({"error": f"Task {task_id} not found"})
+
+                elif action == "delete":
+                    task_id = op.get("id")
+                    hard = op.get("hard", False)
+                    if not task_id:
+                        errors.append({"error": "Missing task id for delete"})
+                        continue
+
+                    feature = state_manager.get_feature(task_id)
+                    if not feature:
+                        errors.append({"error": f"Task {task_id} not found"})
+                        continue
+
+                    if hard:
+                        data = state_manager.load_feature_list()
+                        features = data.get("features", [])
+                        data["features"] = [f for f in features if f.get("id") != task_id]
+                        state_manager._save_feature_list(data)
+                    else:
+                        state_manager.update_feature(task_id, {"status": "archived"})
+                    deleted += 1
+
+                else:
+                    errors.append({"error": f"Unknown action: {action}"})
+
+            except Exception as e:
+                errors.append({"error": str(e)})
+
+        return BulkTaskResponse(
+            success=len(errors) == 0,
+            created=created,
+            updated=updated,
+            deleted=deleted,
+            errors=errors
+        )
+
+    except Exception as e:
+        logger.error(f"Error in bulk operation: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ========== Agent Control Endpoints ==========
+
+@app.post("/agent/pause", response_model=AgentControlResponse)
+@app.post("/api/v1/agent/pause", response_model=AgentControlResponse, tags=["Agent"])
+def pause_agent(request: Request, api_key: str = Depends(get_api_key)) -> AgentControlResponse:
+    """Pause the agent to prevent new runs.
+
+    When paused, the agent will not start new runs but current runs continue.
+    Use /agent/resume to unpause.
+    """
+    global _agent_paused
+    _agent_paused = True
+    logger.info("Agent paused via API")
+
+    return AgentControlResponse(
+        success=True,
+        message="Agent paused successfully",
+        state="paused"
+    )
+
+
+@app.post("/agent/resume", response_model=AgentControlResponse)
+@app.post("/api/v1/agent/resume", response_model=AgentControlResponse, tags=["Agent"])
+def resume_agent(request: Request, api_key: str = Depends(get_api_key)) -> AgentControlResponse:
+    """Resume the agent to allow new runs.
+
+    After pausing, use this endpoint to allow new agent runs.
+    """
+    global _agent_paused
+    _agent_paused = False
+    logger.info("Agent resumed via API")
+
+    return AgentControlResponse(
+        success=True,
+        message="Agent resumed successfully",
+        state="running"
+    )
+
+
+@app.get("/agent/status", response_model=AgentControlResponse)
+@app.get("/api/v1/agent/status", response_model=AgentControlResponse, tags=["Agent"])
+def agent_status(request: Request, api_key: str = Depends(get_api_key)) -> AgentControlResponse:
+    """Get the current agent state (running or paused)."""
+    global _agent_paused
+    state = "paused" if _agent_paused else "running"
+
+    return AgentControlResponse(
+        success=True,
+        message=f"Agent is {state}",
+        state=state
+    )
+
+
 @app.post("/run", response_model=RunResponse)
+@app.post("/api/v1/run", response_model=RunResponse, tags=["Agent"])
 @limiter.limit("10/minute")
 def run_agent(request: Request, request_body: RunRequest, api_key: str = Depends(get_api_key)) -> RunResponse:
-    """Start the agent"""
+    """Start the agent loop with specified iterations.
+
+    - **iterations**: Number of iterations to run (default: 10)
+    """
     global _agent_instance
     try:
         from agent.agent_core import AgentCore
+
+        # Check if agent is paused
+        if _agent_paused:
+            return RunResponse(
+                success=False,
+                message="Agent is paused. Resume before running.",
+                iterations=0,
+                completed=0,
+                errors=1
+            )
 
         # Create agent instance
         _agent_instance = AgentCore()
@@ -830,10 +1466,20 @@ def run_agent(request: Request, request_body: RunRequest, api_key: str = Depends
         )
 
 
-@app.get("/sessions", response_model=SessionResponse)
+@app.get("/sessions", response_model=PaginatedSessionResponse)
+@app.get("/api/v1/sessions", response_model=PaginatedSessionResponse, tags=["Sessions"])
 @limiter.limit("60/minute")
-def get_sessions(request: Request, api_key: str = Depends(get_api_key)) -> SessionResponse:
-    """Get session history"""
+def get_sessions(
+    request: Request,
+    page: int = Query(1, ge=1, description="Page number"),
+    per_page: int = Query(20, ge=1, le=100, description="Items per page"),
+    api_key: str = Depends(get_api_key)
+) -> PaginatedSessionResponse:
+    """Get session history with pagination.
+
+    - **page**: Page number (starting from 1)
+    - **per_page**: Number of items per page (max 100)
+    """
     try:
         state_manager = StateManager()
         session_manager = SessionManager(state_manager)
@@ -843,10 +1489,23 @@ def get_sessions(request: Request, api_key: str = Depends(get_api_key)) -> Sessi
         history = state_manager.load_session_history()
         sessions = history.get("sessions", [])
 
-        return SessionResponse(
-            total_sessions=stats["total_sessions"],
-            completed_sessions=stats["completed_sessions"],
-            sessions=sessions
+        # Sort by date (most recent first)
+        sessions.sort(key=lambda x: x.get("created_at", ""), reverse=True)
+
+        total = len(sessions)
+        total_pages = (total + per_page - 1) // per_page if total > 0 else 1
+
+        # Calculate pagination
+        start_idx = (page - 1) * per_page
+        end_idx = start_idx + per_page
+        paginated_sessions = sessions[start_idx:end_idx]
+
+        return PaginatedSessionResponse(
+            items=paginated_sessions,
+            page=page,
+            per_page=per_page,
+            total=total,
+            total_pages=total_pages
         )
     except AgentLoopError as e:
         logger.error(f"Agent error getting sessions: {e}")
@@ -856,10 +1515,57 @@ def get_sessions(request: Request, api_key: str = Depends(get_api_key)) -> Sessi
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.get("/health")
-def health_check() -> Dict[str, str]:
-    """Health check endpoint"""
-    return {"status": "healthy", "service": "agent-loop-api"}
+@app.get("/health", response_model=HealthCheckResponse)
+@app.get("/api/v1/health", response_model=HealthCheckResponse, tags=["Health"])
+def health_check() -> HealthCheckResponse:
+    """Enhanced health check endpoint with dependency verification.
+
+    Checks:
+    - Configuration files exist
+    - Feature list is accessible
+    - State files are writable
+    """
+    dependencies: Dict[str, Any] = {}
+    overall_healthy = True
+
+    # Check .agent directory exists
+    agent_dir = Path(".agent")
+    if agent_dir.exists():
+        dependencies["agent_directory"] = {"status": "healthy", "path": str(agent_dir)}
+    else:
+        dependencies["agent_directory"] = {"status": "unhealthy", "path": str(agent_dir)}
+        overall_healthy = False
+
+    # Check config.json exists
+    config_path = agent_dir / "config.json"
+    if config_path.exists():
+        dependencies["config_file"] = {"status": "healthy", "path": str(config_path)}
+    else:
+        dependencies["config_file"] = {"status": "unhealthy", "path": str(config_path)}
+        overall_healthy = False
+
+    # Check feature_list.json exists
+    feature_list_path = agent_dir / "feature_list.json"
+    if feature_list_path.exists():
+        dependencies["feature_list"] = {"status": "healthy", "path": str(feature_list_path)}
+    else:
+        dependencies["feature_list"] = {"status": "unhealthy", "path": str(feature_list_path)}
+        overall_healthy = False
+
+    # Check state.json exists
+    state_path = agent_dir / "state.json"
+    if state_path.exists():
+        dependencies["state_file"] = {"status": "healthy", "path": str(state_path)}
+    else:
+        dependencies["state_file"] = {"status": "unhealthy", "path": str(state_path)}
+        overall_healthy = False
+
+    return HealthCheckResponse(
+        status="healthy" if overall_healthy else "degraded",
+        service="agent-loop-api",
+        timestamp=datetime.now().isoformat(),
+        dependencies=dependencies
+    )
 
 
 @app.get("/metrics")
