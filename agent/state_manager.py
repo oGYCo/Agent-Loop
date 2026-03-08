@@ -4,10 +4,14 @@
 """
 
 import json
+import os
 import re
 from datetime import datetime
 from pathlib import Path
 from typing import Any, cast
+
+# Secure file permissions - owner read/write only (0o600)
+SECURE_FILE_PERMISSIONS = 0o600
 
 
 class ConfigValidationError(Exception):
@@ -74,6 +78,8 @@ class StateManager:
         """
         with open(self.feature_list_path, "w", encoding="utf-8") as f:
             json.dump(data, f, indent=2, ensure_ascii=False)
+        # Set secure file permissions (owner read/write only)
+        os.chmod(self.feature_list_path, SECURE_FILE_PERMISSIONS)
 
     def get_feature(self, feature_id: str) -> dict[str, Any] | None:
         """Get a specific feature by its ID.
@@ -150,6 +156,8 @@ class StateManager:
         """
         with open(self.progress_path, "w", encoding="utf-8") as f:
             f.write(content)
+        # Set secure file permissions (owner read/write only)
+        os.chmod(self.progress_path, SECURE_FILE_PERMISSIONS)
 
     def append_progress(self, entry: str) -> None:
         """Append a new entry to progress.txt.
@@ -223,6 +231,8 @@ class StateManager:
         """
         with open(self.state_path, "w", encoding="utf-8") as f:
             json.dump(state, f, indent=2, ensure_ascii=False)
+        # Set secure file permissions (owner read/write only)
+        os.chmod(self.state_path, SECURE_FILE_PERMISSIONS)
 
     def update_state(self, updates: dict[str, Any]) -> None:
         """Update specific fields in the current state.
@@ -256,6 +266,8 @@ class StateManager:
         """
         with open(self.session_history_path, "w", encoding="utf-8") as f:
             json.dump(data, f, indent=2, ensure_ascii=False)
+        # Set secure file permissions (owner read/write only)
+        os.chmod(self.session_history_path, SECURE_FILE_PERMISSIONS)
 
     def add_session(self, session: dict[str, Any]) -> None:
         """Add a new session record to session history.
@@ -290,6 +302,8 @@ class StateManager:
         """
         with open(self.config_path, "w", encoding="utf-8") as f:
             json.dump(config, f, indent=2, ensure_ascii=False)
+        # Set secure file permissions (owner read/write only)
+        os.chmod(self.config_path, SECURE_FILE_PERMISSIONS)
 
     def get_config(self, key: str, default: Any = None) -> Any:
         """Get a specific configuration value.

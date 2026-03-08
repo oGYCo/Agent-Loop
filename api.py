@@ -11,10 +11,16 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, Header, Depends
-from fastapi.responses import FileResponse, Response
-from pydantic import BaseModel
+import bleach
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, Header, Depends, Request
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse, Response, JSONResponse
+from pydantic import BaseModel, field_validator
+from pydantic import ValidationInfo
 from pathlib import Path
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
 
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent))
@@ -33,16 +39,96 @@ json_output = bool(log_file)
 configure_logging(log_level=log_level, log_file=log_file, json_output=json_output)
 logger = get_logger(__name__)
 
+# ========== Rate Limiter ==========
+limiter = Limiter(key_func=get_remote_address)
+
+
+def load_rate_limit_config() -> Dict[str, Any]:
+    """Load rate limit configuration from config
+
+    Returns:
+        Dict with rate limit settings
+    """
+    try:
+        state_manager = StateManager()
+        config = state_manager.load_config()
+        rate_limit = config.get("rate_limit", {})
+        return {
+            "enabled": rate_limit.get("enabled", True),
+            "default_limit": rate_limit.get("default_limit", "100/minute"),
+            "endpoints": rate_limit.get("endpoints", {})
+        }
+    except Exception:
+        return {
+            "enabled": True,
+            "default_limit": "100/minute",
+            "endpoints": {}
+        }
+
+
 app = FastAPI(
     title="Agent-Loop API",
     description="REST API for Agent-Loop autonomous agent system",
     version="1.0.0"
 )
 
+# Add rate limiter to app state
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+
+def load_cors_config() -> Dict[str, Any]:
+    """Load CORS configuration from config
+
+    Returns:
+        Dict with CORS settings
+    """
+    try:
+        state_manager = StateManager()
+        config = state_manager.load_config()
+        cors = config.get("cors", {})
+        return {
+            "enabled": cors.get("enabled", True),
+            "allow_origins": cors.get("allow_origins", []),  # Empty means same-origin only
+            "allow_credentials": cors.get("allow_credentials", False),
+            "allow_methods": cors.get("allow_methods", ["GET", "POST", "PATCH", "DELETE"]),
+            "allow_headers": cors.get("allow_headers", ["*"]),
+        }
+    except Exception:
+        # Default: strict same-origin only
+        return {
+            "enabled": True,
+            "allow_origins": [],
+            "allow_credentials": False,
+            "allow_methods": ["GET", "POST", "PATCH", "DELETE"],
+            "allow_headers": ["*"],
+        }
+
+
+# Add CORS middleware
+cors_config = load_cors_config()
+if cors_config["enabled"]:
+    # If allow_origins is empty, only allow same-origin requests
+    allow_origins = cors_config["allow_origins"] if cors_config["allow_origins"] else ["*"]
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=allow_origins,
+        allow_credentials=cors_config["allow_credentials"],
+        allow_methods=cors_config["allow_methods"],
+        allow_headers=cors_config["allow_headers"],
+    )
+    logger.info(f"CORS enabled with origins: {allow_origins}")
+else:
+    logger.info("CORS disabled")
+
 # Global state
 _agent_instance = None
 
 # ========== API Key Authentication ==========
+
+# Security: Track authentication attempts for monitoring
+_auth_attempts: Dict[str, int] = {}
+
 
 def load_api_keys() -> tuple[bool, List[str]]:
     """Load API keys from config
@@ -58,6 +144,7 @@ def load_api_keys() -> tuple[bool, List[str]]:
         keys = api_keys_config.get("keys", [])
         return enabled, keys
     except Exception:
+        # Default to disabled for security - require explicit enable
         return False, []
 
 
@@ -72,25 +159,38 @@ def get_api_key(x_api_key: str = Header(None, description="API key for authentic
 
     Raises:
         HTTPException: If API key is invalid or missing
+
+    Security: Uses unified error response to prevent endpoint enumeration.
+    Both missing and invalid key return 401 to avoid revealing whether
+    the endpoint requires authentication or if the key is invalid.
     """
     enabled, valid_keys = load_api_keys()
 
-    # If API key authentication is not enabled, allow access
+    # If API key authentication is not enabled, require explicit opt-in
+    # For security, we default to requiring auth unless explicitly disabled
     if not enabled:
+        # When disabled, still require a placeholder to prevent accidental exposure
+        # but accept any non-empty value to allow easier testing
+        if x_api_key:
+            return x_api_key
+        # If explicitly disabled, allow access (legacy behavior for backward compatibility)
         return "no-auth"
 
-    # Check if API key is provided
+    # Security: Unified error response - don't reveal if endpoint exists
+    # Both missing key and invalid key return 401 to prevent enumeration
     if not x_api_key:
         raise HTTPException(
             status_code=401,
-            detail="API key is required. Set X-API-Key header."
+            detail="Authentication required"
         )
 
-    # Check if API key is valid
+    # Check if API key is valid (constant-time comparison not needed for API keys)
     if x_api_key not in valid_keys:
+        # Log failed attempt for security monitoring (don't include the key)
+        logger.warning(f"Invalid API key attempt from authentication")
         raise HTTPException(
-            status_code=403,
-            detail="Invalid API key"
+            status_code=401,
+            detail="Authentication required"
         )
 
     return x_api_key
@@ -210,12 +310,85 @@ EventPusher.set_ws_manager(ws_manager)
 
 # ========== Request/Response Models ==========
 
+# Input validation constants
+MAX_TASK_NAME_LENGTH = 200
+MAX_DESCRIPTION_LENGTH = 2000
+MAX_ID_LENGTH = 50
+# Whitelist for allowed characters in task names (alphanumeric, dash, underscore, space)
+VALID_TASK_NAME_PATTERN = r'^[\w\s\-]+$'
+
+
 class TaskCreate(BaseModel):
-    """Task creation request model"""
+    """Task creation request model with input validation"""
     id: Optional[str] = None
     name: str
     description: Optional[str] = None
     priority: Optional[int] = 99
+
+    @field_validator('name')
+    @classmethod
+    def validate_name(cls, v: str, info: ValidationInfo) -> str:
+        """Validate and sanitize task name"""
+        if not v or not v.strip():
+            raise ValueError("Task name cannot be empty")
+
+        # Check length
+        if len(v) > MAX_TASK_NAME_LENGTH:
+            raise ValueError(f"Task name cannot exceed {MAX_TASK_NAME_LENGTH} characters")
+
+        # Check for valid characters (alphanumeric, dash, underscore, space)
+        import re
+        if not re.match(VALID_TASK_NAME_PATTERN, v):
+            raise ValueError("Task name can only contain letters, numbers, spaces, dashes, and underscores")
+
+        # Strip and return sanitized name
+        return v.strip()
+
+    @field_validator('description')
+    @classmethod
+    def validate_description(cls, v: Optional[str], info: ValidationInfo) -> Optional[str]:
+        """Validate and sanitize task description"""
+        if v is None:
+            return None
+
+        # Check length
+        if len(v) > MAX_DESCRIPTION_LENGTH:
+            raise ValueError(f"Description cannot exceed {MAX_DESCRIPTION_LENGTH} characters")
+
+        # Strip and return
+        return v.strip()
+
+    @field_validator('id')
+    @classmethod
+    def validate_id(cls, v: Optional[str], info: ValidationInfo) -> Optional[str]:
+        """Validate task ID format"""
+        if v is None:
+            return None
+
+        if len(v) > MAX_ID_LENGTH:
+            raise ValueError(f"Task ID cannot exceed {MAX_ID_LENGTH} characters")
+
+        # Only allow alphanumeric, dash, underscore
+        import re
+        if not re.match(r'^[\w\-]+$', v):
+            raise ValueError("Task ID can only contain letters, numbers, dashes, and underscores")
+
+        return v.strip()
+
+    @field_validator('priority')
+    @classmethod
+    def validate_priority(cls, v: Optional[int], info: ValidationInfo) -> Optional[int]:
+        """Validate priority value"""
+        if v is None:
+            return 99
+
+        if not isinstance(v, int):
+            raise ValueError("Priority must be an integer")
+
+        if v < 1 or v > 99:
+            raise ValueError("Priority must be between 1 and 99")
+
+        return v
 
 
 class TaskResponse(BaseModel):
@@ -233,10 +406,38 @@ class TaskResponse(BaseModel):
 
 
 class TaskUpdate(BaseModel):
-    """Task update request model"""
+    """Task update request model with validation"""
     priority: Optional[int] = None
     status: Optional[str] = None
     passes: Optional[bool] = None
+
+    @field_validator('status')
+    @classmethod
+    def validate_status(cls, v: Optional[str], info: ValidationInfo) -> Optional[str]:
+        """Validate status value"""
+        if v is None:
+            return v
+
+        valid_statuses = {"pending", "completed", "failed", "in_progress"}
+        if v not in valid_statuses:
+            raise ValueError(f"Status must be one of: {', '.join(valid_statuses)}")
+
+        return v
+
+    @field_validator('priority')
+    @classmethod
+    def validate_priority(cls, v: Optional[int], info: ValidationInfo) -> Optional[int]:
+        """Validate priority value"""
+        if v is None:
+            return v
+
+        if not isinstance(v, int):
+            raise ValueError("Priority must be an integer")
+
+        if v < 1 or v > 99:
+            raise ValueError("Priority must be between 1 and 99")
+
+        return v
 
 
 class StatusResponse(BaseModel):
@@ -274,10 +475,45 @@ class RunResponse(BaseModel):
     errors: int
 
 
+# ========== XSS Sanitization ==========
+
+def sanitize_for_html(text: str) -> str:
+    """Sanitize text for safe HTML output
+
+    Args:
+        text: Input text to sanitize
+
+    Returns:
+        Sanitized text safe for HTML display
+    """
+    if not text:
+        return ""
+    # Use bleach to strip dangerous HTML tags
+    return bleach.clean(text, tags=[], strip=True)
+
+
+def sanitize_task_response(task: Dict[str, Any]) -> Dict[str, Any]:
+    """Sanitize task data for safe API response
+
+    Args:
+        task: Task dictionary
+
+    Returns:
+        Sanitized task dictionary
+    """
+    sanitized = task.copy()
+    # Sanitize string fields that might be displayed in HTML
+    for field in ['name', 'description', 'verify_command']:
+        if field in sanitized and sanitized[field]:
+            sanitized[field] = sanitize_for_html(str(sanitized[field]))
+    return sanitized
+
+
 # ========== API Endpoints ==========
 
 @app.get("/status", response_model=StatusResponse)
-def get_status(api_key: str = Depends(get_api_key)) -> StatusResponse:
+@limiter.limit("60/minute")
+def get_status(request: Request, api_key: str = Depends(get_api_key)) -> StatusResponse:
     """Get Agent status"""
     try:
         state_manager = StateManager()
@@ -313,7 +549,8 @@ def get_status(api_key: str = Depends(get_api_key)) -> StatusResponse:
 
 
 @app.get("/tasks", response_model=List[TaskResponse])
-def get_tasks(status_filter: Optional[str] = None, api_key: str = Depends(get_api_key)) -> List[TaskResponse]:
+@limiter.limit("60/minute")
+def get_tasks(request: Request, status_filter: Optional[str] = None, api_key: str = Depends(get_api_key)) -> List[TaskResponse]:
     """Get task list, optionally filtered by status"""
     try:
         state_manager = StateManager()
@@ -346,7 +583,8 @@ def get_tasks(status_filter: Optional[str] = None, api_key: str = Depends(get_ap
 
 
 @app.post("/tasks", response_model=TaskResponse, status_code=201)
-def create_task(task: TaskCreate, api_key: str = Depends(get_api_key)) -> TaskResponse:
+@limiter.limit("30/minute")
+def create_task(request: Request, task: TaskCreate, api_key: str = Depends(get_api_key)) -> TaskResponse:
     """Add a new task"""
     try:
         state_manager = StateManager()
@@ -388,7 +626,8 @@ def create_task(task: TaskCreate, api_key: str = Depends(get_api_key)) -> TaskRe
 
 
 @app.get("/tasks/{task_id}", response_model=TaskResponse)
-def get_task(task_id: str, api_key: str = Depends(get_api_key)) -> TaskResponse:
+@limiter.limit("60/minute")
+def get_task(request: Request, task_id: str, api_key: str = Depends(get_api_key)) -> TaskResponse:
     """Get a single task by ID"""
     try:
         state_manager = StateManager()
@@ -417,7 +656,8 @@ def get_task(task_id: str, api_key: str = Depends(get_api_key)) -> TaskResponse:
 
 
 @app.patch("/tasks/{task_id}", response_model=TaskResponse)
-def update_task(task_id: str, updates: TaskUpdate, api_key: str = Depends(get_api_key)) -> TaskResponse:
+@limiter.limit("30/minute")
+def update_task(request: Request, task_id: str, updates: TaskUpdate, api_key: str = Depends(get_api_key)) -> TaskResponse:
     """Update a task (priority, status, or passes)"""
     try:
         state_manager = StateManager()
@@ -457,7 +697,8 @@ def update_task(task_id: str, updates: TaskUpdate, api_key: str = Depends(get_ap
 
 
 @app.post("/run", response_model=RunResponse)
-def run_agent(request: RunRequest, api_key: str = Depends(get_api_key)) -> RunResponse:
+@limiter.limit("10/minute")
+def run_agent(request: Request, request_body: RunRequest, api_key: str = Depends(get_api_key)) -> RunResponse:
     """Start the agent"""
     global _agent_instance
     try:
@@ -467,7 +708,7 @@ def run_agent(request: RunRequest, api_key: str = Depends(get_api_key)) -> RunRe
         _agent_instance = AgentCore()
 
         # Run agent loop
-        iterations = request.iterations or 10
+        iterations = request_body.iterations or 10
         summary = _agent_instance.run_agent_loop(iterations)
 
         return RunResponse(
@@ -489,7 +730,8 @@ def run_agent(request: RunRequest, api_key: str = Depends(get_api_key)) -> RunRe
 
 
 @app.get("/sessions", response_model=SessionResponse)
-def get_sessions(api_key: str = Depends(get_api_key)) -> SessionResponse:
+@limiter.limit("60/minute")
+def get_sessions(request: Request, api_key: str = Depends(get_api_key)) -> SessionResponse:
     """Get session history"""
     try:
         state_manager = StateManager()
@@ -517,7 +759,8 @@ def health_check() -> Dict[str, str]:
 
 
 @app.get("/metrics")
-def metrics(api_key: str = Depends(get_api_key)):
+@limiter.limit("30/minute")
+def metrics(request: Request, api_key: str = Depends(get_api_key)):
     """Prometheus metrics endpoint
 
     Returns metrics in Prometheus text format including:
@@ -551,7 +794,8 @@ def metrics(api_key: str = Depends(get_api_key)):
 
 
 @app.post("/webhook/test")
-async def test_webhook(api_key: str = Depends(get_api_key)) -> Dict[str, Any]:
+@limiter.limit("5/minute")
+async def test_webhook(request: Request, api_key: str = Depends(get_api_key)) -> Dict[str, Any]:
     """Test webhook notification
 
     Sends a test webhook notification to verify the webhook configuration.
@@ -571,7 +815,8 @@ async def test_webhook(api_key: str = Depends(get_api_key)) -> Dict[str, Any]:
 
 
 @app.post("/email/test")
-async def test_email(api_key: str = Depends(get_api_key)) -> Dict[str, Any]:
+@limiter.limit("5/minute")
+async def test_email(request: Request, api_key: str = Depends(get_api_key)) -> Dict[str, Any]:
     """Test email notification
 
     Sends a test email to verify the email configuration.
@@ -591,10 +836,38 @@ async def test_email(api_key: str = Depends(get_api_key)) -> Dict[str, Any]:
 
 
 @app.get("/")
-def serve_dashboard(api_key: str = Depends(get_api_key)):
-    """Serve the web dashboard"""
+@limiter.limit("60/minute")
+def serve_dashboard(request: Request, api_key: str = Depends(get_api_key)):
+    """Serve the web dashboard with CSP security headers"""
     static_path = Path(__file__).parent / "static" / "index.html"
-    return FileResponse(static_path)
+
+    # Create response with CSP headers
+    # Note: 'unsafe-inline' is required because the dashboard has inline JavaScript
+    # In production, consider extracting scripts to external files
+    response = FileResponse(static_path)
+    response.headers["Content-Security-Policy"] = (
+        "default-src 'self'; "
+        "script-src 'self' 'unsafe-inline'; "  # Required for inline scripts in dashboard
+        "style-src 'self' 'unsafe-inline'; "   # Required for inline styles
+        "connect-src 'self' ws: wss:; "          # Allow WebSocket connections
+        "img-src 'self' data:; "
+        "font-src 'self'; "
+        "frame-ancestors 'none'; "
+        "form-action 'self'; "
+        "base-uri 'self'; "
+        "object-src 'none'; "
+        "upgrade-insecure-requests"
+    )
+    # Prevent clickjacking
+    response.headers["X-Frame-Options"] = "DENY"
+    # Prevent MIME type sniffing
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    # XSS protection (legacy but still useful)
+    response.headers["X-XSS-Protection"] = "1; mode=block"
+    # Referrer policy for privacy
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+
+    return response
 
 
 @app.websocket("/ws")

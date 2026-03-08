@@ -20,6 +20,23 @@
     "enabled": false,
     "keys": []
   },
+  "rate_limit": {
+    "enabled": true,
+    "default_limit": "100/minute",
+    "endpoints": {
+      "/run": "10/minute",
+      "/tasks": "30/minute",
+      "/webhook/test": "5/minute",
+      "/email/test": "5/minute"
+    }
+  },
+  "cors": {
+    "enabled": true,
+    "allow_origins": [],
+    "allow_credentials": false,
+    "allow_methods": ["GET", "POST", "PATCH", "DELETE"],
+    "allow_headers": ["*"]
+  },
   "retry": {
     "max_retries": 3,
     "retry_interval": 5,

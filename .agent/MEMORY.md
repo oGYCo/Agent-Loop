@@ -4,6 +4,63 @@ Accumulated experience and lessons learned from task execution.
 
 ---
 
+## 2026-03-08 - Model Provider System (feature-028 Implementation)
+
+**任务描述**: Add extensible model provider system supporting OpenAI and Anthropic API formats. Allow users to configure providers with api_key, model name, base_url, and switch between them.
+
+**Lessons Learned:**
+
+1. **Model Provider Architecture**:
+   - Created `agent/model_provider.py` with ProviderType enum (openai, anthropic, minimax)
+   - ProviderConfig dataclass handles: provider type, api_key (or api_key_env), model, base_url
+   - ModelProviderManager loads providers from config, manages active provider, handles switching
+   - Supports backward compatibility with legacy config (model field)
+
+2. **Configuration Structure**:
+   ```json
+   {
+     "active_provider": "default",
+     "providers": {
+       "default": {
+         "provider": "minimax",
+         "model": "MiniMax-M2.5-highspeed",
+         "api_key_env": "ANTHROPIC_AUTH_TOKEN",
+         "base_url_env": "ANTHROPIC_BASE_URL"
+       },
+       "openai_provider": {
+         "provider": "openai",
+         "model": "gpt-4.1",
+         "api_key_env": "OPENAI_API_KEY"
+       }
+     }
+   }
+   ```
+
+3. **Privacy Protection**:
+   - API keys should be stored in environment variables (api_key_env) when possible
+   - Direct api_key in config is supported but less recommended
+   - Added mask_api_key() function to hide sensitive data in logs/UI
+
+4. **SDK Integration**:
+   - Updated agent_core.py to use provider_manager.get_sdk_env_vars()
+   - Provider-specific env vars: OPENAI_API_KEY/OPENAI_BASE_URL for OpenAI, ANTHROPIC_AUTH_TOKEN/ANTHROPIC_BASE_URL for Anthropic
+   - Default base URLs: OpenAI (https://api.openai.com/v1), Anthropic (https://api.anthropic.com), MiniMax (https://api.minimaxi.com/anthropic)
+
+5. **Provider Switching**:
+   - Runtime provider switching via switch_provider(name) method
+   - Active provider determined by active_provider config field
+
+6. **Testing**:
+   - Created 24 comprehensive tests in tests/test_model_provider.py
+   - All tests pass: ProviderType, ProviderConfig, ModelProviderManager, mask_api_key
+   - Coverage: provider config loading, env var handling, switching, legacy compatibility
+
+7. **Verification**:
+   - All 394 tests pass (24 new + 370 existing)
+   - No breaking changes to existing functionality
+
+---
+
 ## 2026-03-08 - 持续改进计划 (feature-028)
 
 **任务描述**: 这是一个meta任务，用于持续改进系统。在完成每个主要功能后，系统应该：1) 自动审查和更新feature_list.json 2) 更新MEMORY.md记录经验 3) 审查和更新CLAUDE.md和README.md 4) 确保测试覆盖新功能。

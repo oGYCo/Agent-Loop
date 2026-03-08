@@ -495,11 +495,12 @@ class TestAPIKeyAuthentication:
             assert response.status_code == 401
 
     def test_api_key_invalid(self):
-        """Test that invalid API key returns 403"""
+        """Test that invalid API key returns 401 (unified response to prevent enumeration)"""
         with patch('api.load_api_keys', return_value=(True, ["valid-key"])):
             test_client = TestClient(app)
             response = test_client.get("/status", headers={"X-API-Key": "invalid-key"})
-            assert response.status_code == 403
+            # Security: Return 401 for both missing and invalid keys to prevent endpoint enumeration
+            assert response.status_code == 401
 
     def test_api_key_valid(self):
         """Test that valid API key allows access"""
@@ -689,9 +690,17 @@ class TestGetApiKey:
     """Test cases for get_api_key function"""
 
     def test_get_api_key_auth_disabled(self):
-        """Test get_api_key when auth is disabled"""
+        """Test get_api_key when auth is disabled - accepts any key if provided"""
         with patch('api.load_api_keys', return_value=(False, [])):
+            # When auth is disabled and a key is provided, return the key
             key = get_api_key(x_api_key="any-key")
+            assert key == "any-key"
+
+    def test_get_api_key_auth_disabled_no_key(self):
+        """Test get_api_key when auth is disabled and no key provided"""
+        with patch('api.load_api_keys', return_value=(False, [])):
+            # When auth is disabled and no key is provided, return "no-auth"
+            key = get_api_key(x_api_key=None)
             assert key == "no-auth"
 
     def test_get_api_key_no_key_provided(self):
@@ -704,13 +713,14 @@ class TestGetApiKey:
             assert exc.value.status_code == 401
 
     def test_get_api_key_invalid(self):
-        """Test get_api_key with invalid key"""
+        """Test get_api_key with invalid key - returns 401 for security"""
         from fastapi import HTTPException
 
         with patch('api.load_api_keys', return_value=(True, ["valid-key"])):
             with pytest.raises(HTTPException) as exc:
                 get_api_key(x_api_key="invalid-key")
-            assert exc.value.status_code == 403
+            # Security: Return 401 for both missing and invalid keys to prevent enumeration
+            assert exc.value.status_code == 401
 
     def test_get_api_key_valid(self):
         """Test get_api_key with valid key"""
