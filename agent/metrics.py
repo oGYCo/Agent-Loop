@@ -97,6 +97,40 @@ TASK_DURATION = Histogram(
 )
 
 
+# ========== Provider Metrics ==========
+
+PROVIDER_CALLS = Counter(
+    "agent_provider_calls_total",
+    "Total number of provider API calls",
+    ["provider", "status"]  # provider name, "success" or "failure"
+)
+
+PROVIDER_RESPONSE_TIME = Histogram(
+    "agent_provider_response_time_seconds",
+    "Provider response time in seconds",
+    ["provider"],
+    buckets=[0.1, 0.5, 1, 5, 10, 30, 60, 120]
+)
+
+PROVIDER_HEALTH = Gauge(
+    "agent_provider_health",
+    "Provider health status (0=unknown, 1=healthy, 2=unhealthy)",
+    ["provider"]
+)
+
+PROVIDER_FAILOVER = Counter(
+    "agent_provider_failover_total",
+    "Total number of provider failovers",
+    ["from_provider", "to_provider"]
+)
+
+PROVIDER_ACTIVE = Gauge(
+    "agent_provider_active",
+    "Currently active provider",
+    ["provider"]
+)
+
+
 # ========== Metrics Collector ==========
 
 class MetricsCollector:
@@ -182,6 +216,36 @@ class MetricsCollector:
         if start_time:
             duration = time.time() - start_time
             TASK_DURATION.observe(duration)
+
+    # Provider methods
+    def record_provider_call(self, provider: str, success: bool = True):
+        """Record a provider API call"""
+        status = "success" if success else "failure"
+        PROVIDER_CALLS.labels(provider=provider, status=status).inc()
+
+    def record_provider_response_time(self, provider: str, duration: float):
+        """Record provider response time"""
+        PROVIDER_RESPONSE_TIME.labels(provider=provider).observe(duration)
+
+    def set_provider_health(self, provider: str, status: str):
+        """Set provider health status (healthy, unhealthy, unknown)"""
+        status_map = {"healthy": 1, "unhealthy": 2, "unknown": 0}
+        PROVIDER_HEALTH.labels(provider=provider).set(status_map.get(status, 0))
+
+    def record_provider_failover(self, from_provider: str, to_provider: str):
+        """Record a provider failover event"""
+        PROVIDER_FAILOVER.labels(from_provider=from_provider, to_provider=to_provider).inc()
+
+    def set_active_provider(self, provider: str):
+        """Set the currently active provider"""
+        # Reset all providers first
+        for p in self._providers_set if hasattr(self, '_providers_set') else []:
+            PROVIDER_ACTIVE.labels(provider=p).set(0)
+        # Set active provider
+        PROVIDER_ACTIVE.labels(provider=provider).set(1)
+        if not hasattr(self, '_providers_set'):
+            self._providers_set = set()
+        self._providers_set.add(provider)
 
 
 def get_metrics_collector() -> MetricsCollector:

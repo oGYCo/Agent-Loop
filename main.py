@@ -34,6 +34,12 @@ from agent.session_manager import SessionManager
 from agent.git_helper import GitHelper
 from agent.config_reloader import ConfigReloader
 from agent.prompt_manager import PromptManager
+from agent.model_provider import (
+    ModelProviderManager,
+    create_provider_manager,
+    ProviderHealthStatus,
+    mask_api_key,
+)
 from agent.console import (
     console,
     print_header,
@@ -556,6 +562,125 @@ def reset_template(args: argparse.Namespace) -> None:
         print(f"No override found for template '{args.name}'.")
 
 
+# ========== Provider Command Handlers ==========
+
+def list_providers(args: argparse.Namespace) -> None:
+    """List all configured providers and their status"""
+    state_manager = StateManager(args.project_dir if args.project_dir else None)
+    config = state_manager.load_config()
+    provider_manager = create_provider_manager(config)
+
+    providers = provider_manager.list_providers()
+    active = provider_manager.get_active_provider()
+
+    if not providers:
+        print("No providers configured.")
+        return
+
+    print("\n=== Configured Providers ===\n")
+    print(f"{'Name':<20} {'Type':<12} {'Model':<25} {'Health':<12} {'Status':<10}")
+    print("-" * 80)
+
+    for name, provider in providers.items():
+        health = provider_manager.get_health_status(name)
+        status = "active" if active and active.config == provider else "inactive"
+
+        # Get masked API key info
+        keys = provider.get_all_api_keys()
+        key_info = f"{len(keys)} key(s)" if keys else "no key"
+
+        print(f"{name:<20} {provider.provider:<12} {provider.get_model():<25} {health.value:<12} {status:<10}")
+
+    print("\n=== Provider Statistics ===\n")
+    all_stats = provider_manager.get_all_stats()
+    if all_stats:
+        print(f"{'Provider':<20} {'Calls':<10} {'Success':<10} {'Success Rate':<15} {'Avg Response Time':<15}")
+        print("-" * 70)
+        for name, stats in all_stats.items():
+            print(f"{name:<20} {stats.total_calls:<10} {stats.successful_calls:<10} "
+                  f"{stats.success_rate:.2%}            {stats.average_response_time:.3f}s")
+    else:
+        print("No statistics available yet.")
+
+    print("\n=== Fallback Chains ===\n")
+    for name, provider in providers.items():
+        if provider.fallback_provider:
+            print(f"  {name} -> {provider.fallback_provider}")
+        else:
+            print(f"  {name} -> (no fallback)")
+
+    print()
+
+
+def switch_provider_cmd(args: argparse.Namespace) -> None:
+    """Switch to a different provider"""
+    state_manager = StateManager(args.project_dir if args.project_dir else None)
+    config = state_manager.load_config()
+    provider_manager = create_provider_manager(config)
+
+    # Get the provider to switch to
+    provider_name = args.name
+
+    # Check if provider exists
+    providers = provider_manager.list_providers()
+    if provider_name not in providers:
+        print(f"Error: Provider '{provider_name}' not found.")
+        print("\nAvailable providers:")
+        for name in providers:
+            print(f"  - {name}")
+        return
+
+    # Validate and switch
+    warnings = provider_manager.validate_providers()
+    if provider_name in warnings:
+        print(f"Warning: Provider '{provider_name}' has validation issues:")
+        for warning in warnings[provider_name]:
+            print(f"  - {warning}")
+
+    success = provider_manager.switch_provider(provider_name)
+    if success:
+        # Update config to persist the change
+        config["active_provider"] = provider_name
+        state_manager.save_config(config)
+
+        print(f"Switched to provider '{provider_name}'.")
+    else:
+        print(f"Failed to switch to provider '{provider_name}'.")
+
+
+async def check_provider_health(args: argparse.Namespace) -> None:
+    """Check provider health status"""
+    state_manager = StateManager(args.project_dir if args.project_dir else None)
+    config = state_manager.load_config()
+    provider_manager = create_provider_manager(config)
+
+    providers = provider_manager.list_providers()
+
+    if not providers:
+        print("No providers configured.")
+        return
+
+    # Check specific provider or all
+    if args.name:
+        providers_to_check = {args.name: providers[args.name]} if args.name in providers else {}
+        if not providers_to_check:
+            print(f"Error: Provider '{args.name}' not found.")
+            return
+    else:
+        providers_to_check = providers
+
+    print("\n=== Provider Health Check ===\n")
+
+    for name in providers_to_check:
+        print(f"Checking {name}...", end=" ")
+        is_healthy = await provider_manager.provider_health_check(name)
+        health = provider_manager.get_health_status(name)
+        status = "✓ Healthy" if is_healthy else "✗ Unhealthy"
+        print(status)
+
+    print()
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         description="Agent-Loop: Autonomous AI Agent System",
@@ -788,6 +913,41 @@ For more information, see: https://github.com/oGYCo/Agent-Loop
         help="Prompt key to delete"
     )
 
+    # provider command
+    provider_parser = subparsers.add_parser(
+        "provider",
+        help="Manage model providers",
+        description="Manage model providers for failover and load balancing"
+    )
+    provider_subparsers = provider_parser.add_subparsers(dest="provider_action", help="Provider actions")
+
+    # provider list
+    provider_subparsers.add_parser(
+        "list",
+        help="List all configured providers and their status"
+    )
+
+    # provider switch
+    provider_switch_parser = provider_subparsers.add_parser(
+        "switch",
+        help="Switch to a different provider"
+    )
+    provider_switch_parser.add_argument(
+        "name",
+        help="Provider name to switch to"
+    )
+
+    # provider health
+    provider_health_parser = provider_subparsers.add_parser(
+        "health",
+        help="Check provider health status"
+    )
+    provider_health_parser.add_argument(
+        "name",
+        nargs="?",  # Optional - if not provided, check all providers
+        help="Provider name to check (optional, checks all if not provided)"
+    )
+
     # template command
     template_parser = subparsers.add_parser(
         "template",
@@ -874,6 +1034,16 @@ For more information, see: https://github.com/oGYCo/Agent-Loop
                 delete_prompt(args)
             else:
                 prompt_parser.print_help()
+        elif args.command == "provider":
+            import asyncio
+            if args.provider_action == "list":
+                list_providers(args)
+            elif args.provider_action == "switch":
+                switch_provider_cmd(args)
+            elif args.provider_action == "health":
+                asyncio.run(check_provider_health(args))
+            else:
+                provider_parser.print_help()
         elif args.command == "template":
             if args.template_action == "list":
                 list_templates(args)
