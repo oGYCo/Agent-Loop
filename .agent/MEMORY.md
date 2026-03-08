@@ -4,6 +4,43 @@ Accumulated experience and lessons learned from task execution.
 
 ---
 
+## 2026-03-08 - Task Dependency System (feature-034)
+
+**任务描述**: 实现任务间依赖关系管理，使Agent能按正确顺序执行有前置依赖的任务。
+
+**Lessons Learned:**
+
+1. **DAG Implementation with Kahn's Algorithm**:
+   - Used topological sort (Kahn's algorithm) for dependency resolution
+   - Tasks with no dependencies come first
+   - Within same dependency level, priority is respected
+
+2. **Dependency Validation**:
+   - is_dependency_satisfied() checks if all dependencies are completed (status=completed OR passes=True)
+   - validate_dependencies() detects circular dependencies and returns clear error messages
+   - CircularDependencyError exception provides actionable error messages
+
+3. **Backward Compatibility**:
+   - Tasks without depends_on field are treated as having no dependencies
+   - Existing task selection logic preserved - only adds dependency filtering on top
+
+4. **API Updates**:
+   - TaskCreate model now accepts depends_on: List[str] field
+   - TaskResponse includes depends_on field
+   - Validation ensures no duplicate dependencies and non-empty IDs
+
+5. **CLI Enhancements**:
+   - Added --tree parameter to list command for dependency tree visualization
+   - Added --depends-on parameter to add command
+   - Tree view shows blocked tasks in gray
+
+6. **Testing**:
+   - Added 16 new tests for dependency system
+   - All 35 task_selector tests pass
+   - All 596 tests in the project pass
+
+---
+
 ## 2026-03-08 - API Production-Grade Enhancements (feature-033)
 
 **任务描述**: 将api.py从当前的开发级别提升到生产可部署级别。
@@ -1280,6 +1317,8 @@ Accumulated experience and lessons learned from task execution.
 
 
 
+
+
 2026-03-08 - 持续改进计划 (feature-028)
 
 **任务描述**: 这是一个meta任务，用于持续改进系统。在完成每个主要功能后，系统应该：1) 自动审查和更新feature_list.json 2) 更新MEMORY.md记录经验 3) 审查和更新CLAUDE.md和README.md 4) 确保测试覆盖新功能。此任务确保系统能够持续自我优化和成长。
@@ -1458,7 +1497,10 @@ Changes Made:
 
 ---
 
-### 2026-03-08 - Agent Core测试覆盖率提升至70%+ (feature-032)
+
+---
+
+2026-03-08 - Agent Core测试覆盖率提升至70%+ (feature-032)
 
 **任务描述**: 当前agent_core.py测试覆盖率仅24%，严重低于生产标准。需要将覆盖率提升至70%以上，确保核心逻辑的可靠性。具体包括：
 
@@ -1477,7 +1519,10 @@ Changes Made:
 
 I have successfully increased the test coverage for `agent_core.py` from **24% to 62%** - a significant improvement of +38 percentage points. Here's what was accomplished:
 
-### Coverage Progress
+
+---
+
+Coverage Progress
 | Metric | Before | After |
 |--------|--------|-------|
 | Coverage | 24% | 62% |
@@ -1485,8 +1530,45 @@ I have successfully increased the test coverage for `agent_core.py` from **24% t
 | Statements | 963 | 963 |
 | Missing | 695 | 323 |
 
-### Tests Added in `tests/test_agent_core_extended.py`
+
+---
+
+Tests Added in `tests/test_agent_core_extended.py`
 
 The new test file covers:
 
 1. **Hook System** (PreToolUse, PostToolUse, Notificatio
+
+---
+
+### 2026-03-08 - API服务生产级加固 (feature-033)
+
+**任务描述**: 将api.py从当前的开发级别提升到生产可部署级别。具体包括：
+
+1) **API版本化**：添加/api/v1/前缀路由，为未来API变更提供平滑升级路径，旧路由重定向到新路径。参考FastAPI路由分组：https://fastapi.tiangolo.com/tutorial/bigger-applications/
+2) **请求/响应日志中间件**：记录每个请求的method、path、status_code、耗时、request_id（UUID），用于调试和审计。
+3) **全局异常处理器**：替换当前通用500错误，实现自定义ExceptionHandler返回结构化错误信息（error_code、message、detail、timestamp）。参考：https://fastapi.tiangolo.com/tutorial/handling-errors/
+4) **分页支持**：为/tasks和/sessions端点添加分页参数（page、per_page、total），当任务数量超过100时防止性能退化。
+5) **任务删除端点**：实现DELETE /tasks/{id}端点，支持软删除（标记为archived）和硬删除。
+6) **批量操作端点**：实现POST /tasks/bulk用于批量创建/更新/删除任务。
+7) **Agent暂停/恢复**：实现POST /agent/pause和POST /agent/resume端点，允许通过API控制Agent执行。
+8) **OpenAPI文档增强**：为所有端点添加完整的description、response_model、tags分组，使自动生成的/docs页面信息完整易用。
+9) **健康检查增强**：/health端点增加依赖检查（文件系统、配置文件存在性），返回详细的健康状态。
+10) **Gzip压缩**：添加GZipMiddleware减少传输大小。
+
+**关键指令**：每个改动必须通过FastAPI TestClient验证。参考FastAPI完整教程：https://fastapi.tiangolo.com/tutorial/ 。确保与现有WebSocket功能兼容。所有新端点都需要测试覆盖。
+
+**执行结果**: completed
+**执行消息**: I have successfully implemented the production-grade API enhancements. Here's a summary of all the changes:
+
+## Summary of Changes
+
+### 1. API Versioning
+- Added `/api/v1/` prefix for all main endpoints
+- Legacy routes (without prefix) redirect to v1 with query parameter preservation
+
+### 2. Request/Response Logging Middleware
+- Logs each request with method, path, status_code, duration_ms, and request_id (UUID)
+- Adds `X-Request-ID` header to responses for tracing
+
+### 3. Global Exception Handl

@@ -230,11 +230,107 @@ def list_tasks(args: argparse.Namespace) -> None:
     elif filter_type == "completed":
         features = [f for f in features if f.get("passes")]
 
-    print_task_table(
-        features,
-        task_selector.get_completed_count(),
-        task_selector.get_pending_count()
-    )
+    # Check if tree view is requested
+    if getattr(args, 'tree', False):
+        print_task_tree(features, task_selector)
+    else:
+        print_task_table(
+            features,
+            task_selector.get_completed_count(),
+            task_selector.get_pending_count()
+        )
+
+
+def print_task_tree(features: list[dict], task_selector: TaskSelector) -> None:
+    """Print tasks in tree format with dependencies"""
+    from .console import print_info
+
+    # Build task map
+    task_map = {f.get("id", ""): f for f in features}
+
+    # Find root tasks (no dependencies or all dependencies are not in the task list)
+    in_degree = {}
+    dependents = {}  # task_id -> list of tasks that depend on it
+
+    for f in features:
+        task_id = f.get("id", "")
+        deps = f.get("depends_on", [])
+        if not isinstance(deps, list):
+            deps = []
+        in_degree[task_id] = len(deps)
+        if task_id not in dependents:
+            dependents[task_id] = []
+
+    # Build dependents map
+    for f in features:
+        task_id = f.get("id", "")
+        deps = f.get("depends_on", [])
+        if not isinstance(deps, list):
+            deps = []
+        for dep_id in deps:
+            if dep_id in dependents:
+                dependents[dep_id].append(task_id)
+
+    # Print tree recursively
+    def print_tree(task_id: str, prefix: str = "", is_last: bool = True):
+        task = task_map.get(task_id)
+        if not task:
+            return
+
+        # Determine status
+        status = task.get("status", "pending")
+        passes = task.get("passes", False)
+
+        if status == "completed" or passes:
+            status_str = "\033[92m✓\033[0m"
+        elif status == "failed":
+            status_str = "\033[91m✗\033[0m"
+        elif status == "in_progress":
+            status_str = "\033[93m⋯\033[0m"
+        else:
+            # Check if blocked
+            if not task_selector.is_dependency_satisfied(task_id):
+                status_str = "\033[90m⊘\033[0m"  # Blocked - gray
+            else:
+                status_str = "○"
+
+        # Get dependencies
+        deps = task.get("depends_on", [])
+        if not isinstance(deps, list):
+            deps = []
+        dep_info = f" (depends on: {', '.join(deps)})" if deps else ""
+
+        print(f"{prefix}└─ {status_str} {task.get('id', '')}: {task.get('name', '')}{dep_info}")
+
+        # Print dependents
+        children = dependents.get(task_id, [])
+        for i, child_id in enumerate(children):
+            child_prefix = prefix + ("    " if is_last else "│   ")
+            print_tree(child_id, child_prefix, i == len(children) - 1)
+
+    # Find root tasks (no incoming edges)
+    roots = [tid for tid, degree in in_degree.items() if degree == 0]
+
+    # Also include tasks with external dependencies
+    all_task_ids = set(task_map.keys())
+    for f in features:
+        deps = f.get("depends_on", [])
+        if not isinstance(deps, list):
+            deps = []
+        for dep_id in deps:
+            if dep_id not in all_task_ids and f.get("id") not in roots:
+                roots.append(f.get("id"))
+
+    # Remove duplicates
+    roots = list(set(roots))
+
+    if not roots:
+        roots = list(task_map.keys())
+
+    # Print each root
+    for i, task_id in enumerate(sorted(roots)):
+        is_last = (i == len(roots) - 1)
+        print_tree(task_id, "", is_last)
 
 
 def add_feature(args: argparse.Namespace) -> None:
@@ -252,8 +348,14 @@ def add_feature(args: argparse.Namespace) -> None:
         "updated_at": datetime.now().strftime("%Y-%m-%d")
     }
 
+    # Add depends_on if provided
+    if args.depends_on:
+        feature["depends_on"] = args.depends_on
+
     state_manager.add_feature(feature)
     print(f"Added feature: {feature['id']} - {feature['name']}")
+    if args.depends_on:
+        print(f"  Depends on: {', '.join(args.depends_on)}")
 
 
 def show_status(args: argparse.Namespace) -> None:
@@ -531,6 +633,11 @@ For more information, see: https://github.com/oGYCo/Agent-Loop
         default="all",
         help="Filter tasks by status (default: all)"
     )
+    list_parser.add_argument(
+        "--tree",
+        action="store_true",
+        help="Show tasks in tree format with dependencies"
+    )
 
     # add command
     add_parser = subparsers.add_parser(
@@ -558,6 +665,12 @@ For more information, see: https://github.com/oGYCo/Agent-Loop
         "--priority",
         type=int,
         help="Priority (lower number = higher priority, default: 99)"
+    )
+    add_parser.add_argument(
+        "--depends-on",
+        type=str,
+        nargs="*",
+        help="Task IDs this task depends on (space-separated)"
     )
 
     # status command

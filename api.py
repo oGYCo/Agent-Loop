@@ -579,6 +579,7 @@ class TaskCreate(BaseModel):
     name: str
     description: Optional[str] = None
     priority: Optional[int] = 99
+    depends_on: Optional[List[str]] = None
 
     @field_validator('name')
     @classmethod
@@ -645,6 +646,27 @@ class TaskCreate(BaseModel):
 
         return v
 
+    @field_validator('depends_on')
+    @classmethod
+    def validate_depends_on(cls, v: Optional[List[str]], info: ValidationInfo) -> Optional[List[str]]:
+        """Validate depends_on field"""
+        if v is None:
+            return None
+
+        if not isinstance(v, list):
+            raise ValueError("depends_on must be a list")
+
+        # Check for empty strings and duplicates
+        seen = set()
+        for dep_id in v:
+            if not dep_id or not dep_id.strip():
+                raise ValueError("depends_on cannot contain empty IDs")
+            if dep_id in seen:
+                raise ValueError(f"Duplicate dependency: {dep_id}")
+            seen.add(dep_id)
+
+        return v
+
 
 class TaskResponse(BaseModel):
     """Task response model"""
@@ -658,6 +680,7 @@ class TaskResponse(BaseModel):
     updated_at: str
     verify_command: Optional[str] = None
     context_files: Optional[List[str]] = None
+    depends_on: Optional[List[str]] = None
 
 
 class TaskUpdate(BaseModel):
@@ -920,7 +943,8 @@ def get_tasks(
                     status=f.get("status", "pending"),
                     passes=f.get("passes", False),
                     created_at=f.get("created_at", ""),
-                    updated_at=f.get("updated_at", "")
+                    updated_at=f.get("updated_at", ""),
+                    depends_on=f.get("depends_on")
                 )
                 for f in paginated_features
             ],
@@ -963,6 +987,10 @@ def create_task(request: Request, task: TaskCreate, api_key: str = Depends(get_a
             "updated_at": now
         }
 
+        # Add depends_on if provided
+        if task.depends_on:
+            new_feature["depends_on"] = task.depends_on
+
         state_manager.add_feature(new_feature)
 
         return TaskResponse(
@@ -973,7 +1001,8 @@ def create_task(request: Request, task: TaskCreate, api_key: str = Depends(get_a
             status=new_feature["status"],
             passes=new_feature["passes"],
             created_at=new_feature["created_at"],
-            updated_at=new_feature["updated_at"]
+            updated_at=new_feature["updated_at"],
+            depends_on=new_feature.get("depends_on")
         )
     except AgentLoopError as e:
         logger.error(f"Agent error creating task: {e}")
@@ -1004,7 +1033,8 @@ def get_task(request: Request, task_id: str, api_key: str = Depends(get_api_key)
             created_at=feature.get("created_at", ""),
             updated_at=feature.get("updated_at", ""),
             verify_command=feature.get("verify_command"),
-            context_files=feature.get("context_files")
+            context_files=feature.get("context_files"),
+            depends_on=feature.get("depends_on")
         )
     except HTTPException:
         raise
@@ -1048,7 +1078,8 @@ def update_task(request: Request, task_id: str, updates: TaskUpdate, api_key: st
             created_at=feature.get("created_at", ""),
             updated_at=feature.get("updated_at", ""),
             verify_command=feature.get("verify_command"),
-            context_files=feature.get("context_files")
+            context_files=feature.get("context_files"),
+            depends_on=feature.get("depends_on")
         )
     except HTTPException:
         raise
@@ -1093,6 +1124,10 @@ def create_task(request: Request, task: TaskCreate, api_key: str = Depends(get_a
             "updated_at": now
         }
 
+        # Add depends_on if provided
+        if task.depends_on:
+            new_feature["depends_on"] = task.depends_on
+
         state_manager.add_feature(new_feature)
 
         return TaskResponse(
@@ -1103,7 +1138,8 @@ def create_task(request: Request, task: TaskCreate, api_key: str = Depends(get_a
             status=new_feature["status"],
             passes=new_feature["passes"],
             created_at=new_feature["created_at"],
-            updated_at=new_feature["updated_at"]
+            updated_at=new_feature["updated_at"],
+            depends_on=new_feature.get("depends_on")
         )
     except AgentLoopError as e:
         logger.error(f"Agent error creating task: {e}")
@@ -1138,7 +1174,8 @@ def get_task(request: Request, task_id: str, api_key: str = Depends(get_api_key)
             created_at=feature.get("created_at", ""),
             updated_at=feature.get("updated_at", ""),
             verify_command=feature.get("verify_command"),
-            context_files=feature.get("context_files")
+            context_files=feature.get("context_files"),
+            depends_on=feature.get("depends_on")
         )
     except HTTPException:
         raise
@@ -1189,7 +1226,8 @@ def update_task(request: Request, task_id: str, updates: TaskUpdate, api_key: st
             created_at=feature.get("created_at", ""),
             updated_at=feature.get("updated_at", ""),
             verify_command=feature.get("verify_command"),
-            context_files=feature.get("context_files")
+            context_files=feature.get("context_files"),
+            depends_on=feature.get("depends_on")
         )
     except HTTPException:
         raise
