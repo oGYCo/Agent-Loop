@@ -335,7 +335,7 @@ class WebhookNotifier:
                 "test",
                 {
                     "message": "This is a test notification from Agent-Loop",
-                    "version": "1.0.0"
+                    "version": "0.1.0"
                 },
                 retry=False  # 测试时不重试
             )

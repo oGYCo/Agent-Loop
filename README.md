@@ -10,11 +10,8 @@
 
 <p align="center">
   <a href="https://www.python.org/"><img src="https://img.shields.io/badge/python-3.11+-blue.svg" alt="Python 3.11+" /></a>
-  <a href="https://github.com/oGYCo/agent-loop/actions/workflows/test.yml"><img src="https://github.com/oGYCo/agent-loop/actions/workflows/test.yml/badge.svg" alt="Tests" /></a>
-  <a href="https://codecov.io/gh/oGYCo/agent-loop"><img src="https://codecov.io/gh/oGYCo/agent-loop/branch/main/graph/badge.svg" alt="Coverage" /></a>
   <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-green.svg" alt="License: MIT" /></a>
   <a href="https://github.com/oGYCo/agent-loop/stargazers"><img src="https://img.shields.io/github/stars/oGYCo/agent-loop" alt="Stars" /></a>
-  <a href="https://github.com/oGYCo/agent-loop/releases"><img src="https://img.shields.io/github/v/release/oGYCo/agent-loop?display_name=tag" alt="Version" /></a>
 </p>
 
 <p align="center">

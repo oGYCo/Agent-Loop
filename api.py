@@ -168,7 +168,7 @@ Use the `X-API-Key` header for API key authentication (when enabled in config).
 - Current version: **v1** (prefix: `/api/v1`)
 - Legacy routes (without version prefix) are redirected to v1
 """,
-    version="1.0.0",
+    version="0.1.0",
     docs_url="/docs",
     redoc_url="/redoc",
     openapi_url="/openapi.json",
@@ -333,7 +333,7 @@ else:
 api_v1_router = FastAPI(
     title="Agent-Loop API v1",
     description="Version 1 of the Agent-Loop REST API",
-    version="1.0.0",
+    version="0.1.0",
 )
 
 # Global agent state for pause/resume

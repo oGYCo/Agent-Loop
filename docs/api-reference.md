@@ -42,7 +42,7 @@ Response:
 ```json
 {
   "status": "healthy",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "timestamp": "2026-03-08T10:00:00Z"
 }
 ```
@@ -60,11 +60,11 @@ curl http://localhost:8000/api/v1/tasks
 ```
 
 Query Parameters:
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `status` | string | Filter by status (pending, in_progress, completed, failed) |
-| `limit` | int | Maximum number of tasks to return |
-| `offset` | int | Offset for pagination |
+| Parameter | Type   | Description                                                |
+| --------- | ------ | ---------------------------------------------------------- |
+| `status`  | string | Filter by status (pending, in_progress, completed, failed) |
+| `limit`   | int    | Maximum number of tasks to return                          |
+| `offset`  | int    | Offset for pagination                                      |
 
 Response:
 ```json
@@ -132,13 +132,13 @@ curl -X POST http://localhost:8000/api/v1/tasks \
 ```
 
 Request Body:
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `name` | string | Yes | Task name |
-| `description` | string | No | Task description |
-| `priority` | int | No | Priority (1 = highest, default: 3) |
-| `verify_command` | string | No | Verification command |
-| `context_files` | string[] | No | Files to include in context |
+| Field            | Type     | Required | Description                        |
+| ---------------- | -------- | -------- | ---------------------------------- |
+| `name`           | string   | Yes      | Task name                          |
+| `description`    | string   | No       | Task description                   |
+| `priority`       | int      | No       | Priority (1 = highest, default: 3) |
+| `verify_command` | string   | No       | Verification command               |
+| `context_files`  | string[] | No       | Files to include in context        |
 
 Response:
 ```json
@@ -172,13 +172,13 @@ curl -X PATCH http://localhost:8000/api/v1/tasks/feat-001 \
 ```
 
 Request Body:
-| Field | Type | Description |
-|-------|------|-------------|
-| `name` | string | Task name |
-| `description` | string | Task description |
-| `priority` | int | Priority (1-5) |
-| `status` | string | Status (pending, in_progress, completed, failed) |
-| `passes` | boolean | Pass status |
+| Field         | Type    | Description                                      |
+| ------------- | ------- | ------------------------------------------------ |
+| `name`        | string  | Task name                                        |
+| `description` | string  | Task description                                 |
+| `priority`    | int     | Priority (1-5)                                   |
+| `status`      | string  | Status (pending, in_progress, completed, failed) |
+| `passes`      | boolean | Pass status                                      |
 
 ---
 
@@ -209,10 +209,10 @@ curl -X POST http://localhost:8000/api/v1/run \
 ```
 
 Request Body:
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `iterations` | int | No | Number of iterations (default: 10) |
-| `task_id` | string | No | Specific task ID to run |
+| Field        | Type   | Required | Description                        |
+| ------------ | ------ | -------- | ---------------------------------- |
+| `iterations` | int    | No       | Number of iterations (default: 10) |
+| `task_id`    | string | No       | Specific task ID to run            |
 
 Response:
 ```json
@@ -262,10 +262,10 @@ curl http://localhost:8000/api/v1/session/history
 ```
 
 Query Parameters:
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `limit` | int | Number of sessions to return |
-| `offset` | int | Offset for pagination |
+| Parameter | Type | Description                  |
+| --------- | ---- | ---------------------------- |
+| `limit`   | int  | Number of sessions to return |
+| `offset`  | int  | Offset for pagination        |
 
 Response:
 ```json
@@ -354,15 +354,15 @@ ws.onmessage = (event) => {
 
 All endpoints return standard HTTP status codes:
 
-| Code | Description |
-|------|-------------|
-| 200 | Success |
-| 201 | Created |
-| 400 | Bad Request |
-| 401 | Unauthorized |
-| 404 | Not Found |
-| 429 | Rate Limited |
-| 500 | Internal Server Error |
+| Code | Description           |
+| ---- | --------------------- |
+| 200  | Success               |
+| 201  | Created               |
+| 400  | Bad Request           |
+| 401  | Unauthorized          |
+| 404  | Not Found             |
+| 429  | Rate Limited          |
+| 500  | Internal Server Error |
 
 Error response format:
 ```json

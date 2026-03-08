@@ -19,7 +19,7 @@
 
 以下问题已在审计后被修复：
 
-1. ✅ **版本号不一致** - 已统一为 1.0.0
+1. ✅ **版本号不一致** - 已统一为 0.1.0
 2. ✅ **test_runner.py 安全问题** - 已移除 shell=True，使用 shell=False
 3. ✅ **__init__.py 导出不完整** - 已添加 PromptManager, PerformanceMonitor, ConfigReloader 导出
 4. ✅ **文档中的 MEMORY.txt** - 已更正为 MEMORY.md
@@ -408,7 +408,7 @@ def method(self, arg):
 ## 七、总结与建议
 
 ### 已完成 ✅
-1. ✅ 版本号统一为 1.0.0
+1. ✅ 版本号统一为 0.1.0
 2. ✅ 移除 test_runner.py 中的 shell=True
 3. ✅ 补充缺失的模块导出 (PromptManager, PerformanceMonitor, ConfigReloader)
 4. ✅ 统一文档和代码命名 (MEMORY.txt -> MEMORY.md)

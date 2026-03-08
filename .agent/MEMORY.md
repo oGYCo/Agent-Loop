@@ -208,3 +208,45 @@ Agent-Loop/
 *Last Updated: 2026-03-08*
 *Total Features Completed: 51*
 *Test Suite: 800+ tests*
+
+## Task Experience Records
+
+### 2026-03-08 - MEMORY.md整理等等 (feature-050)
+
+**任务描述**: 对当前的MEMORY.md进行系统性整理，并建立结构化的知识管理机制。具体包括：
+
+1) **MEMORY.md清理整合**：
+   - 合并重复的经验教训（如多个feature都提到的测试模式、JSON处理等）
+   - 按主题分组整理（架构决策、测试经验、错误处理模式、性能优化、集成经验）
+   - 删除过时的信息（如已修复的bug记录）
+   - 将28个独立的task记录提炼为10-15条核心知识点
+   - 目标：从当前内容精简到300行以内，信息密度更高，只保留那些重要的经验等等
+2) **结构化知识索引**：在.agent/目录创建knowledge_index.json，按主题和标签索引MEMORY.md中的知识点，支持快速检索。
+ 5) **CLAUDE.md同步更新**：确保CLAUDE.md中的架构描述、模块列表、命令示例与当前代码完全一致。
+ **关键指令**：执行此任务前必须完整阅读当前MEMORY.md和CLAUDE.md的内容以及仓库中的所有的相关内容。清理时保留高价值洞察，删除流水账式记录。
+
+**执行结果**: completed
+**执行消息**:
+任务已完成！以下是所做更改的摘要：
+
+## 完成的工作
+
+### 1. MEMORY.md 清理整合
+- **原始行数**: 2349 行
+- **清理后行数**: 210 行（目标 < 300 行）✅
+- **组织方式**: 按16个主题分组整理
+  - 核心架构（Agent Core、状态管理、配置系统）
+  - API与Web服务（REST API、WebSocket、Dashboard）
+  - 通知系统（Webhook、Email、Slack）
+  - 可观测性（日志、Metrics、Grafana）
+  - 安全（异常体系、错误码）
+  - 测试与质量（测试模式、类型注解）
+  - 部署（Docker、任务依赖）
+
+### 2. 创建 knowledge_index.json
+- 创建了 `.agent/knowledge_index.json` 文件
+- 包含18个主题标签，便于快速检索
+- 包含常用命令速查表
+
+### 3. CLAUDE.md 同步更新
+- 添加了新模块：`notification_router.py`、`notification_queue.py`、

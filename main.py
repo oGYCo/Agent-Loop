@@ -62,7 +62,7 @@ from agent.console import (
 _shutdown_requested = False
 
 # CLI version
-__version__ = "1.0.0"
+__version__ = "0.1.0"
 
 
 def _signal_handler(signum: int, frame: Any) -> None:
