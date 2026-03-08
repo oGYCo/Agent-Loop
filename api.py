@@ -5,7 +5,6 @@ Provides HTTP endpoints to interact with the Agent-Loop system.
 
 import asyncio
 import json
-import logging
 import os
 import sys
 from datetime import datetime
@@ -25,10 +24,14 @@ from agent.task_selector import TaskSelector
 from agent.session_manager import SessionManager
 from agent.git_helper import GitHelper
 from agent.metrics import get_prometheus_metrics, get_metrics_content_type, get_metrics_collector
+from agent.logging_ import configure_logging, get_logger
 
-# Configure logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+# Configure structured logging
+log_level = os.environ.get("LOG_LEVEL", "INFO")
+log_file = os.environ.get("LOG_FILE", "")
+json_output = bool(log_file)
+configure_logging(log_level=log_level, log_file=log_file, json_output=json_output)
+logger = get_logger(__name__)
 
 app = FastAPI(
     title="Agent-Loop API",
