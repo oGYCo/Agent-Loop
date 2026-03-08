@@ -432,8 +432,8 @@
       "name": "状态管理器原子写入与文件锁",
       "description": "为StateManager实现生产级的文件安全操作，解决当前存在的竞态条件和数据损坏风险。具体包括：\n\n1) **原子写入**：使用tempfile写入+os.replace()的原子替换模式，确保状态文件不会因进程崩溃而被截断。当前state_manager.py直接用open('w')写入，如果写入过程中进程被kill，文件会被截断为空或不完整JSON。\n2) **文件锁**：使用portalocker库（跨平台文件锁），在读写state.json、feature_list.json、session_history.json时加锁，防止多进程/多实例并发访问导致数据损坏。\n3) **备份机制**：每次写入前创建.bak备份文件，如果新文件写入失败自动回滚到备份版本。\n4) **数据校验**：写入后立即读取并验证JSON完整性（round-trip validation），确保序列化-反序列化一致。\n5) **配置Schema版本化**：在config.json中添加schema_version字段，实现配置格式迁移机制，为未来的格式变更提供升级路径。\n\n**关键指令**：需要安装portalocker依赖（添加到pyproject.toml）。参考Python原子文件操作模式。确保所有现有测试在修改后仍然通过。",
       "priority": 1,
-      "status": "pending",
-      "passes": false,
+      "status": "completed",
+      "passes": true,
       "context_files": [
         "agent/state_manager.py",
         "agent/config_reloader.py",
