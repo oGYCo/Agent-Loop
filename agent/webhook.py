@@ -4,6 +4,8 @@
 """
 
 import asyncio
+import hashlib
+import hmac
 import json
 import logging
 from datetime import datetime
@@ -128,12 +130,19 @@ class WebhookNotifier:
         # 如果配置了secret，也添加到headers用于验证
         if self.secret:
             headers["X-Webhook-Secret"] = self.secret
+            # Backward-compatible signature header expected by existing integrations/tests.
+            headers["X-Webhook-Signature"] = self.secret
+            payload_json = json.dumps(payload, sort_keys=True)
+            headers["X-Signature-SHA256"] = hmac.new(
+                self.secret.encode("utf-8"),
+                payload_json.encode("utf-8"),
+                hashlib.sha256,
+            ).hexdigest()
 
-        attempt = 0
-        max_attempts = self.retry_count if retry else 1
-        last_error: Exception | None = None
+        max_attempts = max(1, self.retry_count if retry else 1)
+        last_error: WebhookError | None = None
 
-        while attempt < max_attempts:
+        for attempt in range(1, max_attempts + 1):
             try:
                 logger.info(f"Sending webhook notification: {event_type} to {self.url}")
 
@@ -146,18 +155,21 @@ class WebhookNotifier:
                 if response.status_code >= 200 and response.status_code < 300:
                     logger.info(f"Webhook notification sent successfully: {event_type}")
                     return True
-                else:
-                    # HTTP errors - 4xx are client errors (not retryable), 5xx are server errors (retryable)
-                    is_retryable = response.status_code >= 500
-                    raise WebhookError(
-                        message=f"Webhook notification failed with status {response.status_code}",
-                        detail=response.text[:200],
-                        is_retryable=is_retryable,
-                    )
+
+                # HTTP errors - 4xx are client errors (not retryable), 5xx are server errors (retryable)
+                is_retryable = response.status_code >= 500
+                error = WebhookError(
+                    message=f"Webhook notification failed with status {response.status_code}",
+                    detail=response.text[:200],
+                    is_retryable=is_retryable,
+                )
+                if not error.is_retryable:
+                    raise error
+                last_error = error
 
             except httpx.TimeoutException as e:
                 logger.warning(
-                    f"Webhook notification timeout (attempt {attempt + 1}/{max_attempts})"
+                    f"Webhook notification timeout (attempt {attempt}/{max_attempts})"
                 )
                 last_error = WebhookError(
                     message="Webhook notification timeout",
@@ -167,7 +179,7 @@ class WebhookNotifier:
                 )
             except httpx.ConnectError as e:
                 logger.warning(
-                    f"Webhook notification connection error (attempt {attempt + 1}/{max_attempts}): {e}"
+                    f"Webhook notification connection error (attempt {attempt}/{max_attempts}): {e}"
                 )
                 last_error = WebhookError(
                     message="Webhook notification connection error",
@@ -180,23 +192,27 @@ class WebhookNotifier:
                 raise
             except Exception as e:
                 logger.error(f"Webhook notification error: {type(e).__name__}: {e}")
-                last_error = WebhookError(
+                raise WebhookError(
                     message="Webhook notification failed",
                     detail=str(e),
                     is_retryable=False,
                     original_exception=e,
                 )
-                break
 
-            if attempt < max_attempts - 1:
-                attempt += 1
+            if last_error and (not retry or attempt >= max_attempts):
+                if not retry and last_error.is_retryable:
+                    logger.error(
+                        f"Webhook notification failed (retry disabled): {event_type}"
+                    )
+                    return False
+                logger.error(f"Webhook notification failed after {max_attempts} attempts: {event_type}")
+                raise last_error
+
+            if last_error:
                 wait_time = self.retry_interval * (2 ** attempt)  # 指数退避
                 logger.info(f"Retrying webhook notification in {wait_time}s...")
                 await asyncio.sleep(wait_time)
 
-        if last_error:
-            logger.error(f"Webhook notification failed after {max_attempts} attempts: {event_type}")
-            raise last_error
         logger.error(f"Webhook notification failed after {max_attempts} attempts: {event_type}")
         return False
 

@@ -5,6 +5,7 @@
 """
 
 import asyncio
+import json
 import logging
 from datetime import datetime
 from typing import Any, Dict, List, Optional
@@ -178,9 +179,16 @@ class SlackNotifier:
                     "text": f"*重试次数:*\n{data['retry_count']}"
                 })
             if "error_message" in data:
+                error_message = str(data["error_message"])
+                prefix = "*错误信息:*\n```"
+                suffix = "```"
+                max_field_length = 4000
+                available = max_field_length - len(prefix) - len(suffix)
+                if len(error_message) > available:
+                    error_message = error_message[: max(0, available - 3)] + "..."
                 fields.append({
                     "type": "mrkdwn",
-                    "text": f"*错误信息:*\n```{data['error_message']}```"
+                    "text": f"{prefix}{error_message}{suffix}"
                 })
 
         if event_type == "human_intervention":
@@ -256,11 +264,10 @@ class SlackNotifier:
             "Content-Type": "application/json"
         }
 
-        attempt = 0
-        max_attempts = self.retry_count if retry else 1
-        last_error: Exception | None = None
+        max_attempts = max(1, self.retry_count if retry else 1)
+        last_error: SlackError | None = None
 
-        while attempt < max_attempts:
+        for attempt in range(1, max_attempts + 1):
             try:
                 logger.info(f"Sending Slack notification: {event_type} to {self.webhook_url}")
 
@@ -270,22 +277,56 @@ class SlackNotifier:
                     headers=headers
                 )
 
-                # Slack返回200表示成功
+                # Slack返回200通常表示成功，但也可能在body中返回错误
                 if response.status_code == 200:
-                    logger.info(f"Slack notification sent successfully: {event_type}")
-                    return True
+                    raw_body = response.text
+                    if isinstance(raw_body, str):
+                        body = raw_body.strip()
+                    elif isinstance(raw_body, (bytes, bytearray)):
+                        body = raw_body.decode(errors="ignore").strip()
+                    else:
+                        body = ""
+                    if body and body.lower() != "ok":
+                        parsed: Dict[str, Any] | None = None
+                        try:
+                            loaded = json.loads(body)
+                            if isinstance(loaded, dict):
+                                parsed = loaded
+                        except json.JSONDecodeError:
+                            parsed = None
+
+                        if parsed and parsed.get("ok") is False:
+                            error_code = str(parsed.get("error", "unknown_error"))
+                            is_retryable = error_code in {"rate_limited"}
+                            error = SlackError(
+                                message=f"Slack notification failed: {error_code}",
+                                detail=body[:200],
+                                is_retryable=is_retryable,
+                            )
+                            if not error.is_retryable:
+                                raise error
+                            last_error = error
+                        else:
+                            logger.info(f"Slack notification sent successfully: {event_type}")
+                            return True
+                    else:
+                        logger.info(f"Slack notification sent successfully: {event_type}")
+                        return True
                 else:
-                    # HTTP errors - 4xx are client errors (not retryable), 5xx are server errors (retryable)
-                    is_retryable = response.status_code >= 500
-                    raise SlackError(
+                    # HTTP errors - 4xx are client errors (not retryable), 5xx/429 are retryable
+                    is_retryable = response.status_code >= 500 or response.status_code == 429
+                    error = SlackError(
                         message=f"Slack notification failed with status {response.status_code}",
                         detail=response.text[:200],
                         is_retryable=is_retryable,
                     )
+                    if not error.is_retryable:
+                        raise error
+                    last_error = error
 
             except httpx.TimeoutException as e:
                 logger.warning(
-                    f"Slack notification timeout (attempt {attempt + 1}/{max_attempts})"
+                    f"Slack notification timeout (attempt {attempt}/{max_attempts})"
                 )
                 last_error = SlackError(
                     message="Slack notification timeout",
@@ -295,7 +336,7 @@ class SlackNotifier:
                 )
             except httpx.ConnectError as e:
                 logger.warning(
-                    f"Slack notification connection error (attempt {attempt + 1}/{max_attempts}): {e}"
+                    f"Slack notification connection error (attempt {attempt}/{max_attempts}): {e}"
                 )
                 last_error = SlackError(
                     message="Slack notification connection error",
@@ -308,23 +349,27 @@ class SlackNotifier:
                 raise
             except Exception as e:
                 logger.error(f"Slack notification error: {type(e).__name__}: {e}")
-                last_error = SlackError(
+                raise SlackError(
                     message="Slack notification failed",
                     detail=str(e),
                     is_retryable=False,
                     original_exception=e,
                 )
-                break
 
-            if attempt < max_attempts - 1:
-                attempt += 1
+            if last_error and (not retry or attempt >= max_attempts):
+                if not retry and last_error.is_retryable:
+                    logger.error(
+                        f"Slack notification failed (retry disabled): {event_type}"
+                    )
+                    return False
+                logger.error(f"Slack notification failed after {max_attempts} attempts: {event_type}")
+                raise last_error
+
+            if last_error:
                 wait_time = self.retry_interval * (2 ** attempt)  # 指数退避
                 logger.info(f"Retrying Slack notification in {wait_time}s...")
                 await asyncio.sleep(wait_time)
 
-        if last_error:
-            logger.error(f"Slack notification failed after {max_attempts} attempts: {event_type}")
-            raise last_error
         logger.error(f"Slack notification failed after {max_attempts} attempts: {event_type}")
         return False
 

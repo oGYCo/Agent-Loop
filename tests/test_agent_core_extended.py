@@ -39,6 +39,12 @@ from claude_agent_sdk.types import (
 )
 
 
+def _close_coroutine(coro):
+    """Close coroutine objects passed to mocked asyncio APIs."""
+    coro.close()
+    return None
+
+
 class TestAgentCoreExtended:
     """Extended test cases for AgentCore - covering uncovered functions"""
 
@@ -446,7 +452,11 @@ class TestAgentCoreExtended:
         """Test execute_task handles exceptions"""
         # This test verifies exception handling in execute_task's retry loop
         with patch('agent.agent_core.asyncio') as mock_asyncio:
-            mock_asyncio.run.side_effect = Exception("Test exception")
+            def mock_run_with_exception(coro):
+                coro.close()
+                raise Exception("Test exception")
+
+            mock_asyncio.run.side_effect = mock_run_with_exception
 
             task = {"id": "feature-001", "name": "Test"}
             result = agent_core.execute_task(task)
@@ -1009,7 +1019,8 @@ class TestEdgeCases:
 
         with patch('agent.agent_core._get_webhook_notifier', return_value=mock_notifier):
             with patch('agent.agent_core.asyncio') as mock_asyncio:
-                mock_asyncio.run = Mock()
+                mock_asyncio.get_running_loop.side_effect = RuntimeError("No running loop")
+                mock_asyncio.run = Mock(side_effect=_close_coroutine)
                 # Should not raise
                 _send_webhook_notification("test_event", {"data": "test"})
 
@@ -1022,7 +1033,8 @@ class TestEdgeCases:
 
         with patch('agent.agent_core._get_slack_notifier', return_value=mock_notifier):
             with patch('agent.agent_core.asyncio') as mock_asyncio:
-                mock_asyncio.run = Mock()
+                mock_asyncio.get_running_loop.side_effect = RuntimeError("No running loop")
+                mock_asyncio.run = Mock(side_effect=_close_coroutine)
                 # Should not raise
                 _send_slack_notification("test_event", {"data": "test"})
 
@@ -1032,8 +1044,8 @@ class TestEdgeCases:
         mock_loop.is_running.return_value = True
 
         with patch('agent.agent_core.asyncio') as mock_asyncio:
-            mock_asyncio.get_event_loop.return_value = mock_loop
-            mock_asyncio.create_task = Mock()
+            mock_asyncio.get_running_loop.return_value = mock_loop
+            mock_asyncio.create_task = Mock(side_effect=_close_coroutine)
             # Should not raise
             _push_log_sync("info", "test message", "test")
 
@@ -1043,8 +1055,7 @@ class TestEdgeCases:
         mock_loop.is_running.return_value = False
 
         with patch('agent.agent_core.asyncio') as mock_asyncio:
-            mock_asyncio.get_event_loop.return_value = mock_loop
-            mock_loop.run_until_complete = Mock()
+            mock_asyncio.get_running_loop.return_value = mock_loop
             # Should not raise
             _push_log_sync("info", "test message", "test")
 
@@ -1167,7 +1178,8 @@ class TestSyncNotifications:
     def test_send_webhook_notification_sync(self):
         """Test sync webhook notification"""
         with patch('agent.agent_core.asyncio') as mock_asyncio:
-            mock_asyncio.run = Mock()
+            mock_asyncio.get_running_loop.side_effect = RuntimeError("No running loop")
+            mock_asyncio.run = Mock(side_effect=_close_coroutine)
             _send_webhook_notification("test_event", {"data": "test"})
 
     def test_send_webhook_notification_sync_with_running_loop(self):
@@ -1176,14 +1188,15 @@ class TestSyncNotifications:
         mock_loop.is_running.return_value = True
 
         with patch('agent.agent_core.asyncio') as mock_asyncio:
-            mock_asyncio.get_event_loop.return_value = mock_loop
             mock_asyncio.get_running_loop.side_effect = RuntimeError("No running loop")
+            mock_asyncio.run = Mock(side_effect=_close_coroutine)
             _send_webhook_notification("test_event", {"data": "test"})
 
     def test_send_slack_notification_sync(self):
         """Test sync slack notification"""
         with patch('agent.agent_core.asyncio') as mock_asyncio:
-            mock_asyncio.run = Mock()
+            mock_asyncio.get_running_loop.side_effect = RuntimeError("No running loop")
+            mock_asyncio.run = Mock(side_effect=_close_coroutine)
             _send_slack_notification("test_event", {"data": "test"})
 
     def test_send_slack_notification_sync_with_running_loop(self):
@@ -1192,23 +1205,23 @@ class TestSyncNotifications:
         mock_loop.is_running.return_value = True
 
         with patch('agent.agent_core.asyncio') as mock_asyncio:
-            mock_asyncio.get_event_loop.return_value = mock_loop
             mock_asyncio.get_running_loop.side_effect = RuntimeError("No running loop")
+            mock_asyncio.run = Mock(side_effect=_close_coroutine)
             _send_slack_notification("test_event", {"data": "test"})
 
     def test_push_log_sync(self):
         """Test sync push log"""
         with patch('agent.agent_core.asyncio') as mock_asyncio:
-            mock_asyncio.create_task = Mock()
             mock_loop = Mock()
             mock_loop.is_running.return_value = True
-            mock_asyncio.get_event_loop.return_value = mock_loop
+            mock_asyncio.get_running_loop.return_value = mock_loop
+            mock_asyncio.create_task = Mock(side_effect=_close_coroutine)
             _push_log_sync("info", "test message", "test")
 
     def test_push_log_sync_no_loop(self):
         """Test sync push log when no event loop available"""
         with patch('agent.agent_core.asyncio') as mock_asyncio:
-            mock_asyncio.get_event_loop.side_effect = RuntimeError("No event loop")
+            mock_asyncio.get_running_loop.side_effect = RuntimeError("No event loop")
             _push_log_sync("info", "test message", "test")
 
 
@@ -1795,7 +1808,11 @@ class TestExecuteTaskWithSDK:
     def test_execute_task_with_sdk_sync_wrapper(self, agent_core):
         """Test execute_task (sync wrapper) returns error on exception"""
         with patch('agent.agent_core.asyncio') as mock_asyncio:
-            mock_asyncio.run.side_effect = Exception("SDK error")
+            def mock_run_with_exception(coro):
+                coro.close()
+                raise Exception("SDK error")
+
+            mock_asyncio.run.side_effect = mock_run_with_exception
 
             task = {"id": "test-001", "name": "Test Task"}
             result = agent_core.execute_task(task)

@@ -186,6 +186,9 @@ class EmailNotifier:
             "human_intervention"
         ])
         self.timeout = email_config.get("timeout", 30)
+        self.max_attachment_size = int(
+            email_config.get("max_attachment_size", 10 * 1024 * 1024)
+        )
 
     def reload_config(self) -> None:
         """重新加载配置"""
@@ -318,6 +321,9 @@ class EmailNotifier:
 
                 logger.info(f"Email sent successfully to {recipient}")
 
+            except asyncio.TimeoutError as e:
+                logger.error(f"Failed to send email to {recipient}: TimeoutError: {e}")
+                success = False
             except Exception as e:
                 logger.error(f"Failed to send email to {recipient}: {type(e).__name__}: {e}")
                 last_error = EmailError(

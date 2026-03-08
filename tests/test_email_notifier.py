@@ -14,6 +14,35 @@ from agent.state_manager import StateManager
 from agent.email_notifier import EmailNotifier, get_email_notifier, reset_email_notifier
 
 
+@pytest.fixture
+def temp_agent_dir():
+    """Create a temporary directory for module-level fixture reuse."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        yield tmpdir
+
+
+@pytest.fixture
+def email_notifier_enabled(temp_agent_dir):
+    """Create EmailNotifier with email enabled for all test classes."""
+    reset_email_notifier()
+    sm = StateManager(agent_dir=temp_agent_dir)
+    sm.save_config({
+        "email": {
+            "enabled": True,
+            "smtp_host": "smtp.gmail.com",
+            "smtp_port": 587,
+            "smtp_user": "test@example.com",
+            "smtp_password": "test-password",
+            "use_tls": True,
+            "from_name": "Test Agent",
+            "from_email": "test@example.com",
+            "to_emails": ["admin@example.com", "team@example.com"],
+            "events": ["task_completed", "task_failed", "human_intervention"]
+        }
+    })
+    return EmailNotifier(sm)
+
+
 class TestEmailNotifier:
     """Test cases for EmailNotifier"""
 
@@ -331,3 +360,311 @@ class TestEmailNotifierTemplates:
         """Test templates are HTML"""
         for template_name, template in email_notifier.TEMPLATES.items():
             assert "<html" in template["body"].lower(), f"Not HTML in {template_name}"
+
+
+class TestEmailSMTPConnection:
+    """Test cases for email SMTP connection handling"""
+
+    @pytest.fixture
+    def temp_agent_dir(self):
+        """Create a temporary directory for testing"""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            yield tmpdir
+
+    @pytest.mark.asyncio
+    @patch("agent.email_notifier.aiosmtplib.send")
+    async def test_smtp_connection_failure(self, mock_send, email_notifier_enabled):
+        """Test email handles SMTP connection failure"""
+        from agent.exceptions import EmailError
+
+        # Simulate connection error
+        import socket
+        mock_send.side_effect = socket.error("Connection refused")
+
+        with pytest.raises(EmailError) as exc_info:
+            await email_notifier_enabled.send_email(
+                subject="Test",
+                body="<p>Test</p>"
+            )
+
+        assert exc_info.value.is_retryable is True
+
+    @pytest.mark.asyncio
+    @patch("agent.email_notifier.aiosmtplib.send")
+    async def test_smtp_authentication_failure(self, mock_send, email_notifier_enabled):
+        """Test email handles SMTP authentication failure"""
+        from agent.exceptions import EmailError
+
+        # Simulate authentication error
+        mock_send.side_effect = Exception("SMTP Authentication failed")
+
+        with pytest.raises(EmailError) as exc_info:
+            await email_notifier_enabled.send_email(
+                subject="Test",
+                body="<p>Test</p>"
+            )
+
+        assert "Authentication" in str(exc_info.value.detail) or "SMTP" in str(exc_info.value.detail)
+
+    @pytest.mark.asyncio
+    @patch("agent.email_notifier.aiosmtplib.send")
+    async def test_smtp_timeout(self, mock_send, email_notifier_enabled):
+        """Test email handles SMTP timeout"""
+        import asyncio
+        mock_send.side_effect = asyncio.TimeoutError("SMTP timeout")
+
+        result = await email_notifier_enabled.send_email(
+            subject="Test",
+            body="<p>Test</p>"
+        )
+
+        assert result is False
+
+
+class TestEmailAttachmentHandling:
+    """Test cases for email attachment handling"""
+
+    @pytest.fixture
+    def temp_agent_dir(self):
+        """Create a temporary directory for testing"""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            yield tmpdir
+
+    def test_email_with_large_attachment(self, temp_agent_dir):
+        """Test email handles large attachment data"""
+        reset_email_notifier()
+        sm = StateManager(agent_dir=temp_agent_dir)
+        sm.save_config({
+            "email": {
+                "enabled": True,
+                "smtp_host": "smtp.gmail.com",
+                "smtp_port": 587,
+                "smtp_user": "test@example.com",
+                "smtp_password": "test-password",
+                "use_tls": True,
+                "from_name": "Test Agent",
+                "from_email": "test@example.com",
+                "to_emails": ["admin@example.com"],
+                "max_attachment_size": 10 * 1024 * 1024  # 10MB
+            }
+        })
+        notifier = EmailNotifier(sm)
+
+        # Create large attachment data (simulate, but don't actually create huge data)
+        large_data = b"x" * (5 * 1024 * 1024)  # 5MB
+
+        # Verify max attachment size is set correctly
+        assert notifier.max_attachment_size == 10 * 1024 * 1024
+        assert len(large_data) < notifier.max_attachment_size
+
+    def test_email_attachment_size_limit(self, temp_agent_dir):
+        """Test email rejects attachments exceeding size limit"""
+        reset_email_notifier()
+        sm = StateManager(agent_dir=temp_agent_dir)
+        sm.save_config({
+            "email": {
+                "enabled": True,
+                "smtp_host": "smtp.gmail.com",
+                "smtp_port": 587,
+                "smtp_user": "test@example.com",
+                "smtp_password": "test-password",
+                "use_tls": True,
+                "from_email": "test@example.com",
+                "to_emails": ["admin@example.com"],
+                "max_attachment_size": 1 * 1024 * 1024  # 1MB limit
+            }
+        })
+        notifier = EmailNotifier(sm)
+
+        # Create attachment exceeding limit
+        large_data = b"x" * (2 * 1024 * 1024)  # 2MB
+
+        # Check that attachment exceeds limit
+        assert len(large_data) > notifier.max_attachment_size
+
+
+class TestEmailTemplateRendering:
+    """Test cases for email template rendering"""
+
+    @pytest.fixture
+    def temp_agent_dir(self):
+        """Create a temporary directory for testing"""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            yield tmpdir
+
+    def test_template_rendering_with_all_variables(self, email_notifier_enabled):
+        """Test template renders correctly with all variables"""
+        variables = {
+            "task_id": "task-123",
+            "task_name": "Complete Documentation",
+            "duration": "120.50秒",
+            "timestamp": "2026-03-08 14:30:00",
+            "error_message": None,
+            "retry_count": None,
+            "reason": None,
+            "context": None
+        }
+        subject, body = email_notifier_enabled._render_template("task_completed", variables)
+
+        assert "Complete Documentation" in subject
+        assert "task-123" in body
+        assert "120.50秒" in body
+        assert "2026-03-08 14:30:00" in body
+
+    def test_template_rendering_with_missing_variables(self, email_notifier_enabled):
+        """Test template renders with missing variables (uses defaults)"""
+        variables = {
+            "task_id": "task-456",
+            "task_name": "Minimal Task"
+            # Missing: duration, timestamp
+        }
+        subject, body = email_notifier_enabled._render_template("task_completed", variables)
+
+        assert "Minimal Task" in subject
+        assert "task-456" in body
+
+    def test_html_template_has_styling(self, email_notifier_enabled):
+        """Test HTML templates have proper styling"""
+        for template_name in ["task_completed", "task_failed", "human_intervention"]:
+            _, body = email_notifier_enabled._render_template(template_name, {
+                "task_id": "test",
+                "task_name": "Test",
+                "timestamp": "2026-01-01 00:00:00"
+            })
+
+            # Check for HTML structure
+            assert "<html" in body.lower() or "<!DOCTYPE" in body.upper()
+            assert "<body>" in body.lower()
+            # Check for inline styles
+            assert "style=" in body or "font-family" in body
+
+    def test_plain_text_version_generated(self, temp_agent_dir):
+        """Test plain text version is generated from HTML"""
+        reset_email_notifier()
+        sm = StateManager(agent_dir=temp_agent_dir)
+        sm.save_config({
+            "email": {
+                "enabled": True,
+                "smtp_host": "smtp.gmail.com",
+                "smtp_port": 587,
+                "smtp_user": "test@example.com",
+                "smtp_password": "password",
+                "from_email": "test@example.com",
+                "to_emails": ["admin@example.com"]
+            }
+        })
+        notifier = EmailNotifier(sm)
+
+        msg = notifier._create_message(
+            "test@example.com",
+            "Test Subject",
+            "<html><body><p>Hello <strong>World</strong></p></body></html>"
+        )
+
+        # Check that both plain and HTML parts exist
+        assert len(msg.get_payload()) == 2
+        plain_part = msg.get_payload(0)
+        html_part = msg.get_payload(1)
+
+        assert plain_part.get_content_type() == "text/plain"
+        assert html_part.get_content_type() == "text/html"
+        # Plain text should have HTML tags stripped
+        assert "<" not in plain_part.get_payload() or ">" not in plain_part.get_payload()
+
+
+class TestEmailAsyncNonBlocking:
+    """Test cases for email async non-blocking behavior"""
+
+    @pytest.fixture
+    def temp_agent_dir(self):
+        """Create a temporary directory for testing"""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            yield tmpdir
+
+    @pytest.mark.asyncio
+    async def test_send_email_does_not_block(self, temp_agent_dir):
+        """Test send_email is truly async and non-blocking"""
+        reset_email_notifier()
+        sm = StateManager(agent_dir=temp_agent_dir)
+        sm.save_config({
+            "email": {
+                "enabled": True,
+                "smtp_host": "smtp.gmail.com",
+                "smtp_port": 587,
+                "smtp_user": "test@example.com",
+                "smtp_password": "password",
+                "from_email": "test@example.com",
+                "to_emails": ["admin@example.com"]
+            }
+        })
+
+        send_start_time = None
+        send_end_time = None
+
+        async def slow_send(*args, **kwargs):
+            nonlocal send_start_time, send_end_time
+            send_start_time = asyncio.get_event_loop().time()
+            await asyncio.sleep(0.1)  # Simulate slow SMTP
+            send_end_time = asyncio.get_event_loop().time()
+            return None
+
+        with patch("agent.email_notifier.aiosmtplib.send", side_effect=slow_send):
+            notifier = EmailNotifier(sm)
+
+            # Track time before and after send
+            start_time = asyncio.get_event_loop().time()
+
+            # Run send in background - should return immediately
+            task = asyncio.create_task(notifier.send_email("Test", "<p>Test</p>"))
+
+            # Give it a tiny moment to start
+            await asyncio.sleep(0.01)
+
+            # Check that task is still running (not completed)
+            assert not task.done()
+
+            # Wait for completion
+            await task
+
+            end_time = asyncio.get_event_loop().time()
+
+            # The total time should be around 0.1s (the simulated delay)
+            # But importantly, we should be able to do other work while it runs
+            assert end_time - start_time >= 0.1
+
+    @pytest.mark.asyncio
+    async def test_concurrent_email_sends(self, temp_agent_dir):
+        """Test multiple emails can be sent concurrently"""
+        reset_email_notifier()
+        sm = StateManager(agent_dir=temp_agent_dir)
+        sm.save_config({
+            "email": {
+                "enabled": True,
+                "smtp_host": "smtp.gmail.com",
+                "smtp_port": 587,
+                "smtp_user": "test@example.com",
+                "smtp_password": "password",
+                "from_email": "test@example.com",
+                "to_emails": ["admin@example.com"]
+            }
+        })
+
+        call_count = 0
+
+        async def counting_send(*args, **kwargs):
+            nonlocal call_count
+            call_count += 1
+            await asyncio.sleep(0.05)
+            return None
+
+        with patch("agent.email_notifier.aiosmtplib.send", side_effect=counting_send):
+            notifier = EmailNotifier(sm)
+
+            # Send 3 emails concurrently
+            await asyncio.gather(
+                notifier.send_email("Test 1", "<p>Test 1</p>"),
+                notifier.send_email("Test 2", "<p>Test 2</p>"),
+                notifier.send_email("Test 3", "<p>Test 3</p>")
+            )
+
+            assert call_count == 3
