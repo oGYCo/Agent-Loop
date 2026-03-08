@@ -4,6 +4,39 @@ Accumulated experience and lessons learned from task execution.
 
 ---
 
+## 2026-03-08 - 增强MEMORY.md和CLAUDE.md文档 (feature-025)
+
+**任务描述**: 更新MEMORY.md和CLAUDE.md：1) 添加从当前任务中提取的关键经验 2) 更新架构图和模块说明 3) 添加新发现的最佳实践 (如错误处理改进)。确保文档反映项目的最新状态。
+
+**Lessons Learned:**
+
+1. **文档分析结果**:
+   - MEMORY.md 已有详尽的历史记录 (1250+ 行)，包含从 feature-001 到 feature-024 的所有任务经验
+   - CLAUDE.md 已包含项目概述、开发原则、架构模块说明、测试指南等内容
+   - feature_list.json 包含 28 个任务，其中 22 个已完成
+
+2. **最佳实践 - 错误处理 (从 feature-018 提取)**:
+   - 避免使用 `except Exception: pass` 静默忽略错误
+   - 使用 `except Exception as e: logger.warning(...)` 记录异常信息
+   - 对于预期的运行时错误 (如无事件循环)，使用 `logger.debug` 避免日志噪音
+   - 保持一致的错误处理模式：webhook.py, email_notifier.py, git_helper.py, test_runner.py 都是良好范例
+
+3. **最佳实践 - 类型注解 (从 feature-024 提取)**:
+   - 使用 `TYPE_CHECKING` 避免循环导入
+   - 使用 `type: ignore` 注释处理第三方库的类型问题
+   - 使用 `cast()` 处理复杂的类型收窄
+   - Dict[str, Any] 需要显式注解来处理异构值
+
+4. **文档维护建议**:
+   - 每次完成重要任务后更新 MEMORY.md
+   - CLAUDE.md 应包含最新的架构变化和开发原则
+   - feature_list.json 中的任务应有清晰的 context_files 列表
+   - 保持文档与代码同步更新
+
+5. **Commit**: docs: enhance MEMORY.md and CLAUDE.md with best practices
+
+---
+
 ## 2026-03-08 - 添加缺失的类型注解 (feature-024)
 
 **任务描述**: 为关键函数和类添加类型注解：1) 检查agent模块中的函数签名 2) 添加返回类型注解 3) 确保与项目要求一致 (Python 3.11+)。运行mypy检查类型错误。

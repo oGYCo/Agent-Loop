@@ -144,6 +144,35 @@ Configuration URLs are also available in `.agent/config.json` under `documentati
 - Git operations tested with real git commands in temp dirs
 - State isolation ensured via fixture replacement
 
+## Best Practices
+
+### Error Handling
+- **NEVER** use `except Exception: pass` - this silently swallows errors
+- Always log exceptions with `logger.warning()` or `logger.error()`
+- Include exception type and message in logs for debugging
+- Use `logger.debug()` for expected runtime errors (e.g., no event loop) to avoid log noise
+- Good examples: `webhook.py`, `email_notifier.py`, `git_helper.py`, `test_runner.py`
+
+### Type Annotations
+- Use `TYPE_CHECKING` to avoid circular imports
+- Use `type: ignore[valid-type]` for third-party library type issues
+- Use `cast()` for complex type narrowing
+- Use explicit `Dict[str, Any]` for heterogeneous dictionaries
+- Run `mypy agent/ --ignore-missing-imports` to check types
+
+### Documentation Maintenance
+- Update MEMORY.md after completing important tasks
+- Keep CLAUDE.md in sync with architecture changes
+- Maintain clear `context_files` in feature_list.json tasks
+- Ensure feature_list.json reflects current project state
+
+### Post-Task Actions (Critical)
+After completing any task, the agent MUST:
+1. Review feature_list.json - manually adjust priorities, remove obsolete tasks, add new tasks if needed
+2. Update MEMORY.md - extract key learnings from this task
+3. Update CLAUDE.md - add important patterns or insights discovered
+4. Commit and push changes - save progress with git and push to remote
+
 ## Environment Variables
 
 ```bash
@@ -176,10 +205,3 @@ Instead of auto-deleting content, the system provides suggestions:
 
 The Agent then decides whether and how to clean up - never automatic deletion.
 
-### Post-Task Actions (Agent Must Do)
-
-After completing any task, the agent MUST:
-1. Review feature_list.json - manually adjust priorities, remove obsolete tasks, add new tasks if needed
-2. Update MEMORY.md - extract key learnings from this task
-3. Update CLAUDE.md - add important patterns or insights discovered
-4. Commit and push changes - save progress with git and push to remote
