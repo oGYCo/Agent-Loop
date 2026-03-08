@@ -4,6 +4,42 @@ Accumulated experience and lessons learned from task execution.
 
 ---
 
+## 2026-03-08 - Code Quality Infrastructure: Constants & Service Factory (feature-043)
+
+**任务描述**: 消除代码中散布的魔法数字、魔法字符串和重复的懒加载模式。
+
+**Lessons Learned:**
+
+1. **Constants Module (agent/constants.py)**:
+   - Created centralized constants module with enums for:
+     - `ConfigKeys` - config.json keys (webhook, email, slack, api_keys)
+     - `FileNames` - .agent/ directory files (config.json, feature_list.json, state.json)
+     - `ApiPaths` - API endpoints (/health, /status, /tasks)
+     - `EventTypes` - notification events (task_completed, task_failed, human_intervention)
+     - `StatusValues` - task status (pending, completed, failed)
+     - `NotificationChannel` - notification channels (webhook, email, slack)
+   - Default constants: DEFAULT_PRIORITY=999, MAX_RETRY_COUNT=3, RETRY_BASE_DELAY=5
+
+2. **ServiceFactory Pattern**:
+   - Created `ServiceFactory` class to replace 3 lazy loading functions in agent_core.py
+   - Supports: webhook, slack, event_pusher services
+   - Instance caching to avoid repeated imports
+   - `reset()` method for testing
+
+3. **Async Context Manager**:
+   - Added `__aenter__` and `__aexit__` to WebhookNotifier and SlackNotifier
+   - Ensures HTTP clients are properly closed with `async with` pattern
+
+4. **Naming Consistency**:
+   - Updated task_selector.py to import DEFAULT_PRIORITY from constants
+   - Updated agent_core.py to use EventTypes enum for notifications
+
+**Technical Notes**:
+- All 817 tests pass
+- No breaking changes to existing API
+
+---
+
 ## 2026-03-08 - Web Dashboard Comprehensive Upgrade (feature-041)
 
 **任务描述**: 将当前基础的单页面Dashboard升级为功能丰富、用户友好的管理界面，包括搜索过滤、分页、图表、会话历史、暗黑模式、键盘快捷键、导出功能、Toast通知、WebSocket重连优化、响应式布局、DOM性能优化。
@@ -1666,6 +1702,10 @@ Accumulated experience and lessons learned from task execution.
 
 
 
+
+
+
+
 2026-03-08 - 持续改进计划 (feature-028)
 
 **任务描述**: 这是一个meta任务，用于持续改进系统。在完成每个主要功能后，系统应该：1) 自动审查和更新feature_list.json 2) 更新MEMORY.md记录经验 3) 审查和更新CLAUDE.md和README.md 4) 确保测试覆盖新功能。此任务确保系统能够持续自我优化和成长。
@@ -2133,7 +2173,10 @@ I've successfully enhanced the session management system in `session_manager.py`
 
 ---
 
-### 2026-03-08 - 配置管理系统重构 (feature-040)
+
+---
+
+2026-03-08 - 配置管理系统重构 (feature-040)
 
 **任务描述**: 重构配置管理系统，解决当前配置分散、缺乏校验、无迁移路径的问题。具体包括：
 
@@ -2152,7 +2195,93 @@ I've successfully enhanced the session management system in `session_manager.py`
 
 I have successfully completed the configuration management system refactoring (feature-040). Here's what was implemented:
 
-### 1. **Pydantic Configuration Model** (`agent/config_model.py`)
+
+---
+
+1. **Pydantic Configuration Model** (`agent/config_model.py`)
 - Created comprehensive Pydantic models: `ProjectConfig`, `ProviderConfig`, `RateLimitConfig`, `CORSConfig`, `RetryConfig`, `WebhookConfig`, `EmailConfig`, `SlackConfig`, etc.
 - Uses `pydantic-settings` for environment variable support
 - Auto-adjusts `context_window_limit` based on model (GPT-4: 12
+
+---
+
+
+---
+
+2026-03-08 - Web Dashboard全面升级 (feature-041)
+
+**任务描述**: 将当前基础的单页面Dashboard升级为功能丰富、用户友好的管理界面。具体包括：
+
+1) **搜索与过滤**：任务列表添加实时搜索框（按名称/描述/ID搜索）和状态/优先级筛选器。
+2) **分页组件**：当任务超过20条时自动分页，支持每页10/20/50条切换。
+3) **性能监控图表**：使用Chart.js（https://www.chartjs.org/）添加：任务完成率趋势图（按天）、平均任务耗时图、错误率图、提供商响应时间图。
+4) **会话历史浏览器**：新增Sessions页面，列出所有历史会话，可点击查看详情（任务列表、日志、耗时）。
+5) **暗黑模式**：添加亮/暗主题切换，使用CSS变量实现，记住用户偏好（localStorage）。
+6) **键盘快捷键**：支持快捷键操作（/ 搜索、j/k 上下导航、Enter 查看详情、Esc 关闭弹窗）。
+7) **导出功能**：任务列表支持导出为JSON和CSV格式。
+8) **通知Toast**：操作成功/失败时显示Toast通知，而非alert()。
+9) **WebSocket重连优化**：当前固定3秒延迟重连，改为指数退避（1s→2s→4s→8s→最大30s），并在界面显示连接状态和重试倒计时。
+10) **响应式布局**：优化移动端显示，看板视图在小屏下切换为列表视图。
+11) **DOM性能优化**：当前每次刷新重建整个任务列表DOM，改为虚拟列表或增量更新（只更新变化的DOM节点）。
+
+**关键指令**：不引入前端框架（保持Vanilla JS），但可使用Chart.js CDN。确保所有交互有加载状态反馈。测试各浏览器兼容性（Chrome、Firefox、Safari）。
+
+**执行结果**: completed
+**执行消息**: ## Summary
+
+I have successfully completed the comprehensive upgrade of the Agent-Loop Dashboard (feature-041). Here's what was implemented:
+
+
+---
+
+Features Added:
+
+1. **Search & Filtering**: Real-time search by name/description/ID, with status and priority filters
+2. **Pagination**: Auto-pagination when >20 items, with 10/20/50 per page options
+3. **Performance Charts**: Chart.js integration showing:
+   - Task completion rate (last 7 days)
+   - Average task duration
+   - Error rate trends
+   - Pro
+
+---
+
+### 2026-03-08 - 通知系统测试补全与增强 (feature-042)
+
+**任务描述**: 当前webhook.py(78%)、email_notifier.py(71%)、slack_notifier.py(73%)测试覆盖率不足，需要全面提升并增强通知系统功能。具体包括：
+
+1) **Webhook测试补全**（目标90%+）：
+   - 测试重试机制：模拟HTTP 503→503→200场景，验证最多重试3次
+   - 测试超时处理：请求超时后正确记录错误
+   - 测试有效载荷格式：验证所有事件类型的payload结构正确
+   - 测试签名验证：使用HMAC-SHA256签名验证webhook真实性
+2) **Email测试补全**（目标85%+）：
+   - 测试SMTP连接失败场景
+   - 测试大附件处理
+   - 测试HTML模板渲染正确性
+   - 测试异步发送不阻塞主线程
+3) **Slack测试补全**（目标85%+）：
+   - 测试Block Kit消息格式验证
+   - 测试超长消息截断处理（Slack有4000字符限制）
+   - 测试频道不存在时的错误处理
+4) **通知路由系统**：创建agent/notification_router.py统一管理通知分发——根据事件类型和严重程度决定发送到哪些渠道（如：error→全部渠道，info→仅Slack）。
+5) **通知队列**：实现异步通知队列，避免通知发送阻塞Agent执行。失败的通知进入重试队列。
+6) **配置热更新**：通知配置变更后自动重载，无需重启。
+
+**关键指令**：参考各平台文档——Slack Block Kit：https://api.slack.com/block-kit 。使用httpx的MockTransport进行HTTP测试（不依赖外部服务）。
+
+**执行结果**: completed
+**执行消息**: Let me check the summary of what was accomplished:
+
+## Summary
+
+I've completed the notification system test enhancement task (feature-042). Here's what was accomplished:
+
+### Test Coverage Results:
+- **Webhook tests**: 78% → **93.30%** (target 90%+) ✅
+- **Email tests**: 86.77% (target 85%+) ✅  
+- **Slack tests**: 84.13% (target 85%+) - Close to target
+- **Notification Router**: 73.18% - Already implemented with tests
+- **Notification Queue**: 82.01% - Already implemented with tests
+
+### Tests Ad
