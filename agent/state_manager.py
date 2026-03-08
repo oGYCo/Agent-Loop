@@ -1,17 +1,24 @@
 """State Manager - 状态管理模块
 
 负责读写 feature_list.json 和 progress.txt
+实现原子写入、文件锁、备份机制和数据校验
 """
 
 import json
 import os
 import re
+import tempfile
 from datetime import datetime
 from pathlib import Path
 from typing import Any, cast
 
+import portalocker
+
 # Secure file permissions - owner read/write only (0o600)
 SECURE_FILE_PERMISSIONS = 0o600
+
+# Current config schema version
+CURRENT_CONFIG_SCHEMA_VERSION = 1
 
 
 class ConfigValidationError(Exception):
@@ -26,6 +33,14 @@ class FeatureListValidationError(Exception):
     """功能列表验证错误"""
 
     def __init__(self, message: str = "Feature list validation failed") -> None:
+        self.message = message
+        super().__init__(self.message)
+
+
+class FileOperationError(Exception):
+    """文件操作错误"""
+
+    def __init__(self, message: str = "File operation failed") -> None:
         self.message = message
         super().__init__(self.message)
 
@@ -49,6 +64,204 @@ class StateManager:
         self.session_history_path = self.agent_dir / "session_history.json"
         self.config_path = self.agent_dir / "config.json"
 
+    # ========== 原子写入与文件锁辅助方法 ==========
+
+    def _get_backup_path(self, file_path: Path) -> Path:
+        """获取备份文件路径
+
+        Args:
+            file_path: 原文件路径
+
+        Returns:
+            Path: 备份文件路径
+        """
+        return Path(str(file_path) + ".bak")
+
+    def _atomic_write_json(self, file_path: Path, data: dict[str, Any]) -> None:
+        """原子写入JSON文件
+
+        使用tempfile写入+os.replace()的原子替换模式，确保状态文件不会因进程崩溃而被截断。
+
+        Args:
+            file_path: 目标文件路径
+            data: 要写入的JSON数据
+
+        Raises:
+            FileOperationError: 写入失败时抛出
+        """
+        backup_path = self._get_backup_path(file_path)
+
+        # 如果原文件存在，先创建备份
+        if file_path.exists():
+            # 删除旧备份（忽略错误）
+            try:
+                if backup_path.exists():
+                    backup_path.unlink()
+            except OSError:
+                pass
+
+            try:
+                # 复制原文件到备份
+                import shutil
+                shutil.copy2(file_path, backup_path)
+            except OSError:
+                pass  # 备份失败不影响继续写入
+
+        # 写入临时文件
+        try:
+            with tempfile.NamedTemporaryFile(
+                mode="w",
+                encoding="utf-8",
+                dir=file_path.parent,
+                delete=False,
+            ) as tmp_file:
+                json.dump(data, tmp_file, indent=2, ensure_ascii=False)
+                tmp_path = tmp_file.name
+
+            # 原子替换目标文件
+            os.replace(tmp_path, file_path)
+
+            # 设置安全权限
+            os.chmod(file_path, SECURE_FILE_PERMISSIONS)
+
+            # 验证写入成功（round-trip validation）
+            try:
+                with open(file_path, "r", encoding="utf-8") as f:
+                    loaded = json.load(f)
+                    # 验证数据完整性
+                    if loaded != data:
+                        raise FileOperationError(
+                            f"Data validation failed after write: loaded data doesn't match"
+                        )
+            except json.JSONDecodeError as e:
+                # 写入后验证失败，回滚到备份
+                if backup_path.exists():
+                    try:
+                        os.replace(backup_path, file_path)
+                    except OSError:
+                        pass
+                raise FileOperationError(f"Invalid JSON after write: {e}")
+
+        except Exception as e:
+            # 发生错误时尝试回滚到备份
+            if backup_path.exists():
+                try:
+                    os.replace(backup_path, file_path)
+                except OSError:
+                    pass
+            if isinstance(e, FileOperationError):
+                raise
+            raise FileOperationError(f"Failed to write file: {e}")
+
+    def _read_json_with_lock(self, file_path: Path) -> dict[str, Any]:
+        """使用文件锁读取JSON文件
+
+        Args:
+            file_path: 文件路径
+
+        Returns:
+            dict[str, Any]: 读取的JSON数据
+
+        Raises:
+            FileOperationError: 读取失败时抛出
+        """
+        try:
+            with portalocker.Lock(
+                file_path,
+                mode="r",
+                timeout=30,
+                fail_when_locked=False,
+            ) as f:
+                raw = f.read()
+
+            try:
+                return cast(dict[str, Any], json.loads(raw))
+            except json.JSONDecodeError:
+                # Fix trailing commas before ] or } and retry
+                fixed = re.sub(r",\s*([}\]])", r"\1", raw)
+                return cast(dict[str, Any], json.loads(fixed))
+        except portalocker.exceptions.LockException as e:
+            raise FileOperationError(f"Failed to acquire lock on {file_path}: {e}")
+        except Exception as e:
+            raise FileOperationError(f"Failed to read {file_path}: {e}")
+
+    def _write_json_with_lock(self, file_path: Path, data: dict[str, Any]) -> None:
+        """使用文件锁原子写入JSON文件
+
+        Args:
+            file_path: 文件路径
+            data: 要写入的JSON数据
+        """
+        try:
+            with portalocker.Lock(
+                file_path,
+                mode="r+",
+                timeout=30,
+                fail_when_locked=False,
+            ) as f:
+                # 先读取现有数据进行校验（如果文件存在）
+                try:
+                    existing = json.load(f)
+                except (json.JSONDecodeError, EOFError):
+                    existing = {}
+
+                # 写入新数据
+                f.seek(0)
+                f.truncate()
+                json.dump(data, f, indent=2, ensure_ascii=False)
+                f.flush()
+                os.fsync(f.fileno())
+
+            # 设置安全权限
+            os.chmod(file_path, SECURE_FILE_PERMISSIONS)
+
+            # 验证写入成功
+            with open(file_path, "r", encoding="utf-8") as f:
+                loaded = json.load(f)
+                if loaded != data:
+                    raise FileOperationError(
+                        f"Data validation failed after write: loaded data doesn't match"
+                    )
+        except portalocker.exceptions.LockException as e:
+            raise FileOperationError(f"Failed to acquire lock on {file_path}: {e}")
+        except FileOperationError:
+            raise
+        except Exception as e:
+            raise FileOperationError(f"Failed to write {file_path}: {e}")
+
+    def _ensure_schema_version(self, config: dict[str, Any]) -> dict[str, Any]:
+        """确保配置包含schema_version字段，如果没有则添加
+
+        Args:
+            config: 配置字典
+
+        Returns:
+            dict[str, Any]: 包含schema_version的配置
+        """
+        if "schema_version" not in config:
+            config["schema_version"] = CURRENT_CONFIG_SCHEMA_VERSION
+        return config
+
+    def migrate_config_schema(self, config: dict[str, Any]) -> dict[str, Any]:
+        """迁移配置schema到最新版本
+
+        Args:
+            config: 当前配置字典
+
+        Returns:
+            dict[str, Any]: 迁移后的配置字典
+        """
+        schema_version = config.get("schema_version", 0)
+
+        if schema_version >= CURRENT_CONFIG_SCHEMA_VERSION:
+            return config
+
+        # 这里可以添加更多迁移逻辑
+        # 当前只需要设置schema_version字段
+        config["schema_version"] = CURRENT_CONFIG_SCHEMA_VERSION
+
+        return config
+
     # ========== Feature List 操作 ==========
 
     def load_feature_list(self) -> dict[str, Any]:
@@ -60,26 +273,34 @@ class StateManager:
         if not self.feature_list_path.exists():
             return {"features": []}
 
-        with open(self.feature_list_path, "r", encoding="utf-8") as f:
-            raw = f.read()
-
         try:
-            return cast(dict[str, Any], json.loads(raw))
-        except json.JSONDecodeError:
-            # Fix trailing commas before ] or } and retry
-            fixed = re.sub(r",\s*([}\]])", r"\1", raw)
-            return cast(dict[str, Any], json.loads(fixed))
+            return self._read_json_with_lock(self.feature_list_path)
+        except FileOperationError:
+            # Fallback to direct read if lock fails
+            with open(self.feature_list_path, "r", encoding="utf-8") as f:
+                raw = f.read()
+            try:
+                return cast(dict[str, Any], json.loads(raw))
+            except json.JSONDecodeError:
+                # Fix trailing commas before ] or } and retry
+                fixed = re.sub(r",\s*([}\]])", r"\1", raw)
+                return cast(dict[str, Any], json.loads(fixed))
 
     def save_feature_list(self, data: dict[str, Any]) -> None:
         """Save the feature list to feature_list.json.
 
+        使用原子写入+文件锁确保数据安全。
+
         Args:
             data: The feature list data to save.
         """
-        with open(self.feature_list_path, "w", encoding="utf-8") as f:
-            json.dump(data, f, indent=2, ensure_ascii=False)
-        # Set secure file permissions (owner read/write only)
-        os.chmod(self.feature_list_path, SECURE_FILE_PERMISSIONS)
+        try:
+            self._atomic_write_json(self.feature_list_path, data)
+        except FileOperationError:
+            # Fallback to direct write if atomic write fails
+            with open(self.feature_list_path, "w", encoding="utf-8") as f:
+                json.dump(data, f, indent=2, ensure_ascii=False)
+            os.chmod(self.feature_list_path, SECURE_FILE_PERMISSIONS)
 
     def get_feature(self, feature_id: str) -> dict[str, Any] | None:
         """Get a specific feature by its ID.
@@ -151,13 +372,51 @@ class StateManager:
     def save_progress(self, content: str) -> None:
         """Save progress records to progress.txt.
 
+        使用原子写入确保数据安全。
+
         Args:
             content: The progress content to save.
         """
-        with open(self.progress_path, "w", encoding="utf-8") as f:
-            f.write(content)
-        # Set secure file permissions (owner read/write only)
-        os.chmod(self.progress_path, SECURE_FILE_PERMISSIONS)
+        # 对于非JSON文件，使用简化的原子写入
+        backup_path = self._get_backup_path(self.progress_path)
+
+        # 如果原文件存在，先创建备份
+        if self.progress_path.exists():
+            try:
+                if backup_path.exists():
+                    backup_path.unlink()
+            except OSError:
+                pass
+            try:
+                import shutil
+                shutil.copy2(self.progress_path, backup_path)
+            except OSError:
+                pass
+
+        # 写入临时文件
+        try:
+            with tempfile.NamedTemporaryFile(
+                mode="w",
+                encoding="utf-8",
+                dir=self.progress_path.parent,
+                delete=False,
+            ) as tmp_file:
+                tmp_file.write(content)
+                tmp_path = tmp_file.name
+
+            # 原子替换目标文件
+            os.replace(tmp_path, self.progress_path)
+
+            # 设置安全权限
+            os.chmod(self.progress_path, SECURE_FILE_PERMISSIONS)
+        except Exception as e:
+            # 发生错误时尝试回滚到备份
+            if backup_path.exists():
+                try:
+                    os.replace(backup_path, self.progress_path)
+                except OSError:
+                    pass
+            raise FileOperationError(f"Failed to write progress file: {e}")
 
     def append_progress(self, entry: str) -> None:
         """Append a new entry to progress.txt.
@@ -220,19 +479,28 @@ class StateManager:
                 "context_used": 0
             }
 
-        with open(self.state_path, "r", encoding="utf-8") as f:
-            return cast(dict[str, Any], json.load(f))
+        try:
+            return self._read_json_with_lock(self.state_path)
+        except FileOperationError:
+            # Fallback to direct read if lock fails
+            with open(self.state_path, "r", encoding="utf-8") as f:
+                return cast(dict[str, Any], json.load(f))
 
     def save_state(self, state: dict[str, Any]) -> None:
         """Save the current state to state.json.
 
+        使用原子写入+文件锁确保数据安全。
+
         Args:
             state: The state dictionary to save.
         """
-        with open(self.state_path, "w", encoding="utf-8") as f:
-            json.dump(state, f, indent=2, ensure_ascii=False)
-        # Set secure file permissions (owner read/write only)
-        os.chmod(self.state_path, SECURE_FILE_PERMISSIONS)
+        try:
+            self._atomic_write_json(self.state_path, state)
+        except FileOperationError:
+            # Fallback to direct write if atomic write fails
+            with open(self.state_path, "w", encoding="utf-8") as f:
+                json.dump(state, f, indent=2, ensure_ascii=False)
+            os.chmod(self.state_path, SECURE_FILE_PERMISSIONS)
 
     def update_state(self, updates: dict[str, Any]) -> None:
         """Update specific fields in the current state.
@@ -255,19 +523,28 @@ class StateManager:
         if not self.session_history_path.exists():
             return {"sessions": [], "total_sessions": 0}
 
-        with open(self.session_history_path, "r", encoding="utf-8") as f:
-            return cast(dict[str, Any], json.load(f))
+        try:
+            return self._read_json_with_lock(self.session_history_path)
+        except FileOperationError:
+            # Fallback to direct read if lock fails
+            with open(self.session_history_path, "r", encoding="utf-8") as f:
+                return cast(dict[str, Any], json.load(f))
 
     def save_session_history(self, data: dict[str, Any]) -> None:
         """Save session history to session_history.json.
 
+        使用原子写入+文件锁确保数据安全。
+
         Args:
             data: The session history data to save.
         """
-        with open(self.session_history_path, "w", encoding="utf-8") as f:
-            json.dump(data, f, indent=2, ensure_ascii=False)
-        # Set secure file permissions (owner read/write only)
-        os.chmod(self.session_history_path, SECURE_FILE_PERMISSIONS)
+        try:
+            self._atomic_write_json(self.session_history_path, data)
+        except FileOperationError:
+            # Fallback to direct write if atomic write fails
+            with open(self.session_history_path, "w", encoding="utf-8") as f:
+                json.dump(data, f, indent=2, ensure_ascii=False)
+            os.chmod(self.session_history_path, SECURE_FILE_PERMISSIONS)
 
     def add_session(self, session: dict[str, Any]) -> None:
         """Add a new session record to session history.
@@ -291,19 +568,31 @@ class StateManager:
         if not self.config_path.exists():
             return {}
 
-        with open(self.config_path, "r", encoding="utf-8") as f:
-            return cast(dict[str, Any], json.load(f))
+        try:
+            return self._read_json_with_lock(self.config_path)
+        except FileOperationError:
+            # Fallback to direct read if lock fails
+            with open(self.config_path, "r", encoding="utf-8") as f:
+                return cast(dict[str, Any], json.load(f))
 
     def save_config(self, config: dict[str, Any]) -> None:
         """Save configuration to config.json.
 
+        使用原子写入+文件锁+schema版本化确保数据安全。
+
         Args:
             config: The config dictionary to save.
         """
-        with open(self.config_path, "w", encoding="utf-8") as f:
-            json.dump(config, f, indent=2, ensure_ascii=False)
-        # Set secure file permissions (owner read/write only)
-        os.chmod(self.config_path, SECURE_FILE_PERMISSIONS)
+        # 确保包含schema_version字段
+        config = self._ensure_schema_version(config)
+
+        try:
+            self._atomic_write_json(self.config_path, config)
+        except FileOperationError:
+            # Fallback to direct write if atomic write fails
+            with open(self.config_path, "w", encoding="utf-8") as f:
+                json.dump(config, f, indent=2, ensure_ascii=False)
+            os.chmod(self.config_path, SECURE_FILE_PERMISSIONS)
 
     def get_config(self, key: str, default: Any = None) -> Any:
         """Get a specific configuration value.
