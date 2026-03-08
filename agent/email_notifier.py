@@ -15,16 +15,9 @@ from typing import Any, Dict, List, Optional
 import aiosmtplib
 
 from .state_manager import StateManager
+from .exceptions import EmailError
 
 logger = logging.getLogger(__name__)
-
-
-class EmailNotificationError(Exception):
-    """邮件通知错误"""
-
-    def __init__(self, message: str = "Email notification failed") -> None:
-        self.message = message
-        super().__init__(self.message)
 
 
 class EmailNotifier:
@@ -292,6 +285,9 @@ class EmailNotifier:
 
         Returns:
             是否发送成功
+
+        Raises:
+            EmailError: 邮件发送失败时抛出
         """
         if not self.is_enabled():
             logger.debug("Email notification is disabled")
@@ -303,6 +299,7 @@ class EmailNotifier:
             return False
 
         success = True
+        last_error: Exception | None = None
         for recipient in recipients:
             try:
                 msg = self._create_message(recipient, subject, body)
@@ -323,7 +320,16 @@ class EmailNotifier:
 
             except Exception as e:
                 logger.error(f"Failed to send email to {recipient}: {type(e).__name__}: {e}")
+                last_error = EmailError(
+                    message=f"Failed to send email to {recipient}",
+                    detail=str(e),
+                    is_retryable=True,
+                    original_exception=e,
+                )
                 success = False
+
+        if last_error and not success:
+            raise last_error
 
         return success
 
@@ -499,6 +505,12 @@ class EmailNotifier:
                     "message": "Failed to send test email. Check SMTP configuration and logs."
                 }
 
+        except EmailError as e:
+            return {
+                "success": False,
+                "message": f"Test failed: {e.message} (retryable: {e.is_retryable})",
+                "detail": e.detail,
+            }
         except Exception as e:
             return {
                 "success": False,

@@ -18,6 +18,14 @@ if TYPE_CHECKING:
 
 from .metrics import get_metrics_collector
 from .model_provider import ModelProviderManager, create_provider_manager
+from .exceptions import (
+    AgentLoopError,
+    WebhookError,
+    SlackError,
+    TaskExecutionError,
+    TaskTimeoutError,
+    ProviderError,
+)
 
 from claude_agent_sdk import (
     query,
@@ -61,6 +69,8 @@ async def _send_webhook_notification_async(event_type: str, data: Dict[str, Any]
         notifier = _get_webhook_notifier()
         if notifier:
             return await notifier.send_notification(event_type, data)
+    except WebhookError as e:
+        logger.warning(f"Webhook notification failed: {e}")
     except Exception as e:
         logger.warning(f"Failed to send webhook notification: {type(e).__name__}: {e}")
     return False
@@ -78,6 +88,8 @@ def _send_webhook_notification(event_type: str, data: Dict[str, Any]) -> None:
         except RuntimeError:
             # No running event loop, run in new one
             asyncio.run(_send_webhook_notification_async(event_type, data))
+    except WebhookError as e:
+        logger.warning(f"Webhook notification failed: {e}")
     except Exception as e:
         logger.warning(f"Failed to send webhook notification: {type(e).__name__}: {e}")
 
@@ -99,6 +111,8 @@ async def _send_slack_notification_async(event_type: str, data: Dict[str, Any]) 
         notifier = _get_slack_notifier()
         if notifier:
             return await notifier.send_notification(event_type, data)
+    except SlackError as e:
+        logger.warning(f"Slack notification failed: {e}")
     except Exception as e:
         logger.warning(f"Failed to send Slack notification: {type(e).__name__}: {e}")
     return False
@@ -116,6 +130,8 @@ def _send_slack_notification(event_type: str, data: Dict[str, Any]) -> None:
         except RuntimeError:
             # No running event loop, run in new one
             asyncio.run(_send_slack_notification_async(event_type, data))
+    except SlackError as e:
+        logger.warning(f"Slack notification failed: {e}")
     except Exception as e:
         logger.warning(f"Failed to send Slack notification: {type(e).__name__}: {e}")
 

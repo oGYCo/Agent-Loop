@@ -31,6 +31,17 @@ from agent.session_manager import SessionManager
 from agent.git_helper import GitHelper
 from agent.metrics import get_prometheus_metrics, get_metrics_content_type, get_metrics_collector
 from agent.logging_ import configure_logging, get_logger
+from agent.exceptions import (
+    AgentLoopError,
+    ConfigError,
+    ConfigValidationError,
+    TaskExecutionError,
+    ProviderError,
+    NotificationError,
+    SessionError,
+    StateError,
+    ErrorCode,
+)
 
 # Configure structured logging
 log_level = os.environ.get("LOG_LEVEL", "INFO")
@@ -38,6 +49,72 @@ log_file = os.environ.get("LOG_FILE", "")
 json_output = bool(log_file)
 configure_logging(log_level=log_level, log_file=log_file, json_output=json_output)
 logger = get_logger(__name__)
+
+
+# ========== Unified Error Response ==========
+
+def create_error_response(
+    error_code: ErrorCode,
+    message: str,
+    status_code: int = 500,
+    detail: Optional[str] = None,
+) -> JSONResponse:
+    """Create a standardized JSON error response.
+
+    Args:
+        error_code: The error code enum value
+        message: Human-readable error message
+        status_code: HTTP status code
+        detail: Additional details about the error
+
+    Returns:
+        JSONResponse with standardized error format
+    """
+    error_dict: Dict[str, Any] = {
+        "error_code": error_code.value,
+        "message": message,
+    }
+    if detail:
+        error_dict["detail"] = detail
+
+    return JSONResponse(
+        status_code=status_code,
+        content=error_dict,
+    )
+
+
+def handle_agent_error(error: Exception) -> JSONResponse:
+    """Convert AgentLoopError to standardized JSON response.
+
+    Args:
+        error: The exception to handle
+
+    Returns:
+        JSONResponse with standardized error format
+    """
+    if isinstance(error, AgentLoopError):
+        # Map error codes to HTTP status codes
+        status_code = 500
+        if isinstance(error, (ConfigValidationError, StateError)):
+            status_code = 400
+        elif isinstance(error, (SessionError, StateError)):
+            status_code = 404
+
+        return create_error_response(
+            error_code=error.error_code,
+            message=error.message,
+            status_code=status_code,
+            detail=error.detail,
+        )
+
+    # For non-AgentLoopError exceptions, create a generic error response
+    return create_error_response(
+        error_code=ErrorCode.E9001,
+        message=str(error),
+        status_code=500,
+        detail=type(error).__name__,
+    )
+
 
 # ========== Rate Limiter ==========
 limiter = Limiter(key_func=get_remote_address)
@@ -543,6 +620,9 @@ def get_status(request: Request, api_key: str = Depends(get_api_key)) -> StatusR
             current_session=state.get("current_session"),
             error_count=state.get("error_count", 0)
         )
+    except AgentLoopError as e:
+        logger.error(f"Agent error getting status: {e}")
+        raise handle_agent_error(e)
     except Exception as e:
         logger.error(f"Error getting status: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -577,6 +657,9 @@ def get_tasks(request: Request, status_filter: Optional[str] = None, api_key: st
             )
             for f in features
         ]
+    except AgentLoopError as e:
+        logger.error(f"Agent error getting tasks: {e}")
+        raise handle_agent_error(e)
     except Exception as e:
         logger.error(f"Error getting tasks: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -620,6 +703,9 @@ def create_task(request: Request, task: TaskCreate, api_key: str = Depends(get_a
             created_at=new_feature["created_at"],
             updated_at=new_feature["updated_at"]
         )
+    except AgentLoopError as e:
+        logger.error(f"Agent error creating task: {e}")
+        raise handle_agent_error(e)
     except Exception as e:
         logger.error(f"Error creating task: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -650,6 +736,9 @@ def get_task(request: Request, task_id: str, api_key: str = Depends(get_api_key)
         )
     except HTTPException:
         raise
+    except AgentLoopError as e:
+        logger.error(f"Agent error getting task: {e}")
+        raise handle_agent_error(e)
     except Exception as e:
         logger.error(f"Error getting task: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -691,6 +780,9 @@ def update_task(request: Request, task_id: str, updates: TaskUpdate, api_key: st
         )
     except HTTPException:
         raise
+    except AgentLoopError as e:
+        logger.error(f"Agent error updating task: {e}")
+        raise handle_agent_error(e)
     except Exception as e:
         logger.error(f"Error updating task: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -717,6 +809,15 @@ def run_agent(request: Request, request_body: RunRequest, api_key: str = Depends
             iterations=summary.get("iterations", 0),
             completed=summary.get("completed", 0),
             errors=summary.get("errors", 0)
+        )
+    except AgentLoopError as e:
+        logger.error(f"Agent error running agent: {e}")
+        return RunResponse(
+            success=False,
+            message=f"Error: {e.message}",
+            iterations=0,
+            completed=0,
+            errors=1
         )
     except Exception as e:
         logger.error(f"Error running agent: {e}")
@@ -747,6 +848,9 @@ def get_sessions(request: Request, api_key: str = Depends(get_api_key)) -> Sessi
             completed_sessions=stats["completed_sessions"],
             sessions=sessions
         )
+    except AgentLoopError as e:
+        logger.error(f"Agent error getting sessions: {e}")
+        raise handle_agent_error(e)
     except Exception as e:
         logger.error(f"Error getting sessions: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -806,6 +910,13 @@ async def test_webhook(request: Request, api_key: str = Depends(get_api_key)) ->
         notifier = get_webhook_notifier()
         result = await notifier.test_webhook()
         return result
+    except AgentLoopError as e:
+        logger.error(f"Agent error testing webhook: {e}")
+        return {
+            "success": False,
+            "message": f"Test failed: {e.message}",
+            "error_code": e.error_code.value,
+        }
     except Exception as e:
         logger.error(f"Error testing webhook: {e}")
         return {
@@ -827,6 +938,13 @@ async def test_email(request: Request, api_key: str = Depends(get_api_key)) -> D
         notifier = get_email_notifier()
         result = await notifier.test_email()
         return result
+    except AgentLoopError as e:
+        logger.error(f"Agent error testing email: {e}")
+        return {
+            "success": False,
+            "message": f"Test failed: {e.message}",
+            "error_code": e.error_code.value,
+        }
     except Exception as e:
         logger.error(f"Error testing email: {e}")
         return {

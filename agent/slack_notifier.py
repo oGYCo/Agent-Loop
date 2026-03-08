@@ -12,16 +12,9 @@ from typing import Any, Dict, List, Optional
 import httpx
 
 from .state_manager import StateManager
+from .exceptions import SlackError
 
 logger = logging.getLogger(__name__)
-
-
-class SlackNotificationError(Exception):
-    """Slack通知错误"""
-
-    def __init__(self, message: str = "Slack notification failed") -> None:
-        self.message = message
-        super().__init__(self.message)
 
 
 class SlackNotifier:
@@ -265,6 +258,7 @@ class SlackNotifier:
 
         attempt = 0
         max_attempts = self.retry_count if retry else 1
+        last_error: Exception | None = None
 
         while attempt < max_attempts:
             try:
@@ -281,23 +275,45 @@ class SlackNotifier:
                     logger.info(f"Slack notification sent successfully: {event_type}")
                     return True
                 else:
-                    logger.warning(
-                        f"Slack notification failed with status {response.status_code}: "
-                        f"{response.text[:200]}"
+                    # HTTP errors - 4xx are client errors (not retryable), 5xx are server errors (retryable)
+                    is_retryable = response.status_code >= 500
+                    raise SlackError(
+                        message=f"Slack notification failed with status {response.status_code}",
+                        detail=response.text[:200],
+                        is_retryable=is_retryable,
                     )
-                    # HTTP错误不重试
-                    break
 
-            except httpx.TimeoutException:
+            except httpx.TimeoutException as e:
                 logger.warning(
                     f"Slack notification timeout (attempt {attempt + 1}/{max_attempts})"
+                )
+                last_error = SlackError(
+                    message="Slack notification timeout",
+                    detail=str(e),
+                    is_retryable=True,
+                    original_exception=e,
                 )
             except httpx.ConnectError as e:
                 logger.warning(
                     f"Slack notification connection error (attempt {attempt + 1}/{max_attempts}): {e}"
                 )
+                last_error = SlackError(
+                    message="Slack notification connection error",
+                    detail=str(e),
+                    is_retryable=True,
+                    original_exception=e,
+                )
+            except SlackError:
+                # Re-raise our own exceptions
+                raise
             except Exception as e:
                 logger.error(f"Slack notification error: {type(e).__name__}: {e}")
+                last_error = SlackError(
+                    message="Slack notification failed",
+                    detail=str(e),
+                    is_retryable=False,
+                    original_exception=e,
+                )
                 break
 
             if attempt < max_attempts - 1:
@@ -306,6 +322,9 @@ class SlackNotifier:
                 logger.info(f"Retrying Slack notification in {wait_time}s...")
                 await asyncio.sleep(wait_time)
 
+        if last_error:
+            logger.error(f"Slack notification failed after {max_attempts} attempts: {event_type}")
+            raise last_error
         logger.error(f"Slack notification failed after {max_attempts} attempts: {event_type}")
         return False
 
@@ -438,6 +457,12 @@ class SlackNotifier:
                     "message": "Failed to send test notification. Check webhook URL and logs."
                 }
 
+        except SlackError as e:
+            return {
+                "success": False,
+                "message": f"Test failed: {e.message} (retryable: {e.is_retryable})",
+                "detail": e.detail,
+            }
         except Exception as e:
             return {
                 "success": False,

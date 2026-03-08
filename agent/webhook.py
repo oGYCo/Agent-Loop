@@ -12,16 +12,9 @@ from typing import Any, Dict, List, Optional
 import httpx
 
 from .state_manager import StateManager
+from .exceptions import WebhookError
 
 logger = logging.getLogger(__name__)
-
-
-class WebhookNotificationError(Exception):
-    """Webhook通知错误"""
-
-    def __init__(self, message: str = "Webhook notification failed") -> None:
-        self.message = message
-        super().__init__(self.message)
 
 
 class WebhookNotifier:
@@ -138,6 +131,7 @@ class WebhookNotifier:
 
         attempt = 0
         max_attempts = self.retry_count if retry else 1
+        last_error: Exception | None = None
 
         while attempt < max_attempts:
             try:
@@ -153,23 +147,45 @@ class WebhookNotifier:
                     logger.info(f"Webhook notification sent successfully: {event_type}")
                     return True
                 else:
-                    logger.warning(
-                        f"Webhook notification failed with status {response.status_code}: "
-                        f"{response.text[:200]}"
+                    # HTTP errors - 4xx are client errors (not retryable), 5xx are server errors (retryable)
+                    is_retryable = response.status_code >= 500
+                    raise WebhookError(
+                        message=f"Webhook notification failed with status {response.status_code}",
+                        detail=response.text[:200],
+                        is_retryable=is_retryable,
                     )
-                    # HTTP错误不重试
-                    break
 
-            except httpx.TimeoutException:
+            except httpx.TimeoutException as e:
                 logger.warning(
                     f"Webhook notification timeout (attempt {attempt + 1}/{max_attempts})"
+                )
+                last_error = WebhookError(
+                    message="Webhook notification timeout",
+                    detail=str(e),
+                    is_retryable=True,
+                    original_exception=e,
                 )
             except httpx.ConnectError as e:
                 logger.warning(
                     f"Webhook notification connection error (attempt {attempt + 1}/{max_attempts}): {e}"
                 )
+                last_error = WebhookError(
+                    message="Webhook notification connection error",
+                    detail=str(e),
+                    is_retryable=True,
+                    original_exception=e,
+                )
+            except WebhookError:
+                # Re-raise our own exceptions
+                raise
             except Exception as e:
                 logger.error(f"Webhook notification error: {type(e).__name__}: {e}")
+                last_error = WebhookError(
+                    message="Webhook notification failed",
+                    detail=str(e),
+                    is_retryable=False,
+                    original_exception=e,
+                )
                 break
 
             if attempt < max_attempts - 1:
@@ -178,6 +194,9 @@ class WebhookNotifier:
                 logger.info(f"Retrying webhook notification in {wait_time}s...")
                 await asyncio.sleep(wait_time)
 
+        if last_error:
+            logger.error(f"Webhook notification failed after {max_attempts} attempts: {event_type}")
+            raise last_error
         logger.error(f"Webhook notification failed after {max_attempts} attempts: {event_type}")
         return False
 
@@ -308,6 +327,12 @@ class WebhookNotifier:
                     "message": "Failed to send test notification. Check webhook URL and logs."
                 }
 
+        except WebhookError as e:
+            return {
+                "success": False,
+                "message": f"Test failed: {e.message} (retryable: {e.is_retryable})",
+                "detail": e.detail,
+            }
         except Exception as e:
             return {
                 "success": False,

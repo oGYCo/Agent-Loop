@@ -173,15 +173,18 @@ class TestEmailNotifier:
     @pytest.mark.asyncio
     @patch("agent.email_notifier.aiosmtplib.send")
     async def test_send_email_failure(self, mock_send, email_notifier_enabled):
-        """Test send_email failure"""
+        """Test send_email failure raises EmailError"""
+        from agent.exceptions import EmailError
         mock_send.side_effect = Exception("SMTP Error")
 
-        result = await email_notifier_enabled.send_email(
-            subject="Test Subject",
-            body="<p>Test Body</p>"
-        )
+        with pytest.raises(EmailError) as exc_info:
+            await email_notifier_enabled.send_email(
+                subject="Test Subject",
+                body="<p>Test Body</p>"
+            )
 
-        assert result is False
+        assert exc_info.value.error_code.value == "E4003"
+        assert exc_info.value.is_retryable is True
 
     @pytest.mark.asyncio
     @patch("agent.email_notifier.aiosmtplib.send")
