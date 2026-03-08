@@ -4,6 +4,39 @@ Accumulated experience and lessons learned from task execution.
 
 ---
 
+## 2026-03-08 - Slack Webhook Integration (feature-008)
+
+**任务描述**: 添加Slack Webhook集成，任务状态变更时发送消息到Slack频道。需要实现消息格式化和配置管理。
+
+**Lessons Learned:**
+
+1. **Slack Notifier Implementation**:
+   - Created `agent/slack_notifier.py` following existing email_notifier.py and webhook.py patterns
+   - Uses Slack Incoming Webhooks with Block Kit message formatting
+   - Supports task_completed, task_failed, and human_intervention events
+   - Implements retry logic with exponential backoff
+
+2. **Message Formatting**:
+   - Uses Slack Block Kit for rich message formatting
+   - Color-coded attachments: green (#4CAF50) for success, red (#f44336) for failure, orange (#ff9800) for intervention
+   - Includes emoji icons and structured fields for task information
+
+3. **Configuration**:
+   - Added `slack` section to config.json with webhook_url, channel, username, icon_emoji
+   - Supports custom events and timeout/retry settings
+
+4. **Integration**:
+   - Added Slack notification calls in agent_core.py after webhook notifications
+   - Added Slack notification in human_intervention.py for intervention events
+   - Lazy import pattern to avoid circular dependencies
+
+5. **Testing**:
+   - Created 22 comprehensive tests in tests/test_slack_notifier.py
+   - Tests cover: configuration, message building, notification sending, retry logic, templates
+   - All tests pass
+
+---
+
 ## 2026-03-08 - 结构化JSON日志 (feature-010)
 
 **任务描述**: 使用structlog实现结构化JSON日志，便于日志分析工具处理。
@@ -926,6 +959,8 @@ Accumulated experience and lessons learned from task execution.
 
 
 
+
+
 2026-03-08 - API密钥认证 (feature-013)
 
 **任务描述**: 为API服务添加API Key认证机制，支持配置多个密钥，实现基本的访问控制。
@@ -1476,7 +1511,10 @@ Changes Made:
 
 ---
 
-### 2026-03-08 - 添加更多集成测试 (feature-027)
+
+---
+
+2026-03-08 - 添加更多集成测试 (feature-027)
 
 **任务描述**: 添加端到端集成测试：1) 测试Agent完整执行流程 2) 测试状态管理器的持久化 3) 测试Git集成。确保各模块协同工作正常。
 
@@ -1485,7 +1523,10 @@ Changes Made:
 
 I've successfully added integration tests for the Agent-Loop project. Here's what was accomplished:
 
-### Created File: `tests/test_integration.py`
+
+---
+
+Created File: `tests/test_integration.py`
 
 **24 integration tests** organized in 5 test classes:
 
@@ -1496,3 +1537,25 @@ I've successfully added integration tests for the Agent-Loop project. Here's wha
 2. **TestGitIntegration** (5 tests)
    - Tests Git operations with state persistence
    - Tests git status tr
+
+---
+
+### 2026-03-08 - 结构化JSON日志 (feature-010)
+
+**任务描述**: 使用structlog实现结构化JSON日志，便于日志分析工具处理。需要了解当前logging配置。
+
+**执行结果**: completed
+**执行消息**: ## Summary
+
+I have successfully implemented structured JSON logging using structlog for the Agent-Loop project. Here's what was done:
+
+### Changes Made
+
+1. **Added structlog dependency** (`pyproject.toml`)
+   - Added `structlog>=24.0.0` to dependencies
+   - Also added `websockets` and `pytest-asyncio` for test support
+
+2. **Created logging module** (`agent/logging_.py`)
+   - Configures structlog with JSON output for file logging
+   - Human-readable console output (when no log file specified)
+   
