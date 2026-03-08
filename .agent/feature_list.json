@@ -634,10 +634,6 @@
       "priority": 5,
       "status": "completed",
       "passes": true,
-      "description": "将当前基础的单页面Dashboard升级为功能丰富、用户友好的管理界面。具体包括：\n\n1) **搜索与过滤**：任务列表添加实时搜索框（按名称/描述/ID搜索）和状态/优先级筛选器。\n2) **分页组件**：当任务超过20条时自动分页，支持每页10/20/50条切换。\n3) **性能监控图表**：使用Chart.js（https://www.chartjs.org/）添加：任务完成率趋势图（按天）、平均任务耗时图、错误率图、提供商响应时间图。\n4) **会话历史浏览器**：新增Sessions页面，列出所有历史会话，可点击查看详情（任务列表、日志、耗时）。\n5) **暗黑模式**：添加亮/暗主题切换，使用CSS变量实现，记住用户偏好（localStorage）。\n6) **键盘快捷键**：支持快捷键操作（/ 搜索、j/k 上下导航、Enter 查看详情、Esc 关闭弹窗）。\n7) **导出功能**：任务列表支持导出为JSON和CSV格式。\n8) **通知Toast**：操作成功/失败时显示Toast通知，而非alert()。\n9) **WebSocket重连优化**：当前固定3秒延迟重连，改为指数退避（1s→2s→4s→8s→最大30s），并在界面显示连接状态和重试倒计时。\n10) **响应式布局**：优化移动端显示，看板视图在小屏下切换为列表视图。\n11) **DOM性能优化**：当前每次刷新重建整个任务列表DOM，改为虚拟列表或增量更新（只更新变化的DOM节点）。\n\n**关键指令**：不引入前端框架（保持Vanilla JS），但可使用Chart.js CDN。确保所有交互有加载状态反馈。测试各浏览器兼容性（Chrome、Firefox、Safari）。",
-      "priority": 5,
-      "status": "pending",
-      "passes": false,
       "context_files": [
         "static/index.html",
         "api.py"
@@ -651,8 +647,8 @@
       "name": "通知系统测试补全与增强",
       "description": "当前webhook.py(78%)、email_notifier.py(71%)、slack_notifier.py(73%)测试覆盖率不足，需要全面提升并增强通知系统功能。具体包括：\n\n1) **Webhook测试补全**（目标90%+）：\n   - 测试重试机制：模拟HTTP 503→503→200场景，验证最多重试3次\n   - 测试超时处理：请求超时后正确记录错误\n   - 测试有效载荷格式：验证所有事件类型的payload结构正确\n   - 测试签名验证：使用HMAC-SHA256签名验证webhook真实性\n2) **Email测试补全**（目标85%+）：\n   - 测试SMTP连接失败场景\n   - 测试大附件处理\n   - 测试HTML模板渲染正确性\n   - 测试异步发送不阻塞主线程\n3) **Slack测试补全**（目标85%+）：\n   - 测试Block Kit消息格式验证\n   - 测试超长消息截断处理（Slack有4000字符限制）\n   - 测试频道不存在时的错误处理\n4) **通知路由系统**：创建agent/notification_router.py统一管理通知分发——根据事件类型和严重程度决定发送到哪些渠道（如：error→全部渠道，info→仅Slack）。\n5) **通知队列**：实现异步通知队列，避免通知发送阻塞Agent执行。失败的通知进入重试队列。\n6) **配置热更新**：通知配置变更后自动重载，无需重启。\n\n**关键指令**：参考各平台文档——Slack Block Kit：https://api.slack.com/block-kit 。使用httpx的MockTransport进行HTTP测试（不依赖外部服务）。",
       "priority": 5,
-      "status": "pending",
-      "passes": false,
+      "status": "completed",
+      "passes": true,
       "context_files": [
         "agent/webhook.py",
         "agent/email_notifier.py",
