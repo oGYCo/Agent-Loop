@@ -226,16 +226,13 @@
     {
       "id": "feature-016",
       "name": "explore and plan",
-      "description": "请仔细详细的审查整个代码库的文件，以工业生产级的视角来 批判性的审查代码，同时还有对文档问题的审查例如过时的信息，需要进行更新的内容，需要删除的内容等等，然后执行一系列的后续的执行计划到feature_list.json文件中，然后注意在最后再制定一个（制定计划）的计划，也就是以后每一个plan任务都要在执行的时候在所有其他任务的最后加 上一个plan任务，以便后续的系统能持续不断的运行。然后一定要注意计划不仅仅是限于对现有问题的改进，还有及时的更新各种的相关文件，测试 任务，新功能任务，更好的架构设计，修改MEMORY文件，完善整个系统，修改CLAUDE.md文件，修改README文件等等等等，不要受到局限，同时最终的目的一定是让整个系统变的越来越好，能够不断的优化和越来越成熟",
+      "description": "请仔细详细的审查整个代码库的文件，以工业生产级的视角来批判性的审查代码。",
       "priority": 1,
       "status": "completed",
       "passes": true,
       "context_files": [
         "CLAUDE.md",
         "README.md",
-        "README.zh-CN.md",
-        "NEW_FEATURES_ANALYSIS.md",
-        "analysis_report.md",
         "agent/*.py",
         "tests/*.py"
       ],
@@ -245,7 +242,7 @@
     {
       "id": "feature-018",
       "name": "改进代码错误处理和日志记录",
-      "description": "审查并改进代码中的错误处理：1) 将 silent except:pass 改为适当的错误日志记录 2) 添加更详细的异常信息到日志 3) 确保关键错误被正确传播而非静默忽略。需要审查 agent_core.py, human_intervention.py, session_manager.py, webhook.py, email_notifier.py 等模块。",
+      "description": "审查并改进代码中的错误处理。",
       "priority": 2,
       "status": "completed",
       "passes": true,
@@ -264,14 +261,12 @@
     {
       "id": "feature-019",
       "name": "更新README.md文档",
-      "description": "更新README.md以包含所有已实现的功能：1) 邮件通知服务 (feature-007) 2) 任务看板功能 (feature-011) 3) API密钥认证 (feature-013) 4) Webhook通知 (feature-005) 5) Grafana仪表板模板 (feature-012) 6) 错误处理改进 (feature-018)。确保文档与代码功能保持同步。",
+      "description": "更新README.md以包含所有已实现的功能。",
       "priority": 2,
       "status": "completed",
       "passes": true,
       "context_files": [
-        "README.md",
-        "agent/email_notifier.py",
-        "agent/webhook.py"
+        "README.md"
       ],
       "verify_command": "检查README.md内容完整性",
       "created_at": "2026-03-08",
@@ -280,7 +275,7 @@
     {
       "id": "feature-020",
       "name": "更新README.zh-CN.md中文文档",
-      "description": "更新README.zh-CN.md以包含所有已实现的功能，与README.md保持同步。确保所有新功能的描述准确且翻译正确。",
+      "description": "更新README.zh-CN.md以包含所有已实现的功能，与README.md保持同步。",
       "priority": 3,
       "status": "completed",
       "passes": true,
@@ -295,7 +290,7 @@
     {
       "id": "feature-021",
       "name": "清理过时的analysis_report.md",
-      "description": "分析并清理analysis_report.md文件：1) 移除已修复的问题标记 2) 更新仍存在的问题 3) 或者考虑删除该文件，因为问题已在代码中修复或在其他文档中记录。",
+      "description": "分析并清理analysis_report.md文件。",
       "priority": 4,
       "status": "completed",
       "passes": true,
@@ -309,17 +304,12 @@
     {
       "id": "feature-022",
       "name": "更新NEW_FEATURES_ANALYSIS.md",
-      "description": "更新NEW_FEATURES_ANALYSIS.md文件，将已实现的功能从待实现列表中移除，并添加新的功能建议。确保文档反映项目的当前状态。",
+      "description": "更新NEW_FEATURES_ANALYSIS.md文件。",
       "priority": 4,
       "status": "completed",
       "passes": true,
       "context_files": [
-        "NEW_FEATURES_ANALYSIS.md",
-        ".agent/feature_list.json",
-        "api.py",
-        "agent/webhook.py",
-        "agent/email_notifier.py",
-        "agent/metrics.py"
+        "NEW_FEATURES_ANALYSIS.md"
       ],
       "verify_command": "检查NEW_FEATURES_ANALYSIS.md内容",
       "created_at": "2026-03-08",
@@ -328,13 +318,12 @@
     {
       "id": "feature-023",
       "name": "添加API端点测试",
-      "description": "为api.py添加完整的单元测试和集成测试：1) 测试所有REST端点 2) 测试WebSocket连接 3) 测试API密钥认证 4) 测试错误处理。确保API的稳定性和可靠性。",
+      "description": "为api.py添加完整的单元测试和集成测试。",
       "priority": 5,
       "status": "completed",
       "passes": true,
       "context_files": [
         "api.py",
-        "tests/test_state_manager.py",
         "tests/test_api.py"
       ],
       "verify_command": "uv run pytest tests/test_api.py -v",
@@ -344,14 +333,12 @@
     {
       "id": "feature-024",
       "name": "添加缺失的类型注解",
-      "description": "为关键函数和类添加类型注解：1) 检查agent模块中的函数签名 2) 添加返回类型注解 3) 确保与项目要求一致 (Python 3.11+)。运行mypy检查类型错误。",
+      "description": "为关键函数和类添加类型注解。",
       "priority": 6,
       "status": "completed",
       "passes": true,
       "context_files": [
-        "agent/*.py",
-        "main.py",
-        "api.py"
+        "agent/*.py"
       ],
       "verify_command": "uv run mypy agent/ --ignore-missing-imports",
       "created_at": "2026-03-08",
@@ -360,7 +347,7 @@
     {
       "id": "feature-025",
       "name": "增强MEMORY.md和CLAUDE.md文档",
-      "description": "更新MEMORY.md和CLAUDE.md：1) 添加从当前任务中提取的关键经验 2) 更新架构图和模块说明 3) 添加新发现的最佳实践 (如错误处理改进)。确保文档反映项目的最新状态。",
+      "description": "更新MEMORY.md和CLAUDE.md。",
       "priority": 7,
       "status": "completed",
       "passes": true,
@@ -375,13 +362,12 @@
     {
       "id": "feature-026",
       "name": "添加代码覆盖率报告",
-      "description": "配置代码覆盖率报告：1) 在pyproject.toml中添加coverage配置 2) 确保测试覆盖关键模块 3) 设置覆盖率目标。运行coverage报告并分析结果。",
+      "description": "配置代码覆盖率报告。",
       "priority": 8,
       "status": "completed",
       "passes": true,
       "context_files": [
-        "pyproject.toml",
-        "tests/"
+        "pyproject.toml"
       ],
       "verify_command": "uv run pytest tests/ --cov=agent --cov-report=term-missing",
       "created_at": "2026-03-08",
@@ -390,14 +376,13 @@
     {
       "id": "feature-027",
       "name": "添加更多集成测试",
-      "description": "添加端到端集成测试：1) 测试Agent完整执行流程 2) 测试状态管理器的持久化 3) 测试Git集成。确保各模块协同工作正常。",
+      "description": "添加端到端集成测试。",
       "priority": 8,
       "status": "completed",
       "passes": true,
       "context_files": [
         "agent/agent_core.py",
-        "agent/state_manager.py",
-        "tests/test_agent_core.py"
+        "tests/test_integration.py"
       ],
       "verify_command": "uv run pytest tests/test_integration.py -v",
       "created_at": "2026-03-08",
@@ -405,28 +390,664 @@
     },
     {
       "id": "feature-028",
-      "name": "持续改进计划",
-      "description": "这是一个meta任务，用于持续改进系统。在完成每个主要功能后，系统应该：1) 自动审查和更新feature_list.json 2) 更新MEMORY.md记录经验 3) 审查和更新CLAUDE.md和README.md 4) 确保测试覆盖新功能。此任务确保系统能够持续自我优化和成长。",
-      "priority": 99,
+      "name": "New Feature: support openai and anthropic provider",
+      "description": "添加多模型提供商系统。",
+      "priority": 1,
       "status": "completed",
       "passes": true,
       "context_files": [
-        ".agent/feature_list.json",
-        ".agent/MEMORY.md",
-        "CLAUDE.md",
-        "README.md"
+        "agent/model_provider.py",
+        "tests/test_model_provider.py"
       ],
-      "verify_command": "定期审查和更新文档",
+      "verify_command": "uv run pytest tests/test_model_provider.py -v",
+      "created_at": "2026-03-08",
+      "updated_at": "2026-03-08"
+    },
+
+    {
+      "id": "feature-029",
+      "name": "工业级代码安全审计与修复",
+      "description": "以OWASP Top 10为标准，对整个代码库进行全面的安全审计并修复所有发现的安全问题。具体包括：\n\n1) **API认证强化**：修复api.py中API Key认证的降级漏洞（api_keys.enabled=false时允许任何访问），WebSocket连接需要在握手时验证API Key而非连接后发送close code；统一401/403响应格式防止端点枚举攻击。\n2) **速率限制中间件**：使用slowapi库（https://github.com/laurentS/slowapi）为所有API端点添加速率限制，防止DoS攻击，配置可通过config.json调整。\n3) **CORS安全配置**：为FastAPI添加CORSMiddleware，可配置allowed_origins，默认严格模式（仅允许同源），参考FastAPI CORS文档：https://fastapi.tiangolo.com/tutorial/cors/\n4) **输入验证与清洗**：对所有API传入的task name、description等字段进行严格验证和XSS清洗，使用Pydantic模型的validator；对来自config文件的shell命令（如test_command）添加白名单验证。\n5) **CSP安全头**：为Dashboard页面添加Content-Security-Policy头，防止XSS注入，禁止inline scripts（将JS外联）。\n6) **敏感数据保护**：审查所有日志输出确保不会意外记录API Key或密码；在model_provider.py中确保api_key永远不会出现在日志中；添加.gitignore检查确保.agent/config.json不会被意外提交（如包含直接api_key）。\n7) **状态文件安全**：为state_manager.py添加文件权限控制（0o600），确保状态文件不可被其他用户读取。\n\n**关键指令**：执行前必须阅读OWASP Top 10文档了解最新安全标准。参考FastAPI安全最佳实践：https://fastapi.tiangolo.com/tutorial/security/ 。每项修复必须附带对应的安全测试用例。",
+      "priority": 1,
+      "status": "completed",
+      "passes": true,
+      "context_files": [
+        "api.py",
+        "agent/state_manager.py",
+        "agent/model_provider.py",
+        "agent/logging_.py",
+        "agent/webhook.py",
+        "agent/email_notifier.py",
+        "agent/slack_notifier.py",
+        "static/index.html",
+        "tests/test_api.py",
+        "tests/test_security.py"
+      ],
+      "verify_command": "uv run pytest tests/test_api.py tests/test_security.py -v",
       "created_at": "2026-03-08",
       "updated_at": "2026-03-08"
     },
     {
-      "id": "feature-028",
-      "name": "New Feature: support openai and anthropic provider",
-      "description": "Add a highly extensible, production-grade model provider system to the project. This system should allow users to configure model providers themselves, including information such as the provider, API key, model name, and other related settings, so they can switch to different models as the source for subsequent execution.Note that user configuration data must be handled with proper privacy protection.\nThe system should initially support API formats compatible with OpenAI and Anthropic. Before starting the task, make sure to gather sufficient project-related context. In addition, you must regularly consult the relevant documentation:\nhttps://developers.openai.com/api/docs/quickstart\nhttps://platform.claude.com/docs/en/home",
+      "id": "feature-030",
+      "name": "状态管理器原子写入与文件锁",
+      "description": "为StateManager实现生产级的文件安全操作，解决当前存在的竞态条件和数据损坏风险。具体包括：\n\n1) **原子写入**：使用tempfile写入+os.replace()的原子替换模式，确保状态文件不会因进程崩溃而被截断。当前state_manager.py直接用open('w')写入，如果写入过程中进程被kill，文件会被截断为空或不完整JSON。\n2) **文件锁**：使用portalocker库（跨平台文件锁），在读写state.json、feature_list.json、session_history.json时加锁，防止多进程/多实例并发访问导致数据损坏。\n3) **备份机制**：每次写入前创建.bak备份文件，如果新文件写入失败自动回滚到备份版本。\n4) **数据校验**：写入后立即读取并验证JSON完整性（round-trip validation），确保序列化-反序列化一致。\n5) **配置Schema版本化**：在config.json中添加schema_version字段，实现配置格式迁移机制，为未来的格式变更提供升级路径。\n\n**关键指令**：需要安装portalocker依赖（添加到pyproject.toml）。参考Python原子文件操作模式。确保所有现有测试在修改后仍然通过。",
       "priority": 1,
       "status": "pending",
       "passes": false,
+      "context_files": [
+        "agent/state_manager.py",
+        "agent/config_reloader.py",
+        "pyproject.toml",
+        "tests/test_state_manager.py",
+        "tests/test_config_reloader.py"
+      ],
+      "verify_command": "uv run pytest tests/test_state_manager.py tests/test_config_reloader.py -v",
+      "created_at": "2026-03-08",
+      "updated_at": "2026-03-08"
+    },
+    {
+      "id": "feature-031",
+      "name": "结构化异常体系与错误码系统",
+      "description": "设计并实现一套完整的异常层次结构和错误码系统，替代当前代码中零散的Exception捕获。具体包括：\n\n1) **异常层次结构**：创建agent/exceptions.py模块，定义：\n   - AgentLoopError（基类）\n   - ConfigError / ConfigValidationError（配置相关）\n   - TaskExecutionError / TaskTimeoutError（任务执行相关）\n   - ProviderError / ProviderAuthError / ProviderRateLimitError（模型提供商相关）\n   - NotificationError / WebhookError / EmailError / SlackError（通知相关）\n   - SessionError / SessionCorruptError（会话相关）\n   - StateCorruptError（状态文件损坏）\n2) **错误码枚举**：创建ErrorCode枚举，每个错误类型分配唯一数字码（如E1001-E1099为配置错误，E2001-E2099为任务错误等），便于日志分析和监控告警。\n3) **全局替换**：将agent_core.py中4处silent exception、webhook.py/email_notifier.py/slack_notifier.py中的通用Exception捕获替换为具体异常类型，区分瞬态错误（可重试）和永久错误（需人工干预）。\n4) **API错误格式**：在api.py中实现统一的错误响应格式{\"error_code\": \"E1001\", \"message\": \"...\", \"detail\": \"...\"}，替代当前不一致的错误返回。\n\n**关键指令**：参考Python标准异常设计模式。确保异常链完整（使用raise ... from e保留原始异常）。所有新异常都需要添加测试用例。",
+      "priority": 2,
+      "status": "pending",
+      "passes": false,
+      "context_files": [
+        "agent/agent_core.py",
+        "agent/state_manager.py",
+        "agent/webhook.py",
+        "agent/email_notifier.py",
+        "agent/slack_notifier.py",
+        "agent/model_provider.py",
+        "agent/session_manager.py",
+        "api.py"
+      ],
+      "verify_command": "uv run pytest tests/ -v -x",
+      "created_at": "2026-03-08",
+      "updated_at": "2026-03-08"
+    },
+    {
+      "id": "feature-032",
+      "name": "Agent Core测试覆盖率提升至70%+",
+      "description": "当前agent_core.py测试覆盖率仅24%，严重低于生产标准。需要将覆盖率提升至70%以上，确保核心逻辑的可靠性。具体包括：\n\n1) **SDK集成测试**：测试execute_task_with_sdk()的完整流程，使用subprocess mock模拟SDK进程的stdin/stdout交互，验证streaming事件解析（StreamEvent、AssistantMessage、ResultMessage）。\n2) **Hook系统测试**：验证PreToolUse、PostToolUse、Notification、Stop四个hook的注册和触发逻辑。\n3) **重试机制测试**：测试execute_task()的指数退避重试策略（rate limit场景下5s→10s→20s），验证重试次数上限和超时处理。\n4) **错误恢复测试**：模拟SDK崩溃、返回malformed数据、连接中断等异常场景，验证状态保存和恢复。\n5) **会话管理集成测试**：测试initialize_session()、extract_and_save_experience()、plan_next_steps()的完整流程。\n6) **通知集成测试**：验证_send_webhook_notification_async()和_push_log_async()在WebSocket/Webhook失败时的行为。\n7) **上下文收集测试**：测试gather_project_context()在各种项目状态下的输出。\n\n**关键指令**：不使用mock模拟API响应，而是使用真实的subprocess和临时文件。参考现有test_agent_core.py的测试模式。每个测试函数覆盖一个具体场景。运行覆盖率报告确认达标。",
+      "priority": 2,
+      "status": "pending",
+      "passes": false,
+      "context_files": [
+        "agent/agent_core.py",
+        "tests/test_agent_core.py",
+        "tests/test_integration.py",
+        "agent/session_manager.py",
+        "agent/state_manager.py"
+      ],
+      "verify_command": "uv run pytest tests/test_agent_core.py -v --cov=agent/agent_core --cov-report=term-missing",
+      "created_at": "2026-03-08",
+      "updated_at": "2026-03-08"
+    },
+    {
+      "id": "feature-033",
+      "name": "API服务生产级加固",
+      "description": "将api.py从当前的开发级别提升到生产可部署级别。具体包括：\n\n1) **API版本化**：添加/api/v1/前缀路由，为未来API变更提供平滑升级路径，旧路由重定向到新路径。参考FastAPI路由分组：https://fastapi.tiangolo.com/tutorial/bigger-applications/\n2) **请求/响应日志中间件**：记录每个请求的method、path、status_code、耗时、request_id（UUID），用于调试和审计。\n3) **全局异常处理器**：替换当前通用500错误，实现自定义ExceptionHandler返回结构化错误信息（error_code、message、detail、timestamp）。参考：https://fastapi.tiangolo.com/tutorial/handling-errors/\n4) **分页支持**：为/tasks和/sessions端点添加分页参数（page、per_page、total），当任务数量超过100时防止性能退化。\n5) **任务删除端点**：实现DELETE /tasks/{id}端点，支持软删除（标记为archived）和硬删除。\n6) **批量操作端点**：实现POST /tasks/bulk用于批量创建/更新/删除任务。\n7) **Agent暂停/恢复**：实现POST /agent/pause和POST /agent/resume端点，允许通过API控制Agent执行。\n8) **OpenAPI文档增强**：为所有端点添加完整的description、response_model、tags分组，使自动生成的/docs页面信息完整易用。\n9) **健康检查增强**：/health端点增加依赖检查（文件系统、配置文件存在性），返回详细的健康状态。\n10) **Gzip压缩**：添加GZipMiddleware减少传输大小。\n\n**关键指令**：每个改动必须通过FastAPI TestClient验证。参考FastAPI完整教程：https://fastapi.tiangolo.com/tutorial/ 。确保与现有WebSocket功能兼容。所有新端点都需要测试覆盖。",
+      "priority": 2,
+      "status": "pending",
+      "passes": false,
+      "context_files": [
+        "api.py",
+        "agent/state_manager.py",
+        "agent/agent_core.py",
+        "tests/test_api.py",
+        "static/index.html"
+      ],
+      "verify_command": "uv run pytest tests/test_api.py -v && curl http://localhost:8000/docs",
+      "created_at": "2026-03-08",
+      "updated_at": "2026-03-08"
+    },
+    {
+      "id": "feature-034",
+      "name": "任务依赖系统",
+      "description": "实现任务间依赖关系管理，使Agent能按正确顺序执行有前置依赖的任务。当前所有任务被视为独立的，仅按priority排序执行，这在实际项目中不够用。具体包括：\n\n1) **数据模型扩展**：在feature_list.json的任务结构中添加depends_on字段（字符串数组），记录前置依赖任务的ID列表。\n2) **依赖解析引擎**：在task_selector.py中实现拓扑排序算法，确保dependency-first执行顺序。检测循环依赖并抛出明确错误。\n3) **状态校验**：select_next_task()选择任务前验证所有依赖任务已completed且passes=true，否则跳过或标记为blocked。\n4) **可视化**：在Dashboard中展示任务依赖关系图（使用简单的箭头连线），blocked状态的任务用灰色标记。\n5) **API支持**：扩展POST /tasks端点接受depends_on参数，GET /tasks返回依赖关系信息和resolved execution order。\n6) **CLI支持**：在list命令输出中显示依赖关系（缩进或箭头），添加--tree参数以树形结构展示。\n\n**关键指令**：参考常见的DAG（有向无环图）实现模式。确保向后兼容——没有depends_on字段的任务视为无依赖。添加全面的测试覆盖。",
+      "priority": 3,
+      "status": "pending",
+      "passes": false,
+      "context_files": [
+        "agent/task_selector.py",
+        "agent/state_manager.py",
+        "tests/test_task_selector.py",
+        "api.py",
+        "main.py",
+        "static/index.html"
+      ],
+      "verify_command": "uv run pytest tests/test_task_selector.py -v",
+      "created_at": "2026-03-08",
+      "updated_at": "2026-03-08"
+    },
+    {
+      "id": "feature-035",
+      "name": "日志系统全面升级",
+      "description": "将当前基础的structlog配置升级为生产级日志系统，支持日志轮转、关联追踪、敏感数据脱敏。具体包括：\n\n1) **日志轮转**：使用logging.handlers.RotatingFileHandler实现按大小轮转（默认10MB/文件，保留5个备份），避免日志文件无限增长。\n2) **关联ID追踪**：为每个Agent session、task execution、API request生成唯一的correlation_id（UUID），贯穿整个调用链，便于分布式日志追踪。在logging_.py中添加CorrelationIdProcessor。\n3) **敏感数据脱敏**：添加structlog processor自动检测和屏蔽日志中的API Key、密码、token等敏感字段（正则匹配 sk-*、password=*、token=* 等模式），替换为[REDACTED]。\n4) **日志级别动态调整**：支持通过API端点 POST /config/log-level 在运行时动态调整日志级别，无需重启。\n5) **结构化上下文**：为每条日志自动附加module、function、line_number等上下文信息。\n6) **审计日志**：创建独立的audit logger记录所有状态变更操作（任务创建/修改/删除、配置变更、Agent启停），输出到独立文件audit.log。\n\n**关键指令**：参考structlog文档：https://www.structlog.org/en/stable/ 。确保console输出仍然可读（不被correlation_id等元数据干扰）。添加logging_.py的测试用例。",
+      "priority": 3,
+      "status": "pending",
+      "passes": false,
+      "context_files": [
+        "agent/logging_.py",
+        "agent/agent_core.py",
+        "api.py",
+        "agent/state_manager.py",
+        "main.py"
+      ],
+      "verify_command": "uv run pytest tests/ -v -k 'log'",
+      "created_at": "2026-03-08",
+      "updated_at": "2026-03-08"
+    },
+    {
+      "id": "feature-036",
+      "name": "Console与CLI模块测试覆盖率提升",
+      "description": "当前console.py测试覆盖率仅16%，需要全面提升。同时补充main.py CLI命令的端到端测试。具体包括：\n\n1) **Console捕获测试**：使用rich.console.Console(file=io.StringIO())捕获输出，验证：\n   - print_header()输出包含正确标题\n   - print_task_table()表格包含所有任务列且格式正确\n   - print_status_panel()面板包含项目名、分支、错误计数等\n   - print_run_summary()正确显示迭代次数、完成数、错误数\n   - print_success/error/warning/info()使用正确的颜色标记\n   - create_progress()返回有效的Progress对象\n2) **CLI端到端测试**：创建tests/test_cli.py，使用subprocess运行main.py命令并验证输出：\n   - `init`命令创建.agent/目录和所有必要文件\n   - `list`命令正确显示任务列表（含--filter参数测试）\n   - `add`命令成功添加新任务到feature_list.json\n   - `status`命令显示正确的状态信息\n   - `template list/show`命令输出模板信息\n   - `prompt list/set`命令管理提示词预设\n   - 各命令在.agent/不存在时的优雅错误处理\n3) **边界测试**：空任务列表、超长任务名、特殊字符任务名（emoji、中文、换行符）的显示处理。\n\n**关键指令**：使用临时目录隔离测试环境。目标覆盖率：console.py 70%+。",
+      "priority": 3,
+      "status": "pending",
+      "passes": false,
+      "context_files": [
+        "agent/console.py",
+        "main.py",
+        "tests/test_agent_core.py"
+      ],
+      "verify_command": "uv run pytest tests/test_cli.py -v --cov=agent/console --cov-report=term-missing",
+      "created_at": "2026-03-08",
+      "updated_at": "2026-03-08"
+    },
+    {
+      "id": "feature-037",
+      "name": "Docker容器化与部署方案",
+      "description": "为项目创建完整的容器化部署方案，使其可以一键部署到Docker/Kubernetes环境。具体包括：\n\n1) **Dockerfile**：创建多阶段构建的Dockerfile——第一阶段安装uv和依赖，第二阶段仅复制运行时文件，最终镜像最小化。使用python:3.11-slim基础镜像。\n2) **docker-compose.yml**：定义完整的服务栈：\n   - agent-loop: 主Agent服务（CLI模式）\n   - agent-api: FastAPI服务（API+Dashboard模式）\n   - prometheus: Prometheus监控（配置scrape agent-api /metrics）\n   - grafana: Grafana仪表板（自动导入dashboards/agent-loop-dashboard.json）\n3) **.dockerignore**：排除.git、__pycache__、.venv、htmlcov等无关文件。\n4) **环境变量管理**：创建.env.example模板文件，列出所有必要的环境变量（ANTHROPIC_AUTH_TOKEN等），docker-compose引用.env文件。\n5) **健康检查**：在Dockerfile中配置HEALTHCHECK指令，使用/health端点。\n6) **Volume挂载**：.agent/目录通过volume挂载持久化，避免容器重启丢失状态。\n7) **文档**：在README.md中添加Docker部署章节，包括构建、运行、配置步骤。\n\n**关键指令**：参考Docker最佳实践：https://docs.docker.com/build/building/best-practices/ 。确保镜像安全（非root用户运行、最小权限）。测试docker build能成功构建。",
+      "priority": 3,
+      "status": "pending",
+      "passes": false,
+      "context_files": [
+        "pyproject.toml",
+        "main.py",
+        "api.py",
+        "dashboards/agent-loop-dashboard.json",
+        "README.md"
+      ],
+      "verify_command": "docker build -t agent-loop . && docker-compose config",
+      "created_at": "2026-03-08",
+      "updated_at": "2026-03-08"
+    },
+    {
+      "id": "feature-038",
+      "name": "模型提供商故障转移与负载均衡",
+      "description": "增强model_provider.py支持多提供商故障转移和智能切换，提高系统弹性。具体包括：\n\n1) **故障转移链**：在config.json的providers中支持配置fallback_provider字段，当主提供商连接失败/超时/返回错误时自动切换到备用提供商。\n2) **健康检查**：添加provider_health_check()方法，定期检测提供商API可用性（简单的models/list请求），在Dashboard中展示提供商健康状态。\n3) **智能重试**：区分瞬态错误（超时、5xx）和永久错误（401认证失败、404模型不存在），仅对瞬态错误重试，永久错误立即切换提供商。\n4) **使用量统计**：记录每个提供商的调用次数、成功率、平均响应时间，通过/metrics导出到Prometheus。\n5) **API Key轮转**：支持同一提供商配置多个API Key，实现简单的round-robin轮转，分散速率限制风险。\n6) **CLI命令**：添加`provider list`和`provider switch <name>`命令，实时切换活跃提供商与查看提供商状态。\n7) **配置验证**：在应用启动时验证所有配置的提供商凭证有效性，无效的记录warning但不阻止启动。\n\n**关键指令**：参考OpenAI API文档https://developers.openai.com/docs/api-reference 和Anthropic API文档 https://docs.anthropic.com/en/api/ 了解各提供商的错误码和速率限制机制。所有新功能必须有完整测试。",
+      "priority": 4,
+      "status": "pending",
+      "passes": false,
+      "context_files": [
+        "agent/model_provider.py",
+        "agent/agent_core.py",
+        "agent/metrics.py",
+        "tests/test_model_provider.py",
+        "main.py"
+      ],
+      "verify_command": "uv run pytest tests/test_model_provider.py -v",
+      "created_at": "2026-03-08",
+      "updated_at": "2026-03-08"
+    },
+    {
+      "id": "feature-039",
+      "name": "会话管理系统增强",
+      "description": "增强session_manager.py的会话管理能力，解决当前会话归档、恢复和上下文压缩的不足。具体包括：\n\n1) **会话归档机制**：session_history.json会无限增长，实现自动归档——超过30天或100条的历史会话移动到.agent/archive/目录按月份分文件存储（如archive_2026-03.json），主文件只保留最近的记录。\n2) **智能上下文压缩**：替换当前简单的'Summary: N messages processed'压缩方式，实现基于内容重要性的压缩：保留包含代码修改、错误信息、关键决策的消息，压缩纯对话和重复内容。\n3) **增量Token计数**：当前每次check_context_usage()都重新计算所有消息的token数，改为增量计数——新消息只计算增量部分。\n4) **会话恢复增强**：当should_resume_session()为true时，提供更丰富的恢复上下文——不仅恢复消息列表，还恢复当时的task状态、git diff、错误计数等。\n5) **会话标签系统**：支持为会话添加标签（如'debug', 'feature', 'refactor'），便于后续检索和分析。\n6) **会话统计API**：添加API端点GET /sessions/stats返回汇总统计：平均会话时长、任务完成率、最常见错误类型、按日/周趋势等。\n\n**关键指令**：确保向后兼容——新代码必须能读取旧格式的session_history.json。token计数精度改进可参考tiktoken文档：https://github.com/openai/tiktoken 。添加完整测试。",
+      "priority": 4,
+      "status": "pending",
+      "passes": false,
+      "context_files": [
+        "agent/session_manager.py",
+        "agent/state_manager.py",
+        "tests/test_session_manager.py",
+        "api.py"
+      ],
+      "verify_command": "uv run pytest tests/test_session_manager.py -v",
+      "created_at": "2026-03-08",
+      "updated_at": "2026-03-08"
+    },
+    {
+      "id": "feature-040",
+      "name": "配置管理系统重构",
+      "description": "重构配置管理系统，解决当前配置分散、缺乏校验、无迁移路径的问题。具体包括：\n\n1) **Pydantic配置模型**：使用Pydantic BaseSettings替代手动JSON解析，创建agent/config_model.py定义完整的配置数据模型（ProjectConfig、ProviderConfig、NotificationConfig、APIConfig等），自带类型检查和默认值。参考Pydantic Settings文档：https://docs.pydantic.dev/latest/concepts/pydantic_settings/\n2) **环境变量覆盖**：所有配置项支持通过环境变量覆盖（如AGENT_LOOP_PROJECT_NAME覆盖config.json中的project_name），便于容器化部署。\n3) **配置迁移引擎**：实现config migration机制——config.json中添加schema_version字段（初始值\"1.0\"），当检测到旧版本时自动执行迁移函数链（v1.0→v1.1→v1.2...），输出迁移日志。\n4) **CLI config命令**：添加`config get <key>`、`config set <key> <value>`、`config validate`子命令，允许通过CLI直接查看和修改配置而不手动编辑JSON。\n5) **配置热重载增强**：config_reloader.py当前不验证重载后的配置有效性，添加验证步骤——如果新配置无效则保持旧配置并发出warning。\n6) **配置导出/导入**：`config export`导出当前配置（脱敏版，隐藏API Key），`config import <file>`导入配置文件。\n7) **默认配置优化**：审查所有默认值是否合理，context_window_limit根据选择的model自动调整（GPT-4: 128K, Claude: 200K）。\n\n**关键指令**：确保向后兼容——新系统必须能读取没有schema_version的旧config.json。所有配置变更通过audit log记录。",
+      "priority": 4,
+      "status": "pending",
+      "passes": false,
+      "context_files": [
+        "agent/state_manager.py",
+        "agent/config_reloader.py",
+        "agent/model_provider.py",
+        "main.py",
+        "tests/test_state_manager.py",
+        "tests/test_config_reloader.py"
+      ],
+      "verify_command": "uv run pytest tests/test_state_manager.py tests/test_config_reloader.py -v",
+      "created_at": "2026-03-08",
+      "updated_at": "2026-03-08"
+    },
+    {
+      "id": "feature-041",
+      "name": "Web Dashboard全面升级",
+      "description": "将当前基础的单页面Dashboard升级为功能丰富、用户友好的管理界面。具体包括：\n\n1) **搜索与过滤**：任务列表添加实时搜索框（按名称/描述/ID搜索）和状态/优先级筛选器。\n2) **分页组件**：当任务超过20条时自动分页，支持每页10/20/50条切换。\n3) **性能监控图表**：使用Chart.js（https://www.chartjs.org/）添加：任务完成率趋势图（按天）、平均任务耗时图、错误率图、提供商响应时间图。\n4) **会话历史浏览器**：新增Sessions页面，列出所有历史会话，可点击查看详情（任务列表、日志、耗时）。\n5) **暗黑模式**：添加亮/暗主题切换，使用CSS变量实现，记住用户偏好（localStorage）。\n6) **键盘快捷键**：支持快捷键操作（/ 搜索、j/k 上下导航、Enter 查看详情、Esc 关闭弹窗）。\n7) **导出功能**：任务列表支持导出为JSON和CSV格式。\n8) **通知Toast**：操作成功/失败时显示Toast通知，而非alert()。\n9) **WebSocket重连优化**：当前固定3秒延迟重连，改为指数退避（1s→2s→4s→8s→最大30s），并在界面显示连接状态和重试倒计时。\n10) **响应式布局**：优化移动端显示，看板视图在小屏下切换为列表视图。\n11) **DOM性能优化**：当前每次刷新重建整个任务列表DOM，改为虚拟列表或增量更新（只更新变化的DOM节点）。\n\n**关键指令**：不引入前端框架（保持Vanilla JS），但可使用Chart.js CDN。确保所有交互有加载状态反馈。测试各浏览器兼容性（Chrome、Firefox、Safari）。",
+      "priority": 5,
+      "status": "pending",
+      "passes": false,
+      "context_files": [
+        "static/index.html",
+        "api.py"
+      ],
+      "verify_command": "在浏览器中访问 http://localhost:8000/ 验证所有功能",
+      "created_at": "2026-03-08",
+      "updated_at": "2026-03-08"
+    },
+    {
+      "id": "feature-042",
+      "name": "通知系统测试补全与增强",
+      "description": "当前webhook.py(78%)、email_notifier.py(71%)、slack_notifier.py(73%)测试覆盖率不足，需要全面提升并增强通知系统功能。具体包括：\n\n1) **Webhook测试补全**（目标90%+）：\n   - 测试重试机制：模拟HTTP 503→503→200场景，验证最多重试3次\n   - 测试超时处理：请求超时后正确记录错误\n   - 测试有效载荷格式：验证所有事件类型的payload结构正确\n   - 测试签名验证：使用HMAC-SHA256签名验证webhook真实性\n2) **Email测试补全**（目标85%+）：\n   - 测试SMTP连接失败场景\n   - 测试大附件处理\n   - 测试HTML模板渲染正确性\n   - 测试异步发送不阻塞主线程\n3) **Slack测试补全**（目标85%+）：\n   - 测试Block Kit消息格式验证\n   - 测试超长消息截断处理（Slack有4000字符限制）\n   - 测试频道不存在时的错误处理\n4) **通知路由系统**：创建agent/notification_router.py统一管理通知分发——根据事件类型和严重程度决定发送到哪些渠道（如：error→全部渠道，info→仅Slack）。\n5) **通知队列**：实现异步通知队列，避免通知发送阻塞Agent执行。失败的通知进入重试队列。\n6) **配置热更新**：通知配置变更后自动重载，无需重启。\n\n**关键指令**：参考各平台文档——Slack Block Kit：https://api.slack.com/block-kit 。使用httpx的MockTransport进行HTTP测试（不依赖外部服务）。",
+      "priority": 5,
+      "status": "pending",
+      "passes": false,
+      "context_files": [
+        "agent/webhook.py",
+        "agent/email_notifier.py",
+        "agent/slack_notifier.py",
+        "tests/test_webhook.py",
+        "tests/test_email_notifier.py",
+        "tests/test_slack_notifier.py"
+      ],
+      "verify_command": "uv run pytest tests/test_webhook.py tests/test_email_notifier.py tests/test_slack_notifier.py -v --cov=agent/webhook --cov=agent/email_notifier --cov=agent/slack_notifier --cov-report=term-missing",
+      "created_at": "2026-03-08",
+      "updated_at": "2026-03-08"
+    },
+    {
+      "id": "feature-043",
+      "name": "代码质量基础设施：常量提取与懒加载重构",
+      "description": "消除代码中散布的魔法数字、魔法字符串和重复的懒加载模式，提高代码可维护性。具体包括：\n\n1) **常量模块**：创建agent/constants.py集中定义：\n   - DEFAULT_PRIORITY = 999（当前散布在task_selector.py中）\n   - MAX_RETRY_COUNT = 3, RETRY_BASE_DELAY = 5（当前在agent_core.py中硬编码）\n   - CONFIG_KEYS枚举（'webhook', 'email', 'slack', 'api_keys'等，当前到处用字符串字面量）\n   - FILE_NAMES枚举（'feature_list.json', 'state.json', 'config.json'等）\n   - API_PATHS枚举（'/status', '/tasks', '/health'等）\n   - EVENT_TYPES枚举（'task_completed', 'task_failed', 'session_started'等）\n   - LOG_LEVELS、STATUS_VALUES等\n2) **服务工厂重构**：将agent_core.py中6个独立的懒加载函数（_get_webhook_notifier, _get_slack_notifier, _get_event_pusher等）统一为ServiceFactory类：\n   ```python\n   class ServiceFactory:\n       @staticmethod\n       def get(service_name: str) -> Optional[Any]: ...\n   ```\n3) **HTTP客户端生命周期管理**：为webhook.py和slack_notifier.py的httpx.AsyncClient添加async context manager模式（__aenter__/__aexit__），确保连接正确关闭。\n4) **命名一致性**：统一项目中'task'/'feature'/'item'的混用命名，在代码层面统一为'task'，在文件层面保留'feature_list.json'以向后兼容。\n\n**关键指令**：使用全局搜索确保所有魔法值都被替换。每个替换都要确保现有测试仍然通过。",
+      "priority": 5,
+      "status": "pending",
+      "passes": false,
+      "context_files": [
+        "agent/agent_core.py",
+        "agent/task_selector.py",
+        "agent/state_manager.py",
+        "agent/webhook.py",
+        "agent/slack_notifier.py",
+        "api.py"
+      ],
+      "verify_command": "uv run pytest tests/ -v -x",
+      "created_at": "2026-03-08",
+      "updated_at": "2026-03-08"
+    },
+    {
+      "id": "feature-044",
+      "name": "Token成本追踪与使用量统计",
+      "description": "实现每个提供商和每个任务的token使用量和API调用成本追踪系统，帮助用户了解和控制使用成本。具体包括：\n\n1) **Token计数集成**：在agent_core.py的SDK调用中捕获每次API调用的input_tokens和output_tokens（从ResultMessage或usage字段获取），记录到performance_monitor。\n2) **成本计算引擎**：创建agent/cost_tracker.py，内置各提供商的定价表：\n   - OpenAI GPT-4.1: input $2/1M, output $8/1M\n   - Claude Sonnet: input $3/1M, output $15/1M\n   - MiniMax: 根据实际定价配置\n   支持用户通过config.json自定义定价。\n3) **使用量持久化**：创建.agent/usage.json，按日期和提供商记录token使用量和估算成本。\n4) **Prometheus指标**：导出token_input_total、token_output_total、estimated_cost_usd等指标。\n5) **CLI展示**：在`status`命令中显示本次会话和历史累计的token使用量和估算成本。\n6) **API端点**：GET /usage返回使用量统计（可按日期范围筛选）。\n7) **预算告警**：在config.json中可配置budget_limit_usd，接近预算时通过通知系统告警。\n8) **Dashboard可视化**：在Dashboard中添加使用量统计面板（日/周/月视图、按提供商分组）。\n\n**关键指令**：定价表需要定期更新。参考各提供商定价页面获取最新价格。确保成本计算精确到小数点后6位（token级精度）。",
+      "priority": 5,
+      "status": "pending",
+      "passes": false,
+      "context_files": [
+        "agent/agent_core.py",
+        "agent/model_provider.py",
+        "agent/performance_monitor.py",
+        "agent/metrics.py",
+        "api.py",
+        "main.py",
+        "static/index.html"
+      ],
+      "verify_command": "uv run pytest tests/ -v -k 'cost or usage or token'",
+      "created_at": "2026-03-08",
+      "updated_at": "2026-03-08"
+    },
+    {
+      "id": "feature-045",
+      "name": "Prompt模板系统增强与A/B测试",
+      "description": "增强prompt_manager.py的模板系统，支持更高级的模板功能和提示词优化实验。具体包括：\n\n1) **条件模板语法**：支持{{#if variable}}...{{/if}}和{{#each list}}...{{/each}}条件块，使模板可以根据上下文动态调整内容。\n2) **模板继承**：支持{% extends 'base' %}和{% block content %}...{% endblock %}模式，减少模板间的重复。\n3) **未定义变量检测**：当前render_template()对未定义的{{variable}}保持原样输出，改为记录warning日志并提供默认空字符串（可配置行为：keep/warn/empty/error）。\n4) **提示词版本管理**：在.agent/prompt_templates/中支持版本化（如system_v1.md、system_v2.md），可快速切换和回滚。\n5) **A/B测试框架**：支持配置两套提示词同时运行，自动比较任务完成率、token使用量等指标，选出更优方案。在config.json中配置：\n   ```json\n   {\"ab_test\": {\"enabled\": true, \"variant_a\": \"system_v1\", \"variant_b\": \"system_v2\", \"traffic_split\": 0.5}}\n   ```\n6) **模板导入/导出**：支持从GitHub Gist或本地文件导入社区共享的prompt模板集。\n7) **模板验证**：添加validate命令检查模板语法和变量引用是否正确，提前发现问题。\n\n**关键指令**：条件模板语法的实现不要依赖Jinja2（保持轻量），用正则表达式实现即可。确保向后兼容——现有的简单{{variable}}语法不受影响。",
+      "priority": 6,
+      "status": "pending",
+      "passes": false,
+      "context_files": [
+        "agent/prompt_manager.py",
+        "tests/test_prompt_refactor.py",
+        "main.py"
+      ],
+      "verify_command": "uv run pytest tests/test_prompt_refactor.py -v",
+      "created_at": "2026-03-08",
+      "updated_at": "2026-03-08"
+    },
+    {
+      "id": "feature-046",
+      "name": "异步架构优化与性能提升",
+      "description": "解决当前代码中async/sync混用导致的性能问题和架构不一致，同时优化关键路径性能。具体包括：\n\n1) **阻塞IO消除**：human_intervention.py中的input()调用会阻塞事件循环，使用asyncio.to_thread()包装（已部分实现但不完整），所有subprocess调用也改用asyncio.subprocess。\n2) **HTTP客户端连接池**：webhook.py和slack_notifier.py的httpx.AsyncClient当前每次创建新实例，改为单例连接池模式，复用TCP连接减少延迟。\n3) **模板缓存**：prompt_manager.py当前每次render都从磁盘读取模板文件，添加内存缓存+文件mtime检查的缓存机制（文件未变则使用缓存）。\n4) **并行通知发送**：当前webhook、email、slack通知是顺序发送的，改为asyncio.gather()并行发送。\n5) **Git命令批处理**：git_helper.py当前每个git信息需要一次subprocess调用，合并多个git命令到一次调用（如git log + git status + git branch合并为一个shell脚本）。\n6) **状态文件延迟写入**：state_manager.py当前每次状态变更立即写入磁盘，添加debounce机制——500ms内的多次变更合并为一次写入。\n7) **WebSocket消息压缩**：为WebSocket连接启用permessage-deflate压缩。\n8) **性能基准测试**：创建tests/test_performance.py，记录关键操作的耗时基线（config加载、模板渲染、状态读写、git操作），作为性能回归监控。\n\n**关键指令**：使用asyncio.create_task()而非await实现真正的并行。参考Python asyncio文档：https://docs.python.org/3/library/asyncio.html 。确保所有性能优化不改变功能行为。",
+      "priority": 6,
+      "status": "pending",
+      "passes": false,
+      "context_files": [
+        "agent/agent_core.py",
+        "agent/human_intervention.py",
+        "agent/webhook.py",
+        "agent/slack_notifier.py",
+        "agent/prompt_manager.py",
+        "agent/git_helper.py",
+        "agent/state_manager.py",
+        "api.py"
+      ],
+      "verify_command": "uv run pytest tests/ -v -x && uv run pytest tests/test_performance.py -v",
+      "created_at": "2026-03-08",
+      "updated_at": "2026-03-08"
+    },
+    {
+      "id": "feature-047",
+      "name": "MCP Server模式",
+      "description": "将Agent-Loop暴露为MCP（Model Context Protocol）Server，使其可以被其他AI工具（如Claude Desktop、VS Code Copilot）调用。具体包括：\n\n1) **MCP Server实现**：创建agent/mcp_server.py，使用mcp-python SDK（https://github.com/modelcontextprotocol/python-sdk）实现MCP Server协议，暴露以下tools：\n   - `agent_run_task`: 启动Agent执行指定任务\n   - `agent_list_tasks`: 列出所有任务及状态\n   - `agent_add_task`: 添加新任务\n   - `agent_status`: 获取Agent当前状态\n   - `agent_session_history`: 获取历史会话\n   - `agent_read_memory`: 读取MEMORY.md\n2) **MCP Resources暴露**：将MEMORY.md、CLAUDE.md、config.json、feature_list.json作为MCP resources，允许其他工具读取。\n3) **MCP Prompts**：将系统内置的prompt templates作为MCP prompts暴露。\n4) **传输层支持**：支持STDIO传输（用于本地集成）和SSE传输（用于远程集成）。\n5) **CLI命令**：添加`mcp-server start`命令启动MCP Server。\n6) **文档**：添加MCP集成指南，说明如何在Claude Desktop和VS Code中配置使用。\n\n**关键指令**：参考MCP协议规范：https://spec.modelcontextprotocol.io/ 和Python SDK文档：https://github.com/modelcontextprotocol/python-sdk 。确保输入输出的schema定义完整。",
+      "priority": 6,
+      "status": "pending",
+      "passes": false,
+      "context_files": [
+        "agent/agent_core.py",
+        "agent/state_manager.py",
+        "agent/prompt_manager.py",
+        "main.py",
+        "api.py"
+      ],
+      "verify_command": "uv run python -m agent.mcp_server --test",
+      "created_at": "2026-03-08",
+      "updated_at": "2026-03-08"
+    },
+    {
+      "id": "feature-048",
+      "name": "并发与边界条件测试套件",
+      "description": "创建专门的测试套件验证系统在极端和并发条件下的行为，这是当前测试体系中完全缺失的部分。具体包括：\n\n1) **并发安全测试**（tests/test_concurrency.py）：\n   - 多线程同时读写state.json，验证数据一致性\n   - 多个WebSocket客户端同时连接/断开，验证ConnectionManager正确性\n   - 并发API请求（使用asyncio HTTP client批量发请求），验证无死锁\n   - 同时运行两个Agent实例（不同配置），验证状态隔离\n2) **状态损坏恢复测试**（tests/test_recovery.py）：\n   - JSON文件被截断（模拟进程crash mid-write），验证加载时的优雅降级\n   - 配置文件权限被修改（只读），验证错误提示明确\n   - .agent/目录被意外删除，验证自动重建\n   - feature_list.json包含非法status值，验证验证逻辑\n3) **网络故障模拟测试**（tests/test_network_failures.py）：\n   - Webhook URL不可达时的超时和重试行为\n   - SMTP服务器拒绝连接时的错误处理\n   - WebSocket连接中断后消息丢失的处理\n4) **大数据量压力测试**（tests/test_stress.py）：\n   - feature_list.json包含500+任务时的性能（加载、排序、查询）\n   - session_history.json包含1000+会话记录时的读写性能\n   - 同时100个WebSocket连接的广播性能\n   - 连续1000次task加载/保存的内存泄漏检测\n5) **Unicode与特殊字符测试**：\n   - 任务名包含emoji、CJK字符、换行符、HTML标签\n   - 配置文件包含UTF-8 BOM\n   - 文件路径包含空格和特殊字符\n\n**关键指令**：使用pytest-timeout防止测试死锁。压力测试标记为@pytest.mark.slow，默认不运行（通过-m slow手动触发）。每个测试文件独立可运行。",
+      "priority": 6,
+      "status": "pending",
+      "passes": false,
+      "context_files": [
+        "agent/state_manager.py",
+        "agent/webhook.py",
+        "agent/email_notifier.py",
+        "api.py",
+        "tests/test_state_manager.py",
+        "tests/test_api.py"
+      ],
+      "verify_command": "uv run pytest tests/test_concurrency.py tests/test_recovery.py tests/test_network_failures.py -v",
+      "created_at": "2026-03-08",
+      "updated_at": "2026-03-08"
+    },
+    {
+      "id": "feature-049",
+      "name": "Plugin/扩展系统",
+      "description": "为Agent-Loop设计并实现插件系统，使用户可以编写自定义扩展来扩展Agent的能力而不修改核心代码。具体包括：\n\n1) **插件接口定义**：创建agent/plugin.py，定义Plugin抽象基类：\n   ```python\n   class AgentPlugin(ABC):\n       name: str\n       version: str\n       def on_task_start(self, task: dict) -> None: ...\n       def on_task_complete(self, task: dict, result: dict) -> None: ...\n       def on_task_fail(self, task: dict, error: Exception) -> None: ...\n       def on_session_start(self, session_id: str) -> None: ...\n       def on_session_end(self, session_id: str) -> None: ...\n       def register_tools(self) -> List[ToolDef]: ...  # 注册自定义工具\n       def register_prompts(self) -> Dict[str, str]: ...  # 注册提示词片段\n   ```\n2) **插件加载器**：支持从.agent/plugins/目录和pip安装的包自动发现和加载插件（使用entry_points机制）。\n3) **插件管理CLI**：\n   - `plugin list`：列出已安装的插件\n   - `plugin install <path_or_package>`：安装插件\n   - `plugin enable/disable <name>`：启用/禁用插件\n4) **生命周期钩子**：在agent_core.py的执行流程中预留钩子点，调用已注册插件的对应方法。\n5) **示例插件**：创建一个sample_plugin展示如何编写插件（如：自动给任务添加时间戳标签）。\n6) **沙箱安全**：确保插件不能直接访问核心Agent内部状态，通过受限的API接口交互。\n\n**关键指令**：参考pytest的插件系统设计（setuptools entry_points）。不要过度设计——先实现最小可用版本。添加插件系统的测试。",
+      "priority": 7,
+      "status": "pending",
+      "passes": false,
+      "context_files": [
+        "agent/agent_core.py",
+        "agent/__init__.py",
+        "main.py",
+        "pyproject.toml"
+      ],
+      "verify_command": "uv run pytest tests/test_plugin.py -v",
+      "created_at": "2026-03-08",
+      "updated_at": "2026-03-08"
+    },
+    {
+      "id": "feature-050",
+      "name": "MEMORY.md智能整理与知识图谱",
+      "description": "对当前500+行的MEMORY.md进行系统性整理，并建立结构化的知识管理机制。具体包括：\n\n1) **MEMORY.md清理整合**：\n   - 合并重复的经验教训（如多个feature都提到的测试模式、JSON处理等）\n   - 按主题分组整理（架构决策、测试经验、错误处理模式、性能优化、集成经验）\n   - 删除过时的信息（如已修复的bug记录）\n   - 将28个独立的task记录提炼为10-15条核心知识点\n   - 目标：从500+行精简到150行以内，信息密度更高\n2) **结构化知识索引**：在.agent/目录创建knowledge_index.json，按主题和标签索引MEMORY.md中的知识点，支持快速检索。\n3) **自动知识提取机制改进**：优化agent_core.py中的extract_and_save_experience()方法：\n   - 提取前先检查MEMORY.md中是否已有类似知识点（余弦相似度或关键词匹配），避免重复\n   - 新知识与旧知识冲突时，更新而非追加\n   - 控制MEMORY.md总行数不超过200行\n4) **知识归档**：超过200行时自动将旧知识归档到.agent/knowledge_archive/目录（按月份分文件）。\n5) **CLAUDE.md同步更新**：确保CLAUDE.md中的架构描述、模块列表、命令示例与当前代码完全一致。特别注意：\n   - 更新模块表格（添加model_provider.py、exceptions.py等新模块）\n   - 更新CLI命令列表（添加provider、config、plugin等新命令）\n   - 更新环境变量说明\n   - 更新测试统计信息\n\n**关键指令**：执行此任务前必须完整阅读当前MEMORY.md和CLAUDE.md的内容。清理时保留高价值洞察，删除流水账式记录。",
+      "priority": 7,
+      "status": "pending",
+      "passes": false,
+      "context_files": [
+        ".agent/MEMORY.md",
+        "CLAUDE.md",
+        "agent/agent_core.py"
+      ],
+      "verify_command": "wc -l .agent/MEMORY.md && cat .agent/MEMORY.md | head -30",
+      "created_at": "2026-03-08",
+      "updated_at": "2026-03-08"
+    },
+    {
+      "id": "feature-051",
+      "name": "README文档全面更新与用户指南",
+      "description": "全面重写README.md和README.zh-CN.md，从开发者文档升级为用户友好的项目文档。同时创建详细的用户指南。具体包括：\n\n1) **README结构优化**：\n   - 添加清晰的项目Logo和一句话描述\n   - 添加徽章（badges）：Python版本、测试状态、覆盖率、License\n   - Quick Start（5分钟上手）章节：从安装到第一次运行的完整流程\n   - 功能特性列表（带截图/GIF动画展示Dashboard、CLI、看板）\n   - 配置指南：每个配置项的说明、默认值、示例\n   - Docker快速部署章节\n   - API文档链接（指向/docs自动文档）\n   - 常见问题FAQ\n   - 贡献指南链接\n2) **用户指南文档**：创建docs/目录，包含：\n   - docs/getting-started.md：详细的安装和配置指南\n   - docs/configuration.md：完整的配置参考文档（每个config.json字段的说明）\n   - docs/api-reference.md：REST API完整参考（可链接到FastAPI auto-docs）\n   - docs/notification-setup.md：Email/Slack/Webhook配置教程（带截图）\n   - docs/troubleshooting.md：常见问题与解决方案\n   - docs/architecture.md：用Mermaid图展示系统架构、数据流、模块依赖\n   - docs/deployment.md：生产部署指南（Docker、systemd、反向代理配置）\n3) **中文文档同步**：确保README.zh-CN.md与README.md完全同步。\n4) **CONTRIBUTING.md**：创建贡献指南，说明开发环境搭建、代码规范、PR流程、测试要求。\n\n**关键指令**：参考优秀的开源项目README模板。确保所有命令示例可以直接复制运行。所有外部链接需要验证有效性。",
+      "priority": 7,
+      "status": "pending",
+      "passes": false,
+      "context_files": [
+        "README.md",
+        "README.zh-CN.md",
+        "CLAUDE.md",
+        "api.py",
+        "main.py"
+      ],
+      "verify_command": "检查所有文档文件的内容完整性和链接有效性",
+      "created_at": "2026-03-08",
+      "updated_at": "2026-03-08"
+    },
+    {
+      "id": "feature-052",
+      "name": "CI/CD流水线与代码质量门禁",
+      "description": "建立完整的持续集成/持续部署流水线和代码质量门禁，确保每次代码变更的质量可控。具体包括：\n\n1) **GitHub Actions工作流**：创建.github/workflows/ci.yml：\n   - 触发条件：push到main、PR创建/更新\n   - Python矩阵测试：3.11、3.12、3.13\n   - 步骤：uv install → ruff check → mypy → pytest --cov → coverage report\n   - 覆盖率阈值：整体>60%，新代码>80%\n   - 测试结果和覆盖率报告上传到PR comment\n2) **代码质量检查**：\n   - ruff：lint + format检查（在CI中强制通过）\n   - mypy strict模式：关键模块必须通过类型检查\n   - bandit：安全漏洞扫描\n   - 添加pre-commit配置（.pre-commit-config.yaml）：ruff、mypy、trailing whitespace、end-of-file fixer\n3) **Docker镜像发布**：在tag推送时自动构建并发布Docker镜像到GitHub Container Registry。\n4) **Dependency更新**：配置Dependabot或Renovate自动检测依赖版本更新。\n5) **Release自动化**：配置GitHub Release工作流——tag推送时自动生成changelog并创建GitHub Release。\n6) **pyproject.toml优化**：将所有>=依赖改为版本范围约束（如>=0.1.0,<1.0.0），确保可复现构建。\n\n**关键指令**：参考GitHub Actions文档：https://docs.github.com/en/actions 。确保CI运行快速（<5分钟）。添加badge到README显示CI状态。",
+      "priority": 7,
+      "status": "pending",
+      "passes": false,
+      "context_files": [
+        "pyproject.toml",
+        "tests/",
+        "README.md"
+      ],
+      "verify_command": "检查CI配置文件语法正确性",
+      "created_at": "2026-03-08",
+      "updated_at": "2026-03-08"
+    },
+    {
+      "id": "feature-053",
+      "name": "Agent自动回滚与恢复机制",
+      "description": "实现Agent执行任务失败后的自动回滚和状态恢复机制，提高系统的容错能力和可靠性。具体包括：\n\n1) **Git检查点系统**：在每个任务开始前自动创建git tag（agent-checkpoint-{task_id}-{timestamp}），任务失败时Agent可决定是否回滚到检查点。\n2) **文件检查点**：利用SDK的enable_file_checkpointing=True功能，在任务执行过程中创建增量文件快照，失败时恢复到最近的完整快照。\n3) **状态回滚**：state_manager.py维护状态历史栈（最近10个状态快照），支持rollback_state(n)回退n步。\n4) **配置回滚**：config_reloader.py保存最后3个有效配置的副本，配置变更导致的问题可以一键回滚。\n5) **自动诊断**：任务失败时自动收集诊断信息——git diff、错误日志、系统资源状态，生成诊断报告。\n6) **恢复策略**：实现可配置的恢复策略（在config.json中设置）：\n   - `auto_rollback`: 自动回滚到检查点\n   - `manual`: 等待人工干预\n   - `retry_then_rollback`: 重试N次后回滚\n   - `skip`: 标记失败继续下一个任务\n7) **恢复日志**：记录所有回滚操作到.agent/recovery.log，便于后续分析。\n\n**关键指令**：回滚操作必须原子性——要么完全回滚，要么不回滚（不允许半完成状态）。参考Claude Agent SDK的文件检查点API。所有回滚场景需要测试覆盖。",
+      "priority": 8,
+      "status": "pending",
+      "passes": false,
+      "context_files": [
+        "agent/agent_core.py",
+        "agent/git_helper.py",
+        "agent/state_manager.py",
+        "agent/config_reloader.py",
+        "agent/human_intervention.py",
+        "tests/test_git_helper.py"
+      ],
+      "verify_command": "uv run pytest tests/ -v -k 'rollback or recovery or checkpoint'",
+      "created_at": "2026-03-08",
+      "updated_at": "2026-03-08"
+    },
+    {
+      "id": "feature-054",
+      "name": "人工干预系统增强与交互式CLI",
+      "description": "增强human_intervention.py的人工干预机制，提供更丰富的交互选项和更好的用户体验。具体包括：\n\n1) **Rich交互式菜单**：替代简单的input()提示，使用Rich的Prompt和Confirm组件：\n   - 错误发生时显示详细的上下文面板（错误类型、影响范围、建议操作）\n   - 提供多个操作选项（继续、重试、跳过、修改参数后重试、回滚、终止）\n   - 使用彩色高亮重要信息\n2) **非阻塞干预请求**：当Agent运行在后台/API模式时，干预请求通过WebSocket发送到Dashboard：\n   - Dashboard显示干预请求弹窗\n   - 用户在Web界面上选择操作\n   - 同时通过Email/Slack发送干预通知\n   - 支持设置超时——超过N分钟无响应自动执行默认操作\n3) **干预历史记录**：记录所有干预请求和用户决策到.agent/interventions.json，便于分析常见错误和改进自动化策略。\n4) **智能干预建议**：基于历史干预记录，对相似错误自动建议最可能的操作（如\"上次此类错误您选择了重试，且重试成功。建议：重试\"）。\n5) **干预API**：添加API端点POST /interventions/{id}/respond，支持通过API响应干预请求。GET /interventions返回待处理的干预请求列表。\n6) **错误阈值细化**：当前max_errors_before_intervention是全局的，改为支持per-task和per-error-type配置。\n\n**关键指令**：使用asyncio.to_thread()包装所有blocking input操作。确保CLI模式和API模式的行为一致。参考Rich文档：https://rich.readthedocs.io/en/stable/ 。",
+      "priority": 8,
+      "status": "pending",
+      "passes": false,
+      "context_files": [
+        "agent/human_intervention.py",
+        "agent/agent_core.py",
+        "agent/console.py",
+        "api.py",
+        "tests/test_human_intervention.py"
+      ],
+      "verify_command": "uv run pytest tests/test_human_intervention.py -v",
+      "created_at": "2026-03-08",
+      "updated_at": "2026-03-08"
+    },
+    {
+      "id": "feature-055",
+      "name": "Grafana告警规则与监控增强",
+      "description": "为现有的Grafana仪表板和Prometheus指标体系添加告警规则和监控增强，实现生产级别的可观测性。具体包括：\n\n1) **Prometheus告警规则**：创建dashboards/alert_rules.yml，定义关键告警：\n   - 任务连续失败超过3次\n   - 错误率超过50%（5分钟窗口）\n   - Agent会话超时（>2小时无活动）\n   - API响应时间超过5秒（P95）\n   - 磁盘使用率超过90%（.agent/目录）\n   - Token使用量接近预设预算上限\n2) **Grafana仪表板增强**：更新dashboards/agent-loop-dashboard.json：\n   - 添加告警状态面板\n   - 添加token使用量和成本追踪面板\n   - 添加提供商健康状态面板\n   - 添加任务执行时间直方图\n   - 添加错误分类饼图\n3) **新增指标**：在agent/metrics.py中补充：\n   - agent_task_duration_seconds（直方图，任务执行耗时分布）\n   - agent_api_request_duration_seconds（API请求延迟）\n   - agent_websocket_connections_active（活跃WebSocket连接数）\n   - agent_config_reload_total（配置重载次数）\n   - agent_provider_health（提供商健康状态，0/1）\n4) **SLI/SLO定义**：文档化服务水平指标：\n   - 可用性：API健康检查成功率 > 99.9%\n   - 延迟：API P99 < 2s\n   - 任务成功率：> 90%\n\n**关键指令**：参考Prometheus告警规则语法：https://prometheus.io/docs/prometheus/latest/configuration/alerting_rules/ 。确保Grafana面板可以成功导入。",
+      "priority": 8,
+      "status": "pending",
+      "passes": false,
+      "context_files": [
+        "agent/metrics.py",
+        "agent/performance_monitor.py",
+        "dashboards/agent-loop-dashboard.json",
+        "api.py"
+      ],
+      "verify_command": "uv run pytest tests/test_metrics.py -v",
+      "created_at": "2026-03-08",
+      "updated_at": "2026-03-08"
+    },
+    {
+      "id": "feature-056",
+      "name": "多语言国际化支持 (i18n)",
+      "description": "为整个系统添加国际化支持，使CLI输出、Dashboard界面、错误消息、通知模板都支持多语言切换。具体包括：\n\n1) **i18n框架搭建**：创建agent/i18n.py，实现轻量级的国际化框架：\n   - 使用JSON格式的翻译文件（locales/en.json, locales/zh-CN.json）\n   - t('key', **kwargs)翻译函数，支持变量占位符\n   - 语言配置在config.json中设置（\"language\": \"zh-CN\"）\n   - 回退机制：找不到翻译时回退到英文\n2) **CLI国际化**：console.py中所有用户可见的文本改用t()函数。包括：\n   - 状态面板标题和标签\n   - 表格列名\n   - 成功/错误/警告消息\n   - 帮助文本\n3) **Dashboard国际化**：static/index.html支持语言切换：\n   - 页面右上角语言选择器\n   - 所有界面文本通过JavaScript i18n字典替换\n   - 浏览器语言自动检测\n4) **通知模板国际化**：Email/Slack通知模板支持多语言版本。\n5) **错误消息国际化**：所有面向用户的错误消息提供中英文版本。\n6) **初始语言包**：完成英文和中文两个语言包，覆盖所有用户可见文本。\n\n**关键指令**：不使用gettext等重量级i18n框架，自行实现轻量方案。确保所有翻译key有唯一名称空间。添加缺失翻译的检测脚本。",
+      "priority": 9,
+      "status": "pending",
+      "passes": false,
+      "context_files": [
+        "agent/console.py",
+        "main.py",
+        "static/index.html",
+        "agent/email_notifier.py",
+        "agent/slack_notifier.py"
+      ],
+      "verify_command": "uv run pytest tests/ -v -k 'i18n'",
+      "created_at": "2026-03-08",
+      "updated_at": "2026-03-08"
+    },
+    {
+      "id": "feature-057",
+      "name": "config_reloader测试覆盖率提升与稳健性增强",
+      "description": "当前config_reloader.py测试覆盖率仅72%，需要提升并修复已知的可靠性问题。具体包括：\n\n1) **测试覆盖提升**（目标90%+）：\n   - 测试ConfigWatcher的异步监控模式（start_async）\n   - 测试并发reload请求的处理（多线程同时调用reload）\n   - 测试文件修改检测（触发watchdog事件后callback被调用）\n   - 测试无效JSON文件的重载行为（期望保持旧配置、记录错误）\n   - 测试reload_callback链的执行顺序\n   - 测试force=True强制重载（忽略mtime检查）\n2) **竞态条件修复**：当文件正在被写入时触发重载可能读到不完整JSON：\n   - 增加写入完成检测（等待文件mtime稳定200ms后再读取）\n   - 使用重试机制处理JSON解析失败（最多重试3次，每次间隔100ms）\n3) **配置验证集成**：重载后自动调用config validation，无效配置不生效并记录警告。\n4) **回滚支持**：保存最后3个有效配置的副本，reload失败时自动回退到上一个有效版本。\n5) **事件通知**：重载成功/失败后通过WebSocket推送事件到Dashboard。\n\n**关键指令**：使用临时目录隔离测试。watcdog的测试需要等待文件系统事件（加适当的timeout）。",
+      "priority": 9,
+      "status": "pending",
+      "passes": false,
+      "context_files": [
+        "agent/config_reloader.py",
+        "tests/test_config_reloader.py",
+        "agent/state_manager.py"
+      ],
+      "verify_command": "uv run pytest tests/test_config_reloader.py -v --cov=agent/config_reloader --cov-report=term-missing",
+      "created_at": "2026-03-08",
+      "updated_at": "2026-03-08"
+    },
+    {
+      "id": "feature-058",
+      "name": "任务报告生成与导出系统",
+      "description": "实现任务执行报告的自动生成和多格式导出功能，帮助用户追踪项目进展和分析效率。具体包括：\n\n1) **报告生成引擎**：创建agent/report_generator.py，支持生成：\n   - 项目状态报告：已完成/进行中/待处理任务概要、覆盖率、错误统计\n   - 单任务详细报告：执行历史、尝试次数、耗时、代码变更摘要\n   - 会话回顾报告：单次会话的完整执行记录、教训总结\n   - 周/月报告：按时间段汇总的进度、产出、效率指标\n2) **导出格式**：\n   - Markdown（默认，适合Git提交和阅读）\n   - JSON（结构化数据，适合程序处理）\n   - HTML（独立文件，可直接在浏览器打开，包含样式和图表）\n3) **CLI命令**：\n   - `report generate --type status --format md`：生成并输出到stdout\n   - `report generate --type weekly --output reports/week-10.md`：输出到文件\n   - `report list`：列出已生成的报告\n4) **API端点**：\n   - GET /reports/status?format=json：生成并返回状态报告\n   - GET /reports/export?format=csv&date_from=2026-03-01：导出任务数据\n5) **Dashboard集成**：在Dashboard中添加「报告」页面，可在线查看和下载报告。\n6) **自动生成**：可配置每次会话结束后自动生成会话报告，保存到.agent/reports/目录。\n\n**关键指令**：报告内容要有价值——包含趋势分析、效率指标对比、改进建议等洞察，而非简单的数据堆砌。参考项目管理报告的最佳实践。",
+      "priority": 9,
+      "status": "pending",
+      "passes": false,
+      "context_files": [
+        "agent/state_manager.py",
+        "agent/session_manager.py",
+        "agent/performance_monitor.py",
+        "main.py",
+        "api.py"
+      ],
+      "verify_command": "uv run python main.py report generate --type status --format md",
+      "created_at": "2026-03-08",
+      "updated_at": "2026-03-08"
+    },
+    {
+      "id": "feature-059",
+      "name": "mypy严格模式全量类型检查",
+      "description": "将项目的类型检查从当前的宽松模式升级到严格模式，确保类型安全。当前mypy配置为disallow_untyped_defs=false，需要逐步收紧。具体包括：\n\n1) **第一阶段 - 新代码严格**：\n   - 为新模块（exceptions.py、constants.py、plugin.py、report_generator.py等）启用strict模式\n   - 确保所有新函数有完整的参数类型和返回类型注解\n2) **第二阶段 - 核心模块严格**：\n   - 为state_manager.py、task_selector.py、prompt_manager.py、model_provider.py启用strict模式\n   - 修复所有mypy错误（添加类型注解、使用cast()、消除Any类型）\n3) **第三阶段 - 全量严格**：\n   - 为agent_core.py、api.py、main.py等剩余模块启用strict模式\n   - 使用Protocol类型替代duck typing（如通知器接口）\n   - 为第三方库创建stub文件（如claude_agent_sdk的type stub）\n4) **pyproject.toml配置**：更新mypy配置：\n   ```toml\n   [tool.mypy]\n   python_version = \"3.11\"\n   disallow_untyped_defs = true\n   disallow_any_explicit = false\n   warn_return_any = true\n   strict_equality = true\n   ```\n5) **CI集成**：将mypy检查加入CI流水线（feature-052），类型错误阻止PR合并。\n\n**关键指令**：分阶段执行，每个阶段确保所有现有测试通过。使用`# type: ignore[error-code]`标注真正无法修复的第三方库问题。参考mypy文档：https://mypy.readthedocs.io/en/stable/config_file.html 。",
+      "priority": 9,
+      "status": "pending",
+      "passes": false,
+      "context_files": [
+        "pyproject.toml",
+        "agent/__init__.py",
+        "agent/agent_core.py",
+        "agent/state_manager.py",
+        "agent/model_provider.py"
+      ],
+      "verify_command": "uv run mypy agent/ --strict --ignore-missing-imports 2>&1 | tail -20",
+      "created_at": "2026-03-08",
+      "updated_at": "2026-03-08"
+    },
+    {
+      "id": "feature-060",
+      "name": "Agent执行模式系统",
+      "description": "实现多种Agent执行模式，让用户可以根据不同场景选择最合适的运行方式。具体包括：\n\n1) **交互模式 (interactive)**：当前默认模式，Agent执行过程中可接受人工干预。\n2) **自动模式 (autonomous)**：完全自动化运行，所有错误自动处理（重试→跳过），不需要人工干预。适合CI/CD场景。\n3) **审查模式 (review)**：Agent制定计划但不执行，输出执行计划（修改哪些文件、执行什么命令）等待人工确认后再执行。适合敏感操作。\n4) **干运行模式 (dry-run)**：模拟执行但不实际修改任何文件，输出将要执行的操作列表。用于预估工作量和验证任务描述。\n5) **监控模式 (watch)**：持续监控.agent/feature_list.json，有新任务加入时自动开始执行。适合守护进程场景。\n6) **配置**：在config.json中配置`execution_mode`或通过CLI参数--mode指定。\n7) **模式切换**：支持运行中通过API或快捷键切换模式。\n8) **模式限制**：不同模式对允许的操作有不同限制（如review模式禁止Write工具、autonomous模式禁止input()）。\n\n**关键指令**：模式系统应与permission_mode SDK参数协调。确保每种模式有完整的测试。在CLI help中详细说明各模式的适用场景。",
+      "priority": 10,
+      "status": "pending",
+      "passes": false,
+      "context_files": [
+        "agent/agent_core.py",
+        "agent/human_intervention.py",
+        "main.py"
+      ],
+      "verify_command": "uv run python main.py run --mode dry-run --iterations 1",
+      "created_at": "2026-03-08",
+      "updated_at": "2026-03-08"
+    },
+    {
+      "id": "feature-061",
+      "name": "WebSocket协议增强与双向通信",
+      "description": "增强当前的WebSocket实现，从单向推送升级为双向通信协议，支持客户端控制Agent。具体包括：\n\n1) **协议规范化**：定义完整的WebSocket消息协议：\n   - 服务端→客户端：event类型（status_update, task_progress, log, error, intervention_request, metric_update）\n   - 客户端→服务端：command类型（subscribe, unsubscribe, pause_agent, resume_agent, respond_intervention, change_config）\n   - 每条消息包含：type, payload, timestamp, message_id（用于确认）\n2) **订阅系统**：客户端可订阅特定事件类型（不是接收所有事件），减少不必要的数据传输。\n3) **消息确认**：关键消息（如intervention_request）需要客户端ACK确认，超时未确认则重发。\n4) **连接管理增强**：\n   - 心跳机制：每30s发送ping，10s内无pong则断开\n   - 最大连接数限制（默认50）\n   - 连接鉴权增强（支持JWT token认证）\n5) **断线重连恢复**：客户端重连后，服务端发送断开期间的关键事件摘要（不是所有事件），避免信息丢失。\n6) **WebSocket文档**：创建docs/websocket-protocol.md，详细描述所有消息类型和使用示例。\n\n**关键指令**：参考FastAPI WebSocket文档：https://fastapi.tiangolo.com/advanced/websockets/ 。确保与现有Dashboard的WebSocket集成兼容（渐进式升级）。",
+      "priority": 10,
+      "status": "pending",
+      "passes": false,
+      "context_files": [
+        "api.py",
+        "static/index.html",
+        "agent/agent_core.py"
+      ],
+      "verify_command": "uv run pytest tests/test_api.py -v -k 'websocket'",
+      "created_at": "2026-03-08",
+      "updated_at": "2026-03-08"
+    },
+    {
+      "id": "feature-062",
+      "name": "依赖版本锁定与安全扫描",
+      "description": "解决当前pyproject.toml中所有依赖使用>=无上限约束的问题，确保构建可复现和依赖安全。具体包括：\n\n1) **版本锁定**：使用uv lock生成锁定文件（uv.lock），确保CI和生产环境使用一致的依赖版本。\n2) **版本范围约束**：将pyproject.toml中的>=修改为兼容版本范围：\n   - 核心依赖使用~=约束（如fastapi~=0.109.0允许patch升级）\n   - 工具依赖使用>=,<约束（如pytest>=7.0.0,<9.0.0）\n3) **安全扫描**：\n   - 使用pip-audit扫描已知CVE漏洞\n   - 使用safety或trivy检查供应链安全\n   - 将安全扫描加入CI流水线\n4) **依赖精简**：审查是否有未使用的依赖可以移除（减少攻击面）。\n5) **可选依赖分组**：将dev/test/docs分组到不同的optional-deps中：\n   - [dev]: mypy, ruff, pre-commit\n   - [test]: pytest, pytest-cov, pytest-asyncio, pytest-timeout\n   - [docs]: mkdocs (如果需要)\n6) **最低Python版本测试**：确保在Python 3.11.0上能正确运行（不仅是最新3.11.x）。\n\n**关键指令**：执行uv lock生成锁定文件。运行pip-audit扫描并修复所有Critical和High漏洞。",
+      "priority": 10,
+      "status": "pending",
+      "passes": false,
+      "context_files": [
+        "pyproject.toml"
+      ],
+      "verify_command": "uv lock && uv run pip-audit",
+      "created_at": "2026-03-08",
+      "updated_at": "2026-03-08"
+    },
+    {
+      "id": "feature-063",
+      "name": "全面代码审查报告生成",
+      "description": "以工业生产级标准对整个代码库进行严格的代码审查，生成详细的审查报告，并为每个发现的问题创建具体的修复任务。这不是一次性任务，而是建立持续代码审查的机制。具体包括：\n\n1) **审查范围**（逐文件审查所有.py文件）：\n   - **安全性**：注入风险、认证绕过、信息泄露、不安全的反序列化\n   - **可靠性**：错误处理完整性、资源泄漏、竞态条件、死锁风险\n   - **可维护性**：代码复杂度、重复代码、命名一致性、模块耦合度\n   - **性能**：算法复杂度、不必要的IO、内存泄漏、阻塞调用\n   - **测试性**：代码可测试性、依赖注入、mock友好性\n2) **审查报告**：生成docs/code_review_report.md，格式：\n   - 每个问题包含：严重级别(Critical/High/Medium/Low)、文件位置、代码片段、问题描述、修复建议\n   - 按模块分组\n   - 包含统计摘要（各级别问题数量）\n3) **Ruff规则配置**：扩展当前ruff配置：\n   - 启用更多规则集：UP（pyupgrade）、SIM（simplify）、C4（comprehension）、PTH（pathlib）、ERA（commented-out code）\n   - 配置per-file ignores\n4) **定期审查机制**：创建一个feature_list.json中的自动review任务模板，每完成10个任务自动插入一个代码审查任务。\n\n**关键指令**：审查要客观、可操作——每个问题都要有具体的修复方案。不要报告风格偏好性问题（如import顺序），聚焦在会造成real-world impact的问题上。",
+      "priority": 10,
+      "status": "pending",
+      "passes": false,
+      "context_files": [
+        "agent/*.py",
+        "api.py",
+        "main.py",
+        "pyproject.toml",
+        "tests/*.py"
+      ],
+      "verify_command": "uv run ruff check agent/ api.py main.py --statistics && cat docs/code_review_report.md | head -50",
+      "created_at": "2026-03-08",
+      "updated_at": "2026-03-08"
+    },
+    {
+      "id": "feature-064",
+      "name": "持续改进规划（Phase 3）",
+      "description": "这是一个持续性的元任务。在完成上述feature-029到feature-063的主要任务之后，对系统进行全面的再次评估，并规划下一阶段的改进计划。\n\n必须执行的步骤：\n1) **完整代码库审查**：以工业生产级的视角重新审查经过上述改进后的整个代码库\n2) **测试覆盖率分析**：运行完整的覆盖率报告，识别仍然低于60%的模块\n3) **文档同步检查**：确保CLAUDE.md、README.md、MEMORY.md与最新代码一致\n4) **性能基准对比**：与Phase 2开始前的基准对比，验证性能是否有退化\n5) **用户体验评估**：从用户角度评估CLI、Dashboard、API的易用性\n6) **安全审计复查**：验证feature-029的安全修复是否到位\n7) **新功能规划**：基于评估结果，制定下一批10-15个改进任务，写入feature_list.json\n8) **MEMORY.md更新**：提取本阶段所有关键经验教训\n9) **CLAUDE.md更新**：反映架构和功能的最新状态\n\n**关键指令**：这个任务是系统自我迭代的核心——确保在feature_list.json的最末尾始终存在一个类似的规划任务。每次规划都要设定明确的愿景和优先级。规划不仅限于修复问题，更要着眼于让系统更强大、更用户友好、更具扩展性。",
+      "priority": 99,
+      "status": "pending",
+      "passes": false,
+      "context_files": [
+        ".agent/feature_list.json",
+        ".agent/MEMORY.md",
+        "CLAUDE.md",
+        "README.md",
+        "README.zh-CN.md",
+        "agent/*.py",
+        "tests/*.py",
+        "api.py",
+        "main.py"
+      ],
+      "verify_command": "uv run pytest tests/ --cov=agent --cov-report=term-missing -q",
       "created_at": "2026-03-08",
       "updated_at": "2026-03-08"
     }
