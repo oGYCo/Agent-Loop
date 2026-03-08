@@ -4,6 +4,52 @@ Accumulated experience and lessons learned from task execution.
 
 ---
 
+## 2026-03-08 - Model Provider Failover & Load Balancing (feature-038)
+
+**任务描述**: 增强model_provider.py支持多提供商故障转移和智能切换，提高系统弹性。
+
+**Lessons Learned:**
+
+1. **Provider Configuration Structure**:
+   - Added `fallback_provider` field for automatic failover chain
+   - Added `api_keys` list for round-robin API key rotation
+   - Added `health_check_enabled` and `health_check_interval` for provider monitoring
+   - New fields loaded in `_load_providers()` method
+
+2. **Error Classification for Smart Retry**:
+   - Transient errors (retryable): TIMEOUT, RATE_LIMIT, SERVER_ERROR, CONNECTION_ERROR
+   - Permanent errors (not retryable): AUTH_ERROR, NOT_FOUND, INVALID_REQUEST, QUOTA_EXCEEDED
+   - Classification based on both exception type/message and HTTP status codes
+
+3. **Health Check Implementation**:
+   - Uses httpx AsyncClient for API calls
+   - Makes request to `/models` endpoint to verify connectivity
+   - Updates ProviderHealthStatus enum (HEALTHY, UNHEALTHY, UNKNOWN)
+
+4. **Prometheus Metrics Integration**:
+   - `agent_provider_calls_total`: Counter with provider and status labels
+   - `agent_provider_response_time_seconds`: Histogram for response times
+   - `agent_provider_health`: Gauge for health status (0=unknown, 1=healthy, 2=unhealthy)
+   - `agent_provider_failover_total`: Counter for failover events
+   - `agent_provider_active`: Gauge for currently active provider
+
+5. **CLI Commands Added**:
+   - `provider list`: Shows all providers, health status, statistics, fallback chains
+   - `provider switch <name>`: Switch to a different provider
+   - `provider health [name]`: Check provider health status
+
+6. **Testing**:
+   - Added 24 new tests covering all new functionality
+   - All 701 tests pass after implementation
+
+**Files Modified:**
+- `agent/model_provider.py` - Core provider management with failover support
+- `agent/metrics.py` - Added provider-specific Prometheus metrics
+- `main.py` - Added CLI commands for provider management
+- `tests/test_model_provider.py` - Added comprehensive tests
+
+---
+
 ## 2026-03-08 - Docker Containerization & Deployment (feature-037)
 
 **任务描述**: 为项目创建完整的容器化部署方案，使其可以一键部署到Docker/Kubernetes环境。
@@ -1451,6 +1497,8 @@ Accumulated experience and lessons learned from task execution.
 
 
 
+
+
 2026-03-08 - 持续改进计划 (feature-028)
 
 **任务描述**: 这是一个meta任务，用于持续改进系统。在完成每个主要功能后，系统应该：1) 自动审查和更新feature_list.json 2) 更新MEMORY.md记录经验 3) 审查和更新CLAUDE.md和README.md 4) 确保测试覆盖新功能。此任务确保系统能够持续自我优化和成长。
@@ -1758,7 +1806,10 @@ I've successfully implemented the task dependency system for Agent-Loop. Here's 
 
 ---
 
-### 2026-03-08 - Console与CLI模块测试覆盖率提升 (feature-036)
+
+---
+
+2026-03-08 - Console与CLI模块测试覆盖率提升 (feature-036)
 
 **任务描述**: 当前console.py测试覆盖率仅16%，需要全面提升。同时补充main.py CLI命令的端到端测试。具体包括：
 
@@ -1786,7 +1837,10 @@ I've successfully implemented the task dependency system for Agent-Loop. Here's 
 
 ## Summary
 
-### 1. Console Tests (tests/test_console.py)
+
+---
+
+1. Console Tests (tests/test_console.py)
 - Created 39 unit tests for all console.py functions
 - **Coverage: 99.36%** (was 16% before)
 - Tests cover:
@@ -1795,3 +1849,38 @@ I've successfully implemented the task dependency system for Agent-Loop. Here's 
   - `print_task_table()` - various task states, counts, missing fields
   - `print_status_panel()` - project info, git status, error counts
   - `print_run_summary()` - iterations,
+
+---
+
+### 2026-03-08 - Docker容器化与部署方案 (feature-037)
+
+**任务描述**: 为项目创建完整的容器化部署方案，使其可以一键部署到Docker/Kubernetes环境。具体包括：
+
+1) **Dockerfile**：创建多阶段构建的Dockerfile——第一阶段安装uv和依赖，第二阶段仅复制运行时文件，最终镜像最小化。使用python:3.11-slim基础镜像。
+2) **docker-compose.yml**：定义完整的服务栈：
+   - agent-loop: 主Agent服务（CLI模式）
+   - agent-api: FastAPI服务（API+Dashboard模式）
+   - prometheus: Prometheus监控（配置scrape agent-api /metrics）
+   - grafana: Grafana仪表板（自动导入dashboards/agent-loop-dashboard.json）
+3) **.dockerignore**：排除.git、__pycache__、.venv、htmlcov等无关文件。
+4) **环境变量管理**：创建.env.example模板文件，列出所有必要的环境变量（ANTHROPIC_AUTH_TOKEN等），docker-compose引用.env文件。
+5) **健康检查**：在Dockerfile中配置HEALTHCHECK指令，使用/health端点。
+6) **Volume挂载**：.agent/目录通过volume挂载持久化，避免容器重启丢失状态。
+7) **文档**：在README.md中添加Docker部署章节，包括构建、运行、配置步骤。
+
+**关键指令**：参考Docker最佳实践：https://docs.docker.com/build/building/best-practices/ 。确保镜像安全（非root用户运行、最小权限）。测试docker build能成功构建。
+
+**执行结果**: completed
+**执行消息**: I have successfully completed the Docker containerization and deployment task. Here's a summary of what was created:
+
+## Summary
+
+### Files Created
+
+1. **`.dockerignore`** - Excludes unnecessary files like `.git`, `__pycache__`, `.venv`, `htmlcov`, etc.
+
+2. **`Dockerfile`** - Multi-stage build:
+   - Stage 1: Installs `uv` and dependencies using `uv sync`
+   - Stage 2: Creates minimal runtime image using `python:3.11-slim`
+   - Security: Runs as non-root `agent` user
+   - Health check: Uses `/hea

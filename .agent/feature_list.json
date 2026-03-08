@@ -578,8 +578,8 @@
       "name": "模型提供商故障转移与负载均衡",
       "description": "增强model_provider.py支持多提供商故障转移和智能切换，提高系统弹性。具体包括：\n\n1) **故障转移链**：在config.json的providers中支持配置fallback_provider字段，当主提供商连接失败/超时/返回错误时自动切换到备用提供商。\n2) **健康检查**：添加provider_health_check()方法，定期检测提供商API可用性（简单的models/list请求），在Dashboard中展示提供商健康状态。\n3) **智能重试**：区分瞬态错误（超时、5xx）和永久错误（401认证失败、404模型不存在），仅对瞬态错误重试，永久错误立即切换提供商。\n4) **使用量统计**：记录每个提供商的调用次数、成功率、平均响应时间，通过/metrics导出到Prometheus。\n5) **API Key轮转**：支持同一提供商配置多个API Key，实现简单的round-robin轮转，分散速率限制风险。\n6) **CLI命令**：添加`provider list`和`provider switch <name>`命令，实时切换活跃提供商与查看提供商状态。\n7) **配置验证**：在应用启动时验证所有配置的提供商凭证有效性，无效的记录warning但不阻止启动。\n\n**关键指令**：参考OpenAI API文档https://developers.openai.com/docs/api-reference 和Anthropic API文档 https://docs.anthropic.com/en/api/ 了解各提供商的错误码和速率限制机制。所有新功能必须有完整测试。",
       "priority": 4,
-      "status": "pending",
-      "passes": false,
+      "status": "completed",
+      "passes": true,
       "context_files": [
         "agent/model_provider.py",
         "agent/agent_core.py",
