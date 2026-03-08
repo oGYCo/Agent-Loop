@@ -110,6 +110,14 @@ class SlackNotifier:
             await self._client.aclose()
             self._client = None
 
+    async def __aenter__(self) -> "SlackNotifier":
+        """Async context manager entry"""
+        return self
+
+    async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
+        """Async context manager exit - ensures HTTP client is closed"""
+        await self.close()
+
     def is_enabled(self) -> bool:
         """检查Slack通知是否启用"""
         return self.enabled and bool(self.webhook_url)

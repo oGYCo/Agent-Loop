@@ -16,6 +16,7 @@ if TYPE_CHECKING:
     from .webhook import WebhookNotifier
     from .slack_notifier import SlackNotifier
 
+from .constants import EventTypes
 from .metrics import get_metrics_collector
 from .model_provider import ModelProviderManager, create_provider_manager
 from .exceptions import (
@@ -52,15 +53,63 @@ from claude_agent_sdk.types import (
 )
 
 
+# ========== Service Factory ==========
+
+class ServiceFactory:
+    """Service factory for lazy-loading services
+
+    Provides a unified interface for getting service instances,
+    avoiding circular imports and managing service lifecycle.
+    """
+
+    _instances: dict[str, Any] = {}
+
+    @staticmethod
+    def get(service_name: str) -> Any:
+        """Get a service instance by name
+
+        Args:
+            service_name: Name of the service ('webhook', 'slack', 'event_pusher')
+
+        Returns:
+            Service instance or None if not available
+        """
+        if service_name in ServiceFactory._instances:
+            return ServiceFactory._instances[service_name]
+
+        instance = ServiceFactory._create_service(service_name)
+        if instance is not None:
+            ServiceFactory._instances[service_name] = instance
+        return instance
+
+    @staticmethod
+    def _create_service(service_name: str) -> Any:
+        """Create a service instance by name"""
+        try:
+            if service_name == "webhook":
+                from .webhook import get_webhook_notifier
+                return get_webhook_notifier()
+            elif service_name == "slack":
+                from .slack_notifier import get_slack_notifier
+                return get_slack_notifier()
+            elif service_name == "event_pusher":
+                from api import EventPusher
+                return EventPusher.get_instance()
+        except ImportError:
+            return None
+        return None
+
+    @staticmethod
+    def reset() -> None:
+        """Reset all cached service instances (for testing)"""
+        ServiceFactory._instances.clear()
+
+
 # ========== Webhook Notifier (Lazy Import) ==========
 
 def _get_webhook_notifier() -> "WebhookNotifier | None":
-    """Lazy import to avoid circular dependency"""
-    try:
-        from .webhook import get_webhook_notifier
-        return get_webhook_notifier()
-    except ImportError:
-        return None
+    """Get webhook notifier using ServiceFactory"""
+    return ServiceFactory.get("webhook")
 
 
 async def _send_webhook_notification_async(event_type: str, data: Dict[str, Any]) -> bool:
@@ -79,12 +128,12 @@ async def _send_webhook_notification_async(event_type: str, data: Dict[str, Any]
 def _send_webhook_notification(event_type: str, data: Dict[str, Any]) -> None:
     """Send webhook notification (sync wrapper)"""
     try:
-        asyncio.get_event_loop()
-        # If we have an event loop running, schedule the coroutine
         try:
             loop = asyncio.get_running_loop()
             # We're in an async context, schedule the task
-            loop.create_task(_send_webhook_notification_async(event_type, data))
+            task = loop.create_task(_send_webhook_notification_async(event_type, data))
+            # Add callback to suppress unhandled exceptions
+            task.add_done_callback(lambda t: t.exception() if not t.cancelled() and t.done() else None)
         except RuntimeError:
             # No running event loop, run in new one
             asyncio.run(_send_webhook_notification_async(event_type, data))
@@ -97,12 +146,8 @@ def _send_webhook_notification(event_type: str, data: Dict[str, Any]) -> None:
 # ========== Slack Notifier (Lazy Import) ==========
 
 def _get_slack_notifier() -> "SlackNotifier | None":
-    """Lazy import to avoid circular dependency"""
-    try:
-        from .slack_notifier import get_slack_notifier
-        return get_slack_notifier()
-    except ImportError:
-        return None
+    """Get slack notifier using ServiceFactory"""
+    return ServiceFactory.get("slack")
 
 
 async def _send_slack_notification_async(event_type: str, data: Dict[str, Any]) -> bool:
@@ -121,12 +166,12 @@ async def _send_slack_notification_async(event_type: str, data: Dict[str, Any]) 
 def _send_slack_notification(event_type: str, data: Dict[str, Any]) -> None:
     """Send Slack notification (sync wrapper)"""
     try:
-        asyncio.get_event_loop()
-        # If we have an event loop running, schedule the coroutine
         try:
             loop = asyncio.get_running_loop()
             # We're in an async context, schedule the task
-            loop.create_task(_send_slack_notification_async(event_type, data))
+            task = loop.create_task(_send_slack_notification_async(event_type, data))
+            # Add callback to suppress unhandled exceptions
+            task.add_done_callback(lambda t: t.exception() if not t.cancelled() and t.done() else None)
         except RuntimeError:
             # No running event loop, run in new one
             asyncio.run(_send_slack_notification_async(event_type, data))
@@ -139,12 +184,8 @@ def _send_slack_notification(event_type: str, data: Dict[str, Any]) -> None:
 # ========== WebSocket Event Pusher (Lazy Import) ==========
 
 def _get_event_pusher():
-    """Lazy import to avoid circular dependency with api.py"""
-    try:
-        from api import EventPusher
-        return EventPusher.get_instance()
-    except ImportError:
-        return None
+    """Get event pusher using ServiceFactory"""
+    return ServiceFactory.get("event_pusher")
 
 
 async def _push_log_async(level: str, message: str, source: str = "agent_core"):
@@ -162,15 +203,14 @@ def _push_log_sync(level: str, message: str, source: str = "agent_core"):
     try:
         pusher = _get_event_pusher()
         if pusher:
-            # Try to get existing event loop, otherwise skip
             try:
-                loop = asyncio.get_event_loop()
+                loop = asyncio.get_running_loop()
                 if loop.is_running():
-                    asyncio.create_task(_push_log_async(level, message, source))
-                else:
-                    loop.run_until_complete(pusher.push_log(level, message, source))
+                    task = asyncio.create_task(_push_log_async(level, message, source))
+                    task.add_done_callback(lambda t: t.exception() if not t.cancelled() and t.done() else None)
             except RuntimeError:
-                logger.debug("No event loop available for WebSocket push")
+                # No running event loop - skip WebSocket push in sync context
+                pass
     except Exception as e:
         logger.warning(f"Failed to push log to WebSocket: {type(e).__name__}: {e}")
 
@@ -437,6 +477,10 @@ class AgentCore:
 
     def _reinitialize_components(self) -> None:
         """重新初始化所有组件（热更新后）"""
+        # Clear old references before creating new instances
+        self._last_known_files.clear()
+        self._claude_md_cache = None
+
         self.state_manager = StateManager()
         self.task_selector = TaskSelector(self.state_manager)
         self.git_helper = GitHelper(self.project_root)
@@ -446,10 +490,13 @@ class AgentCore:
         self.provider_manager = create_provider_manager(self.config)
         self.config_reloader = ConfigReloader()
         self.config_reloader.add_reload_callback(self._on_config_reloaded)
+
+        # Reset performance monitor to clear accumulated data
+        from .performance_monitor import reset_monitor
+        reset_monitor()
         self.perf_monitor = get_monitor()
         self.metrics_collector = get_metrics_collector()
-        # 清除 CLAUDE.md 缓存
-        self._claude_md_cache = None
+
         logger.info("Components reinitialized after hot reload")
 
     def graceful_restart(self) -> None:
@@ -1049,7 +1096,8 @@ class AgentCore:
         # 使用 SDK 执行任务 - 使用 ClaudeSDKClient 获得更精细的控制
         result_text = ""
         tool_call_count = 0
-        tool_results: dict[str, str] = {}  # tool_use_id -> result
+        tool_results: dict[str, str] = {}  # tool_use_id -> result (bounded)
+        MAX_TOOL_RESULTS = 50  # Limit stored tool results to prevent memory bloat
         session_id = None
         try:
             async with ClaudeSDKClient(options=options) as client:
@@ -1139,6 +1187,11 @@ class AgentCore:
                                         result_str = " ".join([str(item) for item in result_content])
                                     else:
                                         result_str = str(result_content)
+                                    # Bound tool_results to prevent memory bloat
+                                    if len(tool_results) >= MAX_TOOL_RESULTS:
+                                        # Remove oldest entry
+                                        oldest_key = next(iter(tool_results))
+                                        del tool_results[oldest_key]
                                     tool_results[tool_use_id] = result_str
 
                                 elif block_type == "text":
@@ -1573,6 +1626,13 @@ class AgentCore:
             self.state_manager.save_session_history(history)
 
         self._write_progress_summary()
+
+        # Clear accumulated data to free memory
+        self.perf_monitor.clear_operations()
+        self._claude_md_cache = None
+        self._last_known_files.clear()
+        self._initial_file_state()
+
         logger.info(f"Session {session_id} completed")
 
     def _write_progress_summary(self) -> None:
@@ -1798,13 +1858,13 @@ class AgentCore:
                     _push_log_sync("info", f"Task completed: {task_name} ({task_id})", "task")
 
                     # 发送Webhook通知 - 任务完成
-                    _send_webhook_notification("task_completed", {
+                    _send_webhook_notification(EventTypes.TASK_COMPLETED, {
                         "task_id": task_id,
                         "task_name": task_name,
                         "status": "completed"
                     })
                     # 发送Slack通知 - 任务完成
-                    _send_slack_notification("task_completed", {
+                    _send_slack_notification(EventTypes.TASK_COMPLETED, {
                         "task_id": task_id,
                         "task_name": task_name,
                         "status": "completed"
@@ -1817,14 +1877,14 @@ class AgentCore:
                     self.metrics_collector.increment_error("task_verification_failed")
 
                     # 发送Webhook通知 - 任务失败
-                    _send_webhook_notification("task_failed", {
+                    _send_webhook_notification(EventTypes.TASK_FAILED, {
                         "task_id": task_id,
                         "task_name": task_name,
                         "status": "failed",
                         "error_message": result.get("message", "Verification failed")
                     })
                     # 发送Slack通知 - 任务失败
-                    _send_slack_notification("task_failed", {
+                    _send_slack_notification(EventTypes.TASK_FAILED, {
                         "task_id": task_id,
                         "task_name": task_name,
                         "status": "failed",

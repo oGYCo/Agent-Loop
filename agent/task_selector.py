@@ -5,10 +5,8 @@
 
 from typing import Any, cast
 
+from .constants import DEFAULT_PRIORITY
 from .state_manager import StateManager
-
-# 默认优先级 - 当任务未指定优先级时使用
-DEFAULT_PRIORITY = 1000
 
 
 class CircularDependencyError(Exception):
