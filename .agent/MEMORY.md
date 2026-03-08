@@ -4,6 +4,86 @@ Accumulated experience and lessons learned from task execution.
 
 ---
 
+## 2026-03-08 - Console & CLI Test Coverage (feature-036)
+
+**任务描述**: 提升console.py测试覆盖率从16%到70%+，并添加CLI端到端测试。
+
+**Lessons Learned:**
+
+1. **Console Testing with Rich Console Capture**:
+   - Use `rich.console.Console(file=io.StringIO())` to capture output
+   - Patch `console_module.console` to use the mock console
+   - Rich outputs ANSI escape codes, so assertions need to check for content presence, not exact matches
+   - Test both success and failure cases for each function
+
+2. **CLI End-to-End Testing**:
+   - Use subprocess to run main.py commands with real execution
+   - Use existing `.agent` directory in project for testing (avoids git init issues)
+   - Pass `--project-dir` to point to the .agent directory path
+   - Test commands: list, status, prompt list/show, template list/show
+   - Test error handling: invalid project dir, nonexistent prompts/templates
+
+3. **Coverage Results**:
+   - console.py: 99.36% coverage (39 tests)
+   - CLI tests: 19 end-to-end tests
+   - All 677 tests pass
+
+4. **Boundary Testing**:
+   - Empty task lists
+   - Emoji in task names
+   - Chinese characters in task names
+   - Very long task names
+   - Newlines in descriptions
+   - Special characters
+
+---
+
+## 2026-03-08 - Logging System Enhancement (feature-035)
+
+**任务描述**: 将基础structlog配置升级为生产级日志系统，支持日志轮转、关联追踪、敏感数据脱敏。
+
+**Lessons Learned:**
+
+1. **Log Rotation with RotatingFileHandler**:
+   - Used `logging.handlers.RotatingFileHandler` with maxBytes=10MB and backupCount=5
+   - Automatically creates log directory if it doesn't exist
+
+2. **Correlation ID Tracking**:
+   - Created `CorrelationIdProcessor` to add correlation_id to all log entries
+   - `correlation_context()` context manager for setting correlation IDs in specific contexts
+   - Works with structlog contextvars for request/session tracking
+
+3. **Sensitive Data Redaction**:
+   - Created `SensitiveDataRedactor` processor with regex patterns for:
+     - API keys (sk-*)
+     - Passwords, tokens, secrets
+     - Authorization headers
+     - AWS credentials
+   - Also redacts sensitive keys (api_key, password, etc.) from event dict
+
+4. **Dynamic Log Level**:
+   - Added `set_log_level()`, `get_log_level()`, `lock_log_level()` functions
+   - POST /config/log-level endpoint for runtime adjustment
+   - GET /config/log-level to check current level
+   - Can lock level to prevent unauthorized changes
+
+5. **Audit Logging**:
+   - Separate audit logger writing to audit.log
+   - `log_audit()` function for recording state changes
+   - Integrated with state_manager for task create/update operations
+   - Automatically redacts sensitive data from audit entries
+
+6. **Structured Context**:
+   - `StructuredContextProcessor` adds module, function, line_number to all logs
+   - Uses sys._getframe() to get caller information
+
+**Technical Notes:**
+- structlog.contextvars API differs between versions - used clear_contextvars() instead of returning tokens
+- Console output kept readable by not including correlation_id in human-readable format
+- Tests verify all functionality works correctly (23 new tests)
+
+---
+
 ## 2026-03-08 - Task Dependency System (feature-034)
 
 **任务描述**: 实现任务间依赖关系管理，使Agent能按正确顺序执行有前置依赖的任务。
@@ -1319,6 +1399,8 @@ Accumulated experience and lessons learned from task execution.
 
 
 
+
+
 2026-03-08 - 持续改进计划 (feature-028)
 
 **任务描述**: 这是一个meta任务，用于持续改进系统。在完成每个主要功能后，系统应该：1) 自动审查和更新feature_list.json 2) 更新MEMORY.md记录经验 3) 审查和更新CLAUDE.md和README.md 4) 确保测试覆盖新功能。此任务确保系统能够持续自我优化和成长。
@@ -1541,7 +1623,10 @@ The new test file covers:
 
 ---
 
-### 2026-03-08 - API服务生产级加固 (feature-033)
+
+---
+
+2026-03-08 - API服务生产级加固 (feature-033)
 
 **任务描述**: 将api.py从当前的开发级别提升到生产可部署级别。具体包括：
 
@@ -1563,12 +1648,51 @@ The new test file covers:
 
 ## Summary of Changes
 
-### 1. API Versioning
+
+---
+
+1. API Versioning
 - Added `/api/v1/` prefix for all main endpoints
 - Legacy routes (without prefix) redirect to v1 with query parameter preservation
 
-### 2. Request/Response Logging Middleware
+
+---
+
+2. Request/Response Logging Middleware
 - Logs each request with method, path, status_code, duration_ms, and request_id (UUID)
 - Adds `X-Request-ID` header to responses for tracing
 
-### 3. Global Exception Handl
+
+---
+
+3. Global Exception Handl
+
+---
+
+### 2026-03-08 - 任务依赖系统 (feature-034)
+
+**任务描述**: 实现任务间依赖关系管理，使Agent能按正确顺序执行有前置依赖的任务。当前所有任务被视为独立的，仅按priority排序执行，这在实际项目中不够用。具体包括：
+
+1) **数据模型扩展**：在feature_list.json的任务结构中添加depends_on字段（字符串数组），记录前置依赖任务的ID列表。
+2) **依赖解析引擎**：在task_selector.py中实现拓扑排序算法，确保dependency-first执行顺序。检测循环依赖并抛出明确错误。
+3) **状态校验**：select_next_task()选择任务前验证所有依赖任务已completed且passes=true，否则跳过或标记为blocked。
+4) **可视化**：在Dashboard中展示任务依赖关系图（使用简单的箭头连线），blocked状态的任务用灰色标记。
+5) **API支持**：扩展POST /tasks端点接受depends_on参数，GET /tasks返回依赖关系信息和resolved execution order。
+6) **CLI支持**：在list命令输出中显示依赖关系（缩进或箭头），添加--tree参数以树形结构展示。
+
+**关键指令**：参考常见的DAG（有向无环图）实现模式。确保向后兼容——没有depends_on字段的任务视为无依赖。添加全面的测试覆盖。
+
+**执行结果**: completed
+**执行消息**: ## Summary
+
+I've successfully implemented the task dependency system for Agent-Loop. Here's what was done:
+
+### 1. Data Model Extension
+- Added `depends_on` field to task structure (string array) in the API models
+
+### 2. Dependency Resolution Engine (`agent/task_selector.py`)
+- Implemented **Kahn's algorithm** for topological sorting
+- Created `CircularDependencyError` exception for clear error messages
+- Added new methods:
+  - `get_dependencies(task_id)` - Get task's dependencies
+  - `is_depen
