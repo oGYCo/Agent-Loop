@@ -2,6 +2,7 @@
   "project_name": "Agent-Loop",
   "project_type": "python",
   "model": "MiniMax-M2.5-highspeed",
+  "session_type": "coder",
   "active_provider": "default",
   "providers": {
     "default": {
@@ -11,7 +12,6 @@
       "base_url_env": "ANTHROPIC_BASE_URL"
     }
   },
-  "session_type": "coder",
   "test_command": "pytest tests/ -v",
   "test_pattern": "test_*.py",
   "max_errors_before_intervention": 3,
@@ -34,8 +34,15 @@
     "enabled": true,
     "allow_origins": [],
     "allow_credentials": false,
-    "allow_methods": ["GET", "POST", "PATCH", "DELETE"],
-    "allow_headers": ["*"]
+    "allow_methods": [
+      "GET",
+      "POST",
+      "PATCH",
+      "DELETE"
+    ],
+    "allow_headers": [
+      "*"
+    ]
   },
   "retry": {
     "max_retries": 3,
@@ -111,5 +118,6 @@
     "WebSearch",
     "WebFetch"
   ],
-  "mcp_servers": []
+  "mcp_servers": [],
+  "schema_version": "1.2"
 }

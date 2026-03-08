@@ -596,8 +596,8 @@
       "name": "会话管理系统增强",
       "description": "增强session_manager.py的会话管理能力，解决当前会话归档、恢复和上下文压缩的不足。具体包括：\n\n1) **会话归档机制**：session_history.json会无限增长，实现自动归档——超过30天或100条的历史会话移动到.agent/archive/目录按月份分文件存储（如archive_2026-03.json），主文件只保留最近的记录。\n2) **智能上下文压缩**：替换当前简单的'Summary: N messages processed'压缩方式，实现基于内容重要性的压缩：保留包含代码修改、错误信息、关键决策的消息，压缩纯对话和重复内容。\n3) **增量Token计数**：当前每次check_context_usage()都重新计算所有消息的token数，改为增量计数——新消息只计算增量部分。\n4) **会话恢复增强**：当should_resume_session()为true时，提供更丰富的恢复上下文——不仅恢复消息列表，还恢复当时的task状态、git diff、错误计数等。\n5) **会话标签系统**：支持为会话添加标签（如'debug', 'feature', 'refactor'），便于后续检索和分析。\n6) **会话统计API**：添加API端点GET /sessions/stats返回汇总统计：平均会话时长、任务完成率、最常见错误类型、按日/周趋势等。\n\n**关键指令**：确保向后兼容——新代码必须能读取旧格式的session_history.json。token计数精度改进可参考tiktoken文档：https://github.com/openai/tiktoken 。添加完整测试。",
       "priority": 4,
-      "status": "pending",
-      "passes": false,
+      "status": "completed",
+      "passes": true,
       "context_files": [
         "agent/session_manager.py",
         "agent/state_manager.py",
@@ -613,8 +613,8 @@
       "name": "配置管理系统重构",
       "description": "重构配置管理系统，解决当前配置分散、缺乏校验、无迁移路径的问题。具体包括：\n\n1) **Pydantic配置模型**：使用Pydantic BaseSettings替代手动JSON解析，创建agent/config_model.py定义完整的配置数据模型（ProjectConfig、ProviderConfig、NotificationConfig、APIConfig等），自带类型检查和默认值。参考Pydantic Settings文档：https://docs.pydantic.dev/latest/concepts/pydantic_settings/\n2) **环境变量覆盖**：所有配置项支持通过环境变量覆盖（如AGENT_LOOP_PROJECT_NAME覆盖config.json中的project_name），便于容器化部署。\n3) **配置迁移引擎**：实现config migration机制——config.json中添加schema_version字段（初始值\"1.0\"），当检测到旧版本时自动执行迁移函数链（v1.0→v1.1→v1.2...），输出迁移日志。\n4) **CLI config命令**：添加`config get <key>`、`config set <key> <value>`、`config validate`子命令，允许通过CLI直接查看和修改配置而不手动编辑JSON。\n5) **配置热重载增强**：config_reloader.py当前不验证重载后的配置有效性，添加验证步骤——如果新配置无效则保持旧配置并发出warning。\n6) **配置导出/导入**：`config export`导出当前配置（脱敏版，隐藏API Key），`config import <file>`导入配置文件。\n7) **默认配置优化**：审查所有默认值是否合理，context_window_limit根据选择的model自动调整（GPT-4: 128K, Claude: 200K）。\n\n**关键指令**：确保向后兼容——新系统必须能读取没有schema_version的旧config.json。所有配置变更通过audit log记录。",
       "priority": 4,
-      "status": "pending",
-      "passes": false,
+      "status": "completed",
+      "passes": true,
       "context_files": [
         "agent/state_manager.py",
         "agent/config_reloader.py",

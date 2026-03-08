@@ -422,6 +422,198 @@ def reload_config(args: argparse.Namespace) -> None:
     )
 
 
+def config_get(args: argparse.Namespace) -> None:
+    """Get a configuration value"""
+    from agent.config_model import ConfigLoader
+    from pydantic import ValidationError
+
+    agent_dir = args.project_dir if args.project_dir else None
+
+    try:
+        loader = ConfigLoader(agent_dir)
+        config = loader.load()
+
+        # Navigate to the key
+        key = args.key
+        keys = key.split(".")
+
+        value = config.model_dump()
+        for k in keys:
+            if isinstance(value, dict) and k in value:
+                value = value[k]
+            else:
+                print_error(f"Key not found: {key}")
+                return
+
+        # Print the value
+        import json
+        if isinstance(value, (dict, list)):
+            print(json.dumps(value, indent=2))
+        else:
+            print(value)
+
+    except ValidationError as e:
+        print_error(f"Configuration validation error: {e}")
+    except Exception as e:
+        print_error(f"Failed to get config: {e}")
+
+
+def config_set(args: argparse.Namespace) -> None:
+    """Set a configuration value"""
+    from agent.config_model import ConfigLoader
+    from agent.logging_ import log_audit
+    from pydantic import ValidationError
+    import json
+
+    agent_dir = args.project_dir if args.project_dir else None
+    key = args.key
+    value_str = args.value
+
+    try:
+        loader = ConfigLoader(agent_dir)
+        config = loader.load()
+
+        # Try to parse value as JSON first
+        try:
+            value = json.loads(value_str)
+        except json.JSONDecodeError:
+            # Use as string
+            value = value_str
+
+        # Convert value to appropriate type based on existing key type
+        keys = key.split(".")
+        config_dict = config.model_dump()
+
+        # Navigate to the parent dict
+        current = config_dict
+        for k in keys[:-1]:
+            if k not in current:
+                current[k] = {}
+            current = current[k]
+
+        # Try to maintain type consistency
+        last_key = keys[-1]
+        if last_key in current:
+            existing_type = type(current[last_key])
+            if existing_type == int and isinstance(value, float):
+                value = int(value)
+            elif existing_type == bool and isinstance(value, str):
+                value = value.lower() in ("true", "1", "yes")
+            elif existing_type == list and not isinstance(value, list):
+                value = [value]
+
+        current[last_key] = value
+
+        # Re-create config to validate
+        from agent.config_model import ProjectConfig
+        config = ProjectConfig(**config_dict)
+
+        # Save
+        loader.save(config)
+
+        print_success(f"Set {key} = {args.value}")
+
+        # Audit log
+        log_audit(
+            action="update",
+            entity_type="config",
+            entity_id=key,
+            details={"value": str(value)[:100]},  # Truncate for log
+        )
+
+    except ValidationError as e:
+        print_error(f"Configuration validation error: {e}")
+    except Exception as e:
+        print_error(f"Failed to set config: {e}")
+
+
+def config_validate(args: argparse.Namespace) -> None:
+    """Validate configuration"""
+    from agent.config_model import ConfigLoader
+    from pydantic import ValidationError
+
+    agent_dir = args.project_dir if args.project_dir else None
+
+    try:
+        loader = ConfigLoader(agent_dir)
+        config = loader.load()
+
+        print_success("Configuration is valid!")
+        print(f"\nSchema version: {config.schema_version}")
+        print(f"Model: {config.model}")
+        print(f"Context window: {config.context_window_limit}")
+
+    except ValidationError as e:
+        print_error("Configuration validation failed:")
+        for error in e.errors():
+            print_error(f"  - {error['loc']}: {error['msg']}")
+    except Exception as e:
+        print_error(f"Configuration error: {e}")
+
+
+def config_export(args: argparse.Namespace) -> None:
+    """Export configuration"""
+    from agent.config_model import export_config
+    import json
+
+    agent_dir = args.project_dir if args.project_dir else None
+
+    try:
+        config_dict = export_config(agent_dir, include_sensitive=args.include_sensitive)
+
+        output = json.dumps(config_dict, indent=2)
+
+        if args.output:
+            with open(args.output, "w") as f:
+                f.write(output)
+            print_success(f"Configuration exported to {args.output}")
+        else:
+            print(output)
+
+    except Exception as e:
+        print_error(f"Failed to export config: {e}")
+
+
+def config_import(args: argparse.Namespace) -> None:
+    """Import configuration"""
+    from agent.config_model import ConfigLoader, import_config, ProjectConfig
+    from agent.logging_ import log_audit
+    import json
+
+    agent_dir = args.project_dir if args.project_dir else None
+
+    try:
+        # Load the file
+        with open(args.file, "r") as f:
+            config_dict = json.load(f)
+
+        # Validate only mode
+        if args.validate_only:
+            config = import_config(config_dict, agent_dir)
+            print_success("Configuration is valid!")
+            return
+
+        # Full import
+        loader = ConfigLoader(agent_dir)
+        config = import_config(config_dict, agent_dir)
+        loader.save(config)
+
+        print_success(f"Configuration imported from {args.file}")
+
+        # Audit log
+        log_audit(
+            action="import",
+            entity_type="config",
+            entity_id="config.json",
+            details={"source_file": args.file},
+        )
+
+    except json.JSONDecodeError as e:
+        print_error(f"Invalid JSON in file: {e}")
+    except Exception as e:
+        print_error(f"Failed to import config: {e}")
+
+
 def start_server(args: argparse.Namespace) -> None:
     """Start the REST API server"""
     import uvicorn
@@ -988,6 +1180,76 @@ For more information, see: https://github.com/oGYCo/Agent-Loop
         help="Template name to reset"
     )
 
+    # config command
+    config_parser = subparsers.add_parser(
+        "config",
+        help="Manage configuration",
+        description="View, set, validate, export, and import configuration"
+    )
+    config_subparsers = config_parser.add_subparsers(dest="config_action", help="Config actions")
+
+    # config get
+    config_get_parser = config_subparsers.add_parser(
+        "get",
+        help="Get a configuration value"
+    )
+    config_get_parser.add_argument(
+        "key",
+        help="Configuration key (e.g., project_name, model, providers.default.model)"
+    )
+
+    # config set
+    config_set_parser = config_subparsers.add_parser(
+        "set",
+        help="Set a configuration value"
+    )
+    config_set_parser.add_argument(
+        "key",
+        help="Configuration key (e.g., project_name, model)"
+    )
+    config_set_parser.add_argument(
+        "value",
+        help="Configuration value"
+    )
+
+    # config validate
+    config_subparsers.add_parser(
+        "validate",
+        help="Validate configuration"
+    )
+
+    # config export
+    config_export_parser = config_subparsers.add_parser(
+        "export",
+        help="Export configuration"
+    )
+    config_export_parser.add_argument(
+        "--include-sensitive",
+        action="store_true",
+        help="Include sensitive data (API keys, passwords)"
+    )
+    config_export_parser.add_argument(
+        "--output", "-o",
+        type=str,
+        help="Output file (default: stdout)"
+    )
+
+    # config import
+    config_import_parser = config_subparsers.add_parser(
+        "import",
+        help="Import configuration"
+    )
+    config_import_parser.add_argument(
+        "file",
+        type=str,
+        help="Configuration file to import"
+    )
+    config_import_parser.add_argument(
+        "--validate-only",
+        action="store_true",
+        help="Only validate without importing"
+    )
+
     # Backwards compatibility: --init and --run flags
     parser.add_argument("--init", action="store_true", help="Initialize the project (deprecated, use 'init' subcommand)")
     parser.add_argument("--run", action="store_true", help="Run the agent (deprecated, use 'run' subcommand)")
@@ -1044,6 +1306,19 @@ For more information, see: https://github.com/oGYCo/Agent-Loop
                 asyncio.run(check_provider_health(args))
             else:
                 provider_parser.print_help()
+        elif args.command == "config":
+            if args.config_action == "get":
+                config_get(args)
+            elif args.config_action == "set":
+                config_set(args)
+            elif args.config_action == "validate":
+                config_validate(args)
+            elif args.config_action == "export":
+                config_export(args)
+            elif args.config_action == "import":
+                config_import(args)
+            else:
+                config_parser.print_help()
         elif args.command == "template":
             if args.template_action == "list":
                 list_templates(args)

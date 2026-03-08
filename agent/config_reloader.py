@@ -1,6 +1,7 @@
 """Config Reloader - 配置热重载模块
 
 支持手动触发和文件监控两种方式重新加载配置文件。
+支持验证重载后的配置有效性。
 """
 
 import asyncio
@@ -16,6 +17,7 @@ from watchdog.events import FileSystemEventHandler, FileModifiedEvent
 from watchdog.observers import Observer
 
 from agent.state_manager import StateManager
+from agent.config_model import ConfigLoader
 
 logger = logging.getLogger("config_reloader")
 
@@ -119,8 +121,12 @@ class ConfigReloader:
             "success": True,
             "reloaded": [],
             "errors": [],
+            "warnings": [],
             "timestamp": datetime.now().isoformat(),
         }
+
+        # 保留旧配置用于回滚
+        old_config_cache = self._config_cache
 
         try:
             # 检查是否有变化（除非强制重载）
@@ -135,8 +141,21 @@ class ConfigReloader:
                 config_path = self.agent_dir / "config.json"
                 if config_path.exists():
                     self._config_mtime = config_path.stat().st_mtime
-                    self._config_cache = self.state_manager.load_config()
-                    cast(List[str], result["reloaded"]).append("config.json")
+                    raw_config = self.state_manager.load_config()
+
+                    # 验证配置有效性
+                    try:
+                        loader = ConfigLoader(str(self.agent_dir))
+                        config_loader = loader._load_from_file()
+                        validated_config = ConfigLoader(str(self.agent_dir)).load()
+                        self._config_cache = validated_config.model_dump(mode="json")
+                        cast(List[str], result["reloaded"]).append("config.json")
+                    except Exception as validation_error:
+                        # 验证失败，保持旧配置并发出警告
+                        logger.warning(f"Reloaded config is invalid, keeping old config: {validation_error}")
+                        cast(List[str], result["warnings"]).append(f"config.json: Invalid config, keeping old - {str(validation_error)}")
+                        # 恢复旧配置
+                        self._config_cache = old_config_cache
             except Exception as e:
                 cast(List[str], result["errors"]).append(f"config.json: {str(e)}")
 
@@ -165,6 +184,9 @@ class ConfigReloader:
 
             reloaded_items = cast(List[str], result["reloaded"])
             result["message"] = f"Reloaded: {', '.join(reloaded_items) if reloaded_items else 'nothing'}"
+
+            if result["warnings"]:
+                result["message"] += f" (with {len(result['warnings'])} warning(s))"
 
         except Exception as e:
             result["success"] = False

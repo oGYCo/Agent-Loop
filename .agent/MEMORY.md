@@ -4,6 +4,102 @@ Accumulated experience and lessons learned from task execution.
 
 ---
 
+## 2026-03-08 - Configuration Management Refactoring (feature-040)
+
+**任务描述**: 重构配置管理系统，使用Pydantic BaseSettings替代手动JSON解析，实现环境变量覆盖、配置迁移、CLI命令、热重载验证、导出/导入等功能。
+
+**Lessons Learned:**
+
+1. **Pydantic Configuration Model**:
+   - Created `agent/config_model.py` with `ProjectConfig` using `pydantic-settings` for environment variable support
+   - Supports nested configuration (providers, rate_limit, cors, retry, webhook, email, slack, documentation_urls)
+   - Auto-adjusts context_window_limit based on model (GPT-4: 128K, Claude: 200K, MiniMax: 100K)
+
+2. **Environment Variable Override**:
+   - Uses `pydantic-settings` with `env_prefix="AGENT_LOOP_"` and `env_nested_delimiter="__"`
+   - Example: `AGENT_LOOP_PROJECT_NAME`, `AGENT_LOOP_PROVIDERS__DEFAULT__MODEL`
+
+3. **Config Migration Engine**:
+   - schema_version field added to config (current: "1.2")
+   - Migration chain: v1.0 -> v1.1 -> v1.2
+   - Logs migration progress at INFO level
+   - Backward compatible: handles configs without schema_version
+
+4. **CLI Config Commands**:
+   - `config get <key>` - Get configuration value (supports nested keys with dot notation)
+   - `config set <key> <value>` - Set configuration value (auto-type conversion)
+   - `config validate` - Validate configuration
+   - `config export` - Export config (with --include-sensitive flag)
+   - `config import <file>` - Import config (with --validate-only flag)
+
+5. **Hot Reload Validation**:
+   - ConfigReloader.reload() now validates config after reload
+   - Invalid configs keep old configuration + warning
+   - Warnings logged separately from errors
+
+6. **Config Export/Import**:
+   - export_config() sanitizes sensitive data (API keys, passwords)
+   - import_config() validates before saving
+
+7. **Backward Compatibility**:
+   - Added "auto" to SessionType enum for legacy configs
+   - StateManager.load_config() still works without Pydantic
+   - All existing tests pass
+
+---
+
+## 2026-03-08 - Session Management Enhancement (feature-039)
+
+**任务描述**: 增强session_manager.py的会话管理能力，包括会话归档、智能上下文压缩、增量Token计数、会话恢复增强、标签系统和统计API。
+
+**Lessons Learned:**
+
+1. **Session Archiving Mechanism**:
+   - Sessions older than 30 days (configurable) or exceeding 100 sessions (configurable) are archived
+   - Archived to `.agent/archive/` directory in monthly files (e.g., `archive_2026-03.json`)
+   - Main `session_history.json` only keeps recent sessions
+
+2. **Smart Context Compression**:
+   - Instead of simple "N messages processed" summary, preserves important content
+   - Important messages include: code changes (``` blocks), error messages, key decisions, commits/tests
+   - Uses regex patterns to identify important content
+   - Routine messages (small talk, confirmations) are compressed
+
+3. **Incremental Token Counting**:
+   - Token counts are cached in `_token_cache` dictionary
+   - When new messages are added, only new messages are tokenized
+   - Force recalculate option available via `force_recalculate=True`
+   - Cache is cleared when message count changes significantly (>5 messages difference)
+
+4. **Enhanced Session Resume**:
+   - New method `get_session_for_resume()` returns rich context
+   - Includes: messages, task state, error count, last error, checkpoint data
+   - Allows full state restoration on session resume
+
+5. **Session Tagging System**:
+   - Add/remove tags via API: POST/DELETE `/sessions/{id}/tags/{tag}`
+   - Query sessions by tag: GET `/sessions/by-tag/{tag}`
+   - Get all tags with counts: GET `/sessions/tags`
+   - Common tags: 'bugfix', 'feature', 'refactor', 'debug'
+
+6. **Session Statistics API**:
+   - New endpoint: GET `/sessions/stats` (or `/api/v1/sessions/stats`)
+   - Query parameter `detailed=true` for comprehensive stats
+   - Returns: summary, duration, errors, tags, trends (daily/weekly), archive_info
+   - Error categorization: timeout, connection, permission, memory, other
+
+7. **Backward Compatibility**:
+   - `migrate_session_format()` adds missing fields (tags, created_at, status)
+   - `load_and_migrate_history()` migrates old format sessions on load
+   - All existing tests pass without modification
+
+**Key Files Modified:**
+- `agent/session_manager.py`: Core implementation (+815 lines)
+- `api.py`: New endpoints (+152 lines)
+- `tests/test_session_manager.py`: New test cases (+457 lines)
+
+---
+
 ## 2026-03-08 - Model Provider Failover & Load Balancing (feature-038)
 
 **任务描述**: 增强model_provider.py支持多提供商故障转移和智能切换，提高系统弹性。
@@ -1499,6 +1595,10 @@ Accumulated experience and lessons learned from task execution.
 
 
 
+
+
+
+
 2026-03-08 - 持续改进计划 (feature-028)
 
 **任务描述**: 这是一个meta任务，用于持续改进系统。在完成每个主要功能后，系统应该：1) 自动审查和更新feature_list.json 2) 更新MEMORY.md记录经验 3) 审查和更新CLAUDE.md和README.md 4) 确保测试覆盖新功能。此任务确保系统能够持续自我优化和成长。
@@ -1852,7 +1952,10 @@ I've successfully implemented the task dependency system for Agent-Loop. Here's 
 
 ---
 
-### 2026-03-08 - Docker容器化与部署方案 (feature-037)
+
+---
+
+2026-03-08 - Docker容器化与部署方案 (feature-037)
 
 **任务描述**: 为项目创建完整的容器化部署方案，使其可以一键部署到Docker/Kubernetes环境。具体包括：
 
@@ -1875,7 +1978,10 @@ I've successfully implemented the task dependency system for Agent-Loop. Here's 
 
 ## Summary
 
-### Files Created
+
+---
+
+Files Created
 
 1. **`.dockerignore`** - Excludes unnecessary files like `.git`, `__pycache__`, `.venv`, `htmlcov`, etc.
 
@@ -1884,3 +1990,70 @@ I've successfully implemented the task dependency system for Agent-Loop. Here's 
    - Stage 2: Creates minimal runtime image using `python:3.11-slim`
    - Security: Runs as non-root `agent` user
    - Health check: Uses `/hea
+
+---
+
+
+---
+
+2026-03-08 - 模型提供商故障转移与负载均衡 (feature-038)
+
+**任务描述**: 增强model_provider.py支持多提供商故障转移和智能切换，提高系统弹性。具体包括：
+
+1) **故障转移链**：在config.json的providers中支持配置fallback_provider字段，当主提供商连接失败/超时/返回错误时自动切换到备用提供商。
+2) **健康检查**：添加provider_health_check()方法，定期检测提供商API可用性（简单的models/list请求），在Dashboard中展示提供商健康状态。
+3) **智能重试**：区分瞬态错误（超时、5xx）和永久错误（401认证失败、404模型不存在），仅对瞬态错误重试，永久错误立即切换提供商。
+4) **使用量统计**：记录每个提供商的调用次数、成功率、平均响应时间，通过/metrics导出到Prometheus。
+5) **API Key轮转**：支持同一提供商配置多个API Key，实现简单的round-robin轮转，分散速率限制风险。
+6) **CLI命令**：添加`provider list`和`provider switch <name>`命令，实时切换活跃提供商与查看提供商状态。
+7) **配置验证**：在应用启动时验证所有配置的提供商凭证有效性，无效的记录warning但不阻止启动。
+
+**关键指令**：参考OpenAI API文档https://developers.openai.com/docs/api-reference 和Anthropic API文档 https://docs.anthropic.com/en/api/ 了解各提供商的错误码和速率限制机制。所有新功能必须有完整测试。
+
+**执行结果**: completed
+**执行消息**: ## Summary
+
+I have successfully implemented the model provider failover and load balancing feature (feature-038). Here's what was implemented:
+
+
+---
+
+1. **故障转移链 (Failover Chain)**
+- Added `fallback_provider` field to `ProviderConfig` 
+- Implemented automatic provider switching when primary provider fails
+- Added cascading failover support (if fallback is unhealthy, tries its fallback)
+
+
+---
+
+2. **健康检查 (Health Check)**
+- Added `provider_health_check()` async method to check provider API availability
+
+
+---
+
+### 2026-03-08 - 会话管理系统增强 (feature-039)
+
+**任务描述**: 增强session_manager.py的会话管理能力，解决当前会话归档、恢复和上下文压缩的不足。具体包括：
+
+1) **会话归档机制**：session_history.json会无限增长，实现自动归档——超过30天或100条的历史会话移动到.agent/archive/目录按月份分文件存储（如archive_2026-03.json），主文件只保留最近的记录。
+2) **智能上下文压缩**：替换当前简单的'Summary: N messages processed'压缩方式，实现基于内容重要性的压缩：保留包含代码修改、错误信息、关键决策的消息，压缩纯对话和重复内容。
+3) **增量Token计数**：当前每次check_context_usage()都重新计算所有消息的token数，改为增量计数——新消息只计算增量部分。
+4) **会话恢复增强**：当should_resume_session()为true时，提供更丰富的恢复上下文——不仅恢复消息列表，还恢复当时的task状态、git diff、错误计数等。
+5) **会话标签系统**：支持为会话添加标签（如'debug', 'feature', 'refactor'），便于后续检索和分析。
+6) **会话统计API**：添加API端点GET /sessions/stats返回汇总统计：平均会话时长、任务完成率、最常见错误类型、按日/周趋势等。
+
+**关键指令**：确保向后兼容——新代码必须能读取旧格式的session_history.json。token计数精度改进可参考tiktoken文档：https://github.com/openai/tiktoken 。添加完整测试。
+
+**执行结果**: completed
+**执行消息**: All tests pass. Let me provide a summary of the completed work:
+
+## Summary
+
+I've successfully enhanced the session management system in `session_manager.py` with the following features:
+
+### 1. Session Archiving Mechanism
+- Sessions older than 30 days (configurable) are automatically archived
+- When exceeding 100 sessions (configurable), oldest sessions are archived
+- Archived to `.agent/archive/` directory in monthly files (e.g., `archive_2026-03.json`)
+- Archive retrieval API: `get_archived_s
