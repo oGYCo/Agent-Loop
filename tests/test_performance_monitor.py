@@ -10,6 +10,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+import agent.performance_monitor as pm_module
 from agent.performance_monitor import (
     PerformanceMetrics,
     PerformanceMonitor,
@@ -109,7 +110,7 @@ class TestPerformanceMonitor:
     def test_init(self):
         """Test PerformanceMonitor initialization"""
         monitor = PerformanceMonitor()
-        assert isinstance(monitor.metrics, PerformanceMetrics)
+        assert isinstance(monitor.metrics, pm_module.PerformanceMetrics)
         assert monitor._operation_stack == []
 
     def test_track_operation_context_manager(self):
@@ -230,7 +231,7 @@ class TestMonitorScope:
     def test_monitor_scope_creates_new_instance(self):
         """Test monitor_scope creates a new isolated instance"""
         with monitor_scope() as monitor:
-            assert isinstance(monitor, PerformanceMonitor)
+            assert isinstance(monitor, pm_module.PerformanceMonitor)
             # Can track operations in this scope
             with monitor.track_operation("test_op"):
                 time.sleep(0.01)

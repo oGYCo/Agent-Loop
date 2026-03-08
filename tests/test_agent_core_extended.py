@@ -461,6 +461,9 @@ class TestAgentCoreExtended:
         result = agent_core.reload_modules()
         # May succeed or fail depending on environment
         assert isinstance(result, bool)
+        # Reset global singletons that may become stale after importlib.reload
+        from agent.performance_monitor import reset_monitor
+        reset_monitor()
 
     def test_check_code_changes(self, agent_core):
         """Test code change detection"""
@@ -957,6 +960,9 @@ class TestEdgeCases:
 
         # May return True or False depending on what's reloadable
         assert isinstance(result, bool)
+        # Reset global singletons after reload
+        from agent.performance_monitor import reset_monitor
+        reset_monitor()
 
     def test_reload_modules_success(self, agent_core):
         """Test reload_modules successful"""
@@ -964,6 +970,9 @@ class TestEdgeCases:
 
         # May succeed or fail depending on what's reloadable
         assert isinstance(result, bool)
+        # Reset global singletons after reload
+        from agent.performance_monitor import reset_monitor
+        reset_monitor()
 
     # ===== Test notification exception paths =====
 

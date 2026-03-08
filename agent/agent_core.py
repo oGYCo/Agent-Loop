@@ -262,6 +262,7 @@ from .git_helper import GitHelper
 from .human_intervention import HumanIntervention
 from .performance_monitor import PerformanceMonitor, get_monitor
 from .prompt_manager import PromptManager, render_template, scan_project_structure
+from .config_reloader import ConfigReloader
 
 
 # 配置日志
@@ -323,6 +324,10 @@ class AgentCore:
         self._code_changed: bool = False
         self._initial_file_state()
 
+        # 配置热重载器
+        self.config_reloader = ConfigReloader()
+        self.config_reloader.add_reload_callback(self._on_config_reloaded)
+
         # 性能监控
         self.perf_monitor = get_monitor()
 
@@ -342,36 +347,63 @@ class AgentCore:
         if not agent_dir.exists():
             return False
 
+        changed = False
+        current_files: Dict[str, float] = {}
         for f in agent_dir.glob("*.py"):
             f_path = str(f)
             current_mtime = f.stat().st_mtime
+            current_files[f_path] = current_mtime
             if f_path in self._last_known_files:
                 if current_mtime > self._last_known_files[f_path]:
-                    self._code_changed = True
-                    return True
+                    changed = True
             else:
                 # 新文件
-                self._code_changed = True
-                return True
+                changed = True
 
-        return False
+        if changed:
+            self._code_changed = True
+            # 更新跟踪状态，避免重复触发
+            self._last_known_files = current_files
+
+        return changed
 
     def needs_reload(self) -> bool:
         """检查是否需要重新加载（代码变更或配置变更）"""
+        # 检查配置文件变更
+        config_changes = self.config_reloader.check_for_changes()
+        if config_changes["config"] or config_changes["feature_list"]:
+            self.config_reloader.reload()
         return self._code_changed or self.check_code_changes()
 
     def reload_modules(self) -> bool:
-        """热更新 Python 模块，重新加载修改过的代码"""
+        """热更新 Python 模块，重新加载修改过的代码
+
+        注意: 不重载 agent.agent_core 自身，因为当前实例仍引用旧类定义，
+        importlib.reload 后新方法不会对已有实例生效。
+        若 agent_core.py 自身被修改，应走 graceful_restart 路径。
+        """
         import importlib
 
+        # 检查 agent_core.py 自身是否被修改
+        core_path = Path(self.project_root) / "agent" / "agent_core.py"
+        if core_path.exists():
+            core_mtime = core_path.stat().st_mtime
+            tracked_mtime = self._last_known_files.get(str(core_path), 0.0)
+            if core_mtime > tracked_mtime:
+                logger.warning("agent_core.py itself was modified, hot reload cannot apply — need graceful restart")
+                return False
+
+        # 只重载非自身的依赖模块
         modules_to_reload = [
-            "agent.agent_core",
             "agent.state_manager",
             "agent.task_selector",
             "agent.session_manager",
             "agent.git_helper",
             "agent.human_intervention",
             "agent.test_runner",
+            "agent.prompt_manager",
+            "agent.performance_monitor",
+            "agent.config_reloader",
         ]
 
         reloaded = []
@@ -388,8 +420,6 @@ class AgentCore:
         # 重新初始化组件
         if not failed:
             self._reinitialize_components()
-            # 更新文件状态
-            self._initial_file_state()
             self._code_changed = False
             logger.info(f"Hot reload successful: {len(reloaded)} modules reloaded")
             return True
@@ -397,11 +427,27 @@ class AgentCore:
             logger.error(f"Hot reload failed: {failed}")
             return False
 
+    def _on_config_reloaded(self) -> None:
+        """配置热重载回调 — 更新运行时使用的配置"""
+        self.config = self.config_reloader.get_cached_config()
+        self.task_selector = TaskSelector(self.state_manager)
+        self.provider_manager = create_provider_manager(self.config)
+        self._claude_md_cache = None
+        logger.info("Runtime config reloaded")
+
     def _reinitialize_components(self) -> None:
-        """重新初始化组件（热更新后）"""
+        """重新初始化所有组件（热更新后）"""
         self.state_manager = StateManager()
         self.task_selector = TaskSelector(self.state_manager)
+        self.git_helper = GitHelper(self.project_root)
+        self.human_intervention = HumanIntervention(self.state_manager)
+        self.prompt_manager = PromptManager()
         self.config = self.state_manager.load_config()
+        self.provider_manager = create_provider_manager(self.config)
+        self.config_reloader = ConfigReloader()
+        self.config_reloader.add_reload_callback(self._on_config_reloaded)
+        self.perf_monitor = get_monitor()
+        self.metrics_collector = get_metrics_collector()
         # 清除 CLAUDE.md 缓存
         self._claude_md_cache = None
         logger.info("Components reinitialized after hot reload")
