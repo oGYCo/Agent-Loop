@@ -4,6 +4,88 @@ Accumulated experience and lessons learned from task execution.
 
 ---
 
+## 2026-03-08 - 结构化JSON日志 (feature-010)
+
+**任务描述**: 使用structlog实现结构化JSON日志，便于日志分析工具处理。
+
+**Lessons Learned:**
+
+1. **Structlog Configuration**:
+   - Created new `agent/logging_.py` module with structlog configuration
+   - Uses `structlog.stdlib.BoundLogger` for compatibility with standard logging
+   - JSON output for file (when LOG_FILE is set), human-readable for console
+
+2. **Environment Variables**:
+   - `LOG_LEVEL`: Set logging level (default: INFO)
+   - `LOG_FILE`: Path to JSON log file
+   - `LOG_JSON`: Force JSON output (true/false)
+
+3. **JSON Log Format**:
+   - Contains: event, level, logger, timestamp (ISO), and context fields
+   - Example: `{"event": "Starting application", "level": "info", "logger": "test", "timestamp": "2026-03-08T03:03:22.942289Z"}`
+
+4. **Changes Made**:
+   - Added `structlog>=24.0.0` to dependencies
+   - Updated `main.py` and `api.py` to use new logging module
+   - All 348 tests pass
+
+---
+
+## 2026-03-08 - 添加集成测试 (feature-027)
+
+**任务描述**: 添加端到端集成测试：1) 测试Agent完整执行流程 2) 测试状态管理器的持久化 3) 测试Git集成。
+
+**Lessons Learned:**
+
+1. **Integration Test Structure**:
+   - Created `tests/test_integration.py` with 24 integration tests
+   - Test classes: `TestAgentStatePersistence`, `TestGitIntegration`, `TestAgentExecutionFlow`, `TestCrossModuleIntegration`, `TestErrorRecoveryIntegration`
+   - Tests verify modules work together correctly
+
+2. **Test Coverage Areas**:
+   - State persistence across modules (feature updates, session history, current state)
+   - Git integration with state tracking (branch creation, commits, status)
+   - Agent execution flow (task selection, session initialization, error handling)
+   - Cross-module workflows (task selector + git, state + git branch)
+   - Error recovery scenarios
+
+3. **Key Testing Patterns**:
+   - Use `tempfile.TemporaryDirectory()` for test isolation
+   - Use real git commands with `subprocess.run()` for git tests
+   - Mock only external dependencies (API calls, SDK)
+   - Test persistence by loading data from disk after operations
+
+4. **Test Results**:
+   - All 348 tests pass (24 new + 324 existing)
+   - Integration tests run in 0.77s
+
+---
+
+## 2026-03-08 - 添加代码覆盖率报告 (feature-026)
+
+**任务描述**: 配置代码覆盖率报告：1) 在pyproject.toml中添加coverage配置 2) 确保测试覆盖关键模块 3) 设置覆盖率目标。运行coverage报告并分析结果。
+
+**Lessons Learned:**
+
+1. **Coverage Configuration**:
+   - Add `pytest-cov>=4.0.0` to both `[project.optional-dependencies]` and `[tool.uv.dev-dependencies]`
+   - Configure `[tool.coverage.run]` with `source = ["agent"]`, `branch = true`
+   - Configure `[tool.coverage.report]` with `show_missing = true`, `exclude_lines`
+   - Add `[tool.coverage.html]` for HTML report output
+
+2. **Coverage Analysis Results**:
+   - Total: 54.90% (324 tests passed)
+   - 14 agent modules covered by tests
+   - console.py: 0% coverage (no tests exist)
+   - agent_core.py: 24.25% (mostly async SDK code)
+   - metrics.py: 96.10%, performance_monitor.py: 99.05%, task_selector.py: 100%
+
+3. **Commands Added to CLAUDE.md**:
+   - `pytest tests/ --cov=agent --cov-report=term-missing`
+   - `pytest tests/ --cov=agent --cov-report=html`
+
+---
+
 ## 2026-03-08 - 任务自审 (feature-025 Post-Task Review)
 
 **任务描述**: 审查 feature_list.json，评估待处理任务的状态
@@ -838,6 +920,12 @@ Accumulated experience and lessons learned from task execution.
 
 
 
+
+
+
+
+
+
 2026-03-08 - API密钥认证 (feature-013)
 
 **任务描述**: 为API服务添加API Key认证机制，支持配置多个密钥，实现基本的访问控制。
@@ -1299,7 +1387,10 @@ Code Review Findings (Production-Grade Perspective)
 
 ---
 
-### 2026-03-08 - 添加API端点测试 (feature-023)
+
+---
+
+2026-03-08 - 添加API端点测试 (feature-023)
 
 **任务描述**: 为api.py添加完整的单元测试和集成测试：1) 测试所有REST端点 2) 测试WebSocket连接 3) 测试API密钥认证 4) 测试错误处理。确保API的稳定性和可靠性。
 
@@ -1308,7 +1399,10 @@ Code Review Findings (Production-Grade Perspective)
 
 I have successfully added comprehensive unit tests for the API in `api.py`. Here's a summary:
 
-### Tests Created: 51 test cases in `tests/test_api.py`
+
+---
+
+Tests Created: 51 test cases in `tests/test_api.py`
 
 **REST Endpoint Tests:**
 - `/health` - Health check endpoint
@@ -1318,3 +1412,87 @@ I have successfully added comprehensive unit tests for the API in `api.py`. Here
 - `/run` - Agent execution
 - `/metrics` - Prometheus metrics
 - `/webhook/test` & `/email/test` - Notifica
+
+---
+
+
+---
+
+2026-03-08 - 增强MEMORY.md和CLAUDE.md文档 (feature-025)
+
+**任务描述**: 更新MEMORY.md和CLAUDE.md：1) 添加从当前任务中提取的关键经验 2) 更新架构图和模块说明 3) 添加新发现的最佳实践 (如错误处理改进)。确保文档反映项目的最新状态。
+
+**执行结果**: completed
+**执行消息**: ## 任务完成 ✓
+
+我已成功完成 **feature-025: 增强MEMORY.md和CLAUDE.md文档**。
+
+
+---
+
+完成的工作
+
+1. **MEMORY.md 更新**:
+   - 添加了 feature-025 的新章节，记录从当前任务中提取的关键经验
+   - 包含文档分析结果、最佳实践 (错误处理、类型注解)、文档维护建议
+
+2. **CLAUDE.md 更新**:
+   - 添加了 **Best Practices** 章节，包含：
+     - **错误处理**: 避免 `except Exception: pass`，使用 `logger.warning()` 记录异常
+     - **类型注解**: 使用 `TYPE_CHECKING`、`type: ignore`、`cast()` 等技巧
+     - **文档维护**: MEMORY.md 和 CLAUDE.md 同步更新指南
+     - **Post-Task Actions**: 任务完成后必须执行的 4 个步骤
+   - 移除了重复的 Post-Task Actions 章节
+
+3. **fe
+
+---
+
+
+---
+
+2026-03-08 - 添加代码覆盖率报告 (feature-026)
+
+**任务描述**: 配置代码覆盖率报告：1) 在pyproject.toml中添加coverage配置 2) 确保测试覆盖关键模块 3) 设置覆盖率目标。运行coverage报告并分析结果。
+
+**执行结果**: completed
+**执行消息**: ## Summary
+
+I've successfully configured code coverage reporting for the project:
+
+
+---
+
+Changes Made:
+
+1. **pyproject.toml** - Added coverage configuration:
+   - Added `pytest-cov>=4.0.0` as dev dependency
+   - Configured `[tool.coverage.run]` with source, branch, and omit patterns
+   - Configured `[tool.coverage.report]` with precision, show_missing, and exclude_lines
+   - Added `[tool.coverage.html]` for HTML report output
+
+2. **CLAUDE.md** - Added coverage commands:
+   - `pytest tests/ --cov=a
+
+---
+
+### 2026-03-08 - 添加更多集成测试 (feature-027)
+
+**任务描述**: 添加端到端集成测试：1) 测试Agent完整执行流程 2) 测试状态管理器的持久化 3) 测试Git集成。确保各模块协同工作正常。
+
+**执行结果**: completed
+**执行消息**: ## Summary
+
+I've successfully added integration tests for the Agent-Loop project. Here's what was accomplished:
+
+### Created File: `tests/test_integration.py`
+
+**24 integration tests** organized in 5 test classes:
+
+1. **TestAgentStatePersistence** (4 tests)
+   - Tests state persistence across modules (feature updates, session history, current state)
+   - Tests complete feature lifecycle
+
+2. **TestGitIntegration** (5 tests)
+   - Tests Git operations with state persistence
+   - Tests git status tr
