@@ -4,6 +4,51 @@ Accumulated experience and lessons learned from task execution.
 
 ---
 
+## 2026-03-08 - Exception Hierarchy and Error Code System (feature-031 Implementation)
+
+**任务描述**: 设计并实现一套完整的异常层次结构和错误码系统，替代当前代码中零散的Exception捕获。
+
+**Lessons Learned:**
+
+1. **Exception Hierarchy Design**:
+   - Created `agent/exceptions.py` with comprehensive exception hierarchy
+   - Base `AgentLoopError` class with common attributes (message, error_code, detail, is_retryable, original_exception)
+   - Specialized exception families: ConfigError, TaskExecutionError, ProviderError, NotificationError, SessionError, StateError
+   - Each exception includes error code, retryability flag, and original exception chain
+
+2. **Error Code System**:
+   - Implemented `ErrorCode` enum with unique codes per error type
+   - Error code ranges: E1xxx (Config), E2xxx (Task), E3xxx (Provider), E4xxx (Notification), E5xxx (Session), E6xxx (State), E9xxx (General)
+   - Error codes enable easy log analysis and monitoring alerts
+
+3. **Retryability Distinction**:
+   - Each exception has `is_retryable` flag
+   - Transient errors (timeout, rate limit, connection): retryable=True
+   - Permanent errors (auth failure, corrupted data): retryable=False
+   - Helps distinguish between errors that can be retried vs those needing human intervention
+
+4. **Exception Chaining**:
+   - Use `original_exception` attribute to preserve original error
+   - Use `raise ... from e` pattern to preserve exception chain (__cause__)
+   - Allows root cause analysis in logs
+
+5. **API Error Format**:
+   - Implemented unified JSON error response: {"error_code": "E1001", "message": "...", "detail": "..."}
+   - Created `handle_agent_error()` helper for converting exceptions to responses
+   - Updated all API endpoints to use new error format
+
+6. **Implementation Changes**:
+   - Updated agent_core.py: 4 specific exception catches for WebhookError and SlackError
+   - Updated webhook.py: raises WebhookError with appropriate retryability
+   - Updated email_notifier.py: raises EmailError with appropriate retryability
+   - Updated slack_notifier.py: raises SlackError with appropriate retryability
+
+7. **Testing**:
+   - Created test_exceptions.py with 41 comprehensive tests
+   - Tests cover all exception types, error codes, retryability flags, and exception chaining
+
+---
+
 ## 2026-03-08 - StateManager File Safety (feature-030 Implementation)
 
 **任务描述**: 为StateManager实现生产级的文件安全操作，解决当前存在的竞态条件和数据损坏风险。
@@ -1151,6 +1196,8 @@ Accumulated experience and lessons learned from task execution.
 
 
 
+
+
 2026-03-08 - 持续改进计划 (feature-028)
 
 **任务描述**: 这是一个meta任务，用于持续改进系统。在完成每个主要功能后，系统应该：1) 自动审查和更新feature_list.json 2) 更新MEMORY.md记录经验 3) 审查和更新CLAUDE.md和README.md 4) 确保测试覆盖新功能。此任务确保系统能够持续自我优化和成长。
@@ -1222,7 +1269,10 @@ Implementation Completed
 
 ---
 
-### 2026-03-08 - 工业级代码安全审计与修复 (feature-029)
+
+---
+
+2026-03-08 - 工业级代码安全审计与修复 (feature-029)
 
 **任务描述**: 以OWASP Top 10为标准，对整个代码库进行全面的安全审计并修复所有发现的安全问题。具体包括：
 
@@ -1241,10 +1291,42 @@ Implementation Completed
 
 I've successfully implemented comprehensive security fixes for the Agent-Loop project based on OWASP Top 10 standards. Here's a summary:
 
-### Changes Made
+
+---
+
+Changes Made
 
 | Security Feature | Implementation |
 |-----------------|----------------|
 | **Rate Limiting** | Added slowapi with configurable limits (10-60/minute per endpoint) |
 | **CORS** | CORSMiddleware with configurable origins (strict by default) |
 | **Input Validation** | Pydantic validators for task name, description, p
+
+---
+
+### 2026-03-08 - 状态管理器原子写入与文件锁 (feature-030)
+
+**任务描述**: 为StateManager实现生产级的文件安全操作，解决当前存在的竞态条件和数据损坏风险。具体包括：
+
+1) **原子写入**：使用tempfile写入+os.replace()的原子替换模式，确保状态文件不会因进程崩溃而被截断。当前state_manager.py直接用open('w')写入，如果写入过程中进程被kill，文件会被截断为空或不完整JSON。
+2) **文件锁**：使用portalocker库（跨平台文件锁），在读写state.json、feature_list.json、session_history.json时加锁，防止多进程/多实例并发访问导致数据损坏。
+3) **备份机制**：每次写入前创建.bak备份文件，如果新文件写入失败自动回滚到备份版本。
+4) **数据校验**：写入后立即读取并验证JSON完整性（round-trip validation），确保序列化-反序列化一致。
+5) **配置Schema版本化**：在config.json中添加schema_version字段，实现配置格式迁移机制，为未来的格式变更提供升级路径。
+
+**关键指令**：需要安装portalocker依赖（添加到pyproject.toml）。参考Python原子文件操作模式。确保所有现有测试在修改后仍然通过。
+
+**执行结果**: completed
+**执行消息**: ## Summary
+
+I have successfully implemented production-grade file safety operations for the StateManager. Here's what was done:
+
+### Changes Made:
+
+1. **Added portalocker dependency** (`pyproject.toml`):
+   - Added `portalocker>=2.8.0` for cross-platform file locking
+
+2. **Implemented atomic writes** (`agent/state_manager.py`):
+   - Uses `tempfile.NamedTemporaryFile` + `os.replace()` pattern
+   - Prevents file truncation if process is killed during write
+   - Writes to temp file first, then atom
