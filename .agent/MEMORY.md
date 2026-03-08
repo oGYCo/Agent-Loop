@@ -4,6 +4,38 @@ Accumulated experience and lessons learned from task execution.
 
 ---
 
+## 2026-03-08 - Agent Core Test Coverage Improvement (feature-032)
+
+**任务描述**: Increase agent_core.py test coverage from 24% to 70%+.
+
+**Lessons Learned:**
+
+1. **Coverage Achievement**:
+   - Increased coverage from 24% to 62% (from 36 to 155 tests)
+   - Added comprehensive tests for hook system, notifications, project context, retry mechanism, error handling
+   - Main gap is execute_task_with_sdk function (334 lines) requiring complex SDK mocking
+
+2. **Test Coverage Areas Added**:
+   - Hook system: PreToolUse, PostToolUse, Notification, Stop hooks
+   - Notification system: webhook, slack, websocket push functions
+   - Project context: gather_project_context, plan_next_steps, auto_plan_next_steps
+   - Retry mechanism: exponential backoff (5s→10s→20s), max retries
+   - Error handling: graceful restart, module reload, code change detection
+   - Memory management: CLAUDE.md/MEMORY.md updates, experience extraction
+
+3. **Testing Patterns Used**:
+   - Fixtures for temp directories and state managers
+   - Mocking of GitHelper and HumanIntervention
+   - Async testing with pytest-asyncio
+   - Direct testing of hook functions with mock inputs
+
+4. **Remaining Challenges**:
+   - execute_task_with_sdk requires Claude SDK mocking (lines 948-1282)
+   - Some exception paths require specific import failures that are hard to trigger
+   - Full SDK testing would require actual API credentials
+
+---
+
 ## 2026-03-08 - Exception Hierarchy and Error Code System (feature-031 Implementation)
 
 **任务描述**: 设计并实现一套完整的异常层次结构和错误码系统，替代当前代码中零散的Exception捕获。
@@ -1198,6 +1230,8 @@ Accumulated experience and lessons learned from task execution.
 
 
 
+
+
 2026-03-08 - 持续改进计划 (feature-028)
 
 **任务描述**: 这是一个meta任务，用于持续改进系统。在完成每个主要功能后，系统应该：1) 自动审查和更新feature_list.json 2) 更新MEMORY.md记录经验 3) 审查和更新CLAUDE.md和README.md 4) 确保测试覆盖新功能。此任务确保系统能够持续自我优化和成长。
@@ -1304,7 +1338,10 @@ Changes Made
 
 ---
 
-### 2026-03-08 - 状态管理器原子写入与文件锁 (feature-030)
+
+---
+
+2026-03-08 - 状态管理器原子写入与文件锁 (feature-030)
 
 **任务描述**: 为StateManager实现生产级的文件安全操作，解决当前存在的竞态条件和数据损坏风险。具体包括：
 
@@ -1321,7 +1358,10 @@ Changes Made
 
 I have successfully implemented production-grade file safety operations for the StateManager. Here's what was done:
 
-### Changes Made:
+
+---
+
+Changes Made:
 
 1. **Added portalocker dependency** (`pyproject.toml`):
    - Added `portalocker>=2.8.0` for cross-platform file locking
@@ -1330,3 +1370,34 @@ I have successfully implemented production-grade file safety operations for the 
    - Uses `tempfile.NamedTemporaryFile` + `os.replace()` pattern
    - Prevents file truncation if process is killed during write
    - Writes to temp file first, then atom
+
+---
+
+### 2026-03-08 - 结构化异常体系与错误码系统 (feature-031)
+
+**任务描述**: 设计并实现一套完整的异常层次结构和错误码系统，替代当前代码中零散的Exception捕获。具体包括：
+
+1) **异常层次结构**：创建agent/exceptions.py模块，定义：
+   - AgentLoopError（基类）
+   - ConfigError / ConfigValidationError（配置相关）
+   - TaskExecutionError / TaskTimeoutError（任务执行相关）
+   - ProviderError / ProviderAuthError / ProviderRateLimitError（模型提供商相关）
+   - NotificationError / WebhookError / EmailError / SlackError（通知相关）
+   - SessionError / SessionCorruptError（会话相关）
+   - StateCorruptError（状态文件损坏）
+2) **错误码枚举**：创建ErrorCode枚举，每个错误类型分配唯一数字码（如E1001-E1099为配置错误，E2001-E2099为任务错误等），便于日志分析和监控告警。
+3) **全局替换**：将agent_core.py中4处silent exception、webhook.py/email_notifier.py/slack_notifier.py中的通用Exception捕获替换为具体异常类型，区分瞬态错误（可重试）和永久错误（需人工干预）。
+4) **API错误格式**：在api.py中实现统一的错误响应格式{"error_code": "E1001", "message": "...", "detail": "..."}，替代当前不一致的错误返回。
+
+**关键指令**：参考Python标准异常设计模式。确保异常链完整（使用raise ... from e保留原始异常）。所有新异常都需要添加测试用例。
+
+**执行结果**: completed
+**执行消息**: I've successfully implemented the structured exception hierarchy and error code system. Here's a summary of what was accomplished:
+
+## Summary
+
+### 1. Created `agent/exceptions.py` with comprehensive exception hierarchy:
+- **Base class**: `AgentLoopError` with common attributes (message, error_code, detail, is_retryable, original_exception)
+- **Error Code Enum**: `ErrorCode` with unique codes (E1xxx-E9xxx ranges for different categories)
+- **Exception families**:
+  - Config errors (E1001-E1099):
