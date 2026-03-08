@@ -666,8 +666,8 @@
       "name": "代码质量基础设施：常量提取与懒加载重构",
       "description": "消除代码中散布的魔法数字、魔法字符串和重复的懒加载模式，提高代码可维护性。具体包括：\n\n1) **常量模块**：创建agent/constants.py集中定义：\n   - DEFAULT_PRIORITY = 999（当前散布在task_selector.py中）\n   - MAX_RETRY_COUNT = 3, RETRY_BASE_DELAY = 5（当前在agent_core.py中硬编码）\n   - CONFIG_KEYS枚举（'webhook', 'email', 'slack', 'api_keys'等，当前到处用字符串字面量）\n   - FILE_NAMES枚举（'feature_list.json', 'state.json', 'config.json'等）\n   - API_PATHS枚举（'/status', '/tasks', '/health'等）\n   - EVENT_TYPES枚举（'task_completed', 'task_failed', 'session_started'等）\n   - LOG_LEVELS、STATUS_VALUES等\n2) **服务工厂重构**：将agent_core.py中6个独立的懒加载函数（_get_webhook_notifier, _get_slack_notifier, _get_event_pusher等）统一为ServiceFactory类：\n   ```python\n   class ServiceFactory:\n       @staticmethod\n       def get(service_name: str) -> Optional[Any]: ...\n   ```\n3) **HTTP客户端生命周期管理**：为webhook.py和slack_notifier.py的httpx.AsyncClient添加async context manager模式（__aenter__/__aexit__），确保连接正确关闭。\n4) **命名一致性**：统一项目中'task'/'feature'/'item'的混用命名，在代码层面统一为'task'，在文件层面保留'feature_list.json'以向后兼容。\n\n**关键指令**：使用全局搜索确保所有魔法值都被替换。每个替换都要确保现有测试仍然通过。",
       "priority": 5,
-      "status": "pending",
-      "passes": false,
+      "status": "completed",
+      "passes": true,
       "context_files": [
         "agent/agent_core.py",
         "agent/task_selector.py",
