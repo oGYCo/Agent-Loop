@@ -4,6 +4,7 @@
 """
 
 import json
+import re
 from datetime import datetime
 from pathlib import Path
 from typing import Any, cast
@@ -56,7 +57,14 @@ class StateManager:
             return {"features": []}
 
         with open(self.feature_list_path, "r", encoding="utf-8") as f:
-            return cast(dict[str, Any], json.load(f))
+            raw = f.read()
+
+        try:
+            return cast(dict[str, Any], json.loads(raw))
+        except json.JSONDecodeError:
+            # Fix trailing commas before ] or } and retry
+            fixed = re.sub(r",\s*([}\]])", r"\1", raw)
+            return cast(dict[str, Any], json.loads(fixed))
 
     def save_feature_list(self, data: dict[str, Any]) -> None:
         """Save the feature list to feature_list.json.
