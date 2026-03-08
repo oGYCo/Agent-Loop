@@ -560,8 +560,8 @@
       "name": "Docker容器化与部署方案",
       "description": "为项目创建完整的容器化部署方案，使其可以一键部署到Docker/Kubernetes环境。具体包括：\n\n1) **Dockerfile**：创建多阶段构建的Dockerfile——第一阶段安装uv和依赖，第二阶段仅复制运行时文件，最终镜像最小化。使用python:3.11-slim基础镜像。\n2) **docker-compose.yml**：定义完整的服务栈：\n   - agent-loop: 主Agent服务（CLI模式）\n   - agent-api: FastAPI服务（API+Dashboard模式）\n   - prometheus: Prometheus监控（配置scrape agent-api /metrics）\n   - grafana: Grafana仪表板（自动导入dashboards/agent-loop-dashboard.json）\n3) **.dockerignore**：排除.git、__pycache__、.venv、htmlcov等无关文件。\n4) **环境变量管理**：创建.env.example模板文件，列出所有必要的环境变量（ANTHROPIC_AUTH_TOKEN等），docker-compose引用.env文件。\n5) **健康检查**：在Dockerfile中配置HEALTHCHECK指令，使用/health端点。\n6) **Volume挂载**：.agent/目录通过volume挂载持久化，避免容器重启丢失状态。\n7) **文档**：在README.md中添加Docker部署章节，包括构建、运行、配置步骤。\n\n**关键指令**：参考Docker最佳实践：https://docs.docker.com/build/building/best-practices/ 。确保镜像安全（非root用户运行、最小权限）。测试docker build能成功构建。",
       "priority": 3,
-      "status": "pending",
-      "passes": false,
+      "status": "completed",
+      "passes": true,
       "context_files": [
         "pyproject.toml",
         "main.py",
