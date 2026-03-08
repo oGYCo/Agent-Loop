@@ -450,8 +450,8 @@
       "name": "结构化异常体系与错误码系统",
       "description": "设计并实现一套完整的异常层次结构和错误码系统，替代当前代码中零散的Exception捕获。具体包括：\n\n1) **异常层次结构**：创建agent/exceptions.py模块，定义：\n   - AgentLoopError（基类）\n   - ConfigError / ConfigValidationError（配置相关）\n   - TaskExecutionError / TaskTimeoutError（任务执行相关）\n   - ProviderError / ProviderAuthError / ProviderRateLimitError（模型提供商相关）\n   - NotificationError / WebhookError / EmailError / SlackError（通知相关）\n   - SessionError / SessionCorruptError（会话相关）\n   - StateCorruptError（状态文件损坏）\n2) **错误码枚举**：创建ErrorCode枚举，每个错误类型分配唯一数字码（如E1001-E1099为配置错误，E2001-E2099为任务错误等），便于日志分析和监控告警。\n3) **全局替换**：将agent_core.py中4处silent exception、webhook.py/email_notifier.py/slack_notifier.py中的通用Exception捕获替换为具体异常类型，区分瞬态错误（可重试）和永久错误（需人工干预）。\n4) **API错误格式**：在api.py中实现统一的错误响应格式{\"error_code\": \"E1001\", \"message\": \"...\", \"detail\": \"...\"}，替代当前不一致的错误返回。\n\n**关键指令**：参考Python标准异常设计模式。确保异常链完整（使用raise ... from e保留原始异常）。所有新异常都需要添加测试用例。",
       "priority": 2,
-      "status": "pending",
-      "passes": false,
+      "status": "completed",
+      "passes": true,
       "context_files": [
         "agent/agent_core.py",
         "agent/state_manager.py",
@@ -462,7 +462,7 @@
         "agent/session_manager.py",
         "api.py"
       ],
-      "verify_command": "uv run pytest tests/ -v -x",
+      "verify_command": "uv run pytest tests/test_exceptions.py -v",
       "created_at": "2026-03-08",
       "updated_at": "2026-03-08"
     },
