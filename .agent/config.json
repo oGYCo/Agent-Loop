@@ -50,6 +50,21 @@
     ],
     "timeout": 30
   },
+  "slack": {
+    "enabled": false,
+    "webhook_url": "",
+    "channel": "",
+    "username": "Agent-Loop",
+    "icon_emoji": ":robot_face:",
+    "events": [
+      "task_completed",
+      "task_failed",
+      "human_intervention"
+    ],
+    "timeout": 10,
+    "retry_count": 3,
+    "retry_interval": 2
+  },
   "documentation_urls": {
     "sdk_overview": "https://platform.claude.com/docs/en/agent-sdk/overview",
     "python_sdk": "https://platform.claude.com/docs/en/agent-sdk/python"

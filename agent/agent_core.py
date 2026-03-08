@@ -14,6 +14,7 @@ from typing import Dict, Any, List, cast, Callable, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from .webhook import WebhookNotifier
+    from .slack_notifier import SlackNotifier
 
 from .metrics import get_metrics_collector
 
@@ -78,6 +79,44 @@ def _send_webhook_notification(event_type: str, data: Dict[str, Any]) -> None:
             asyncio.run(_send_webhook_notification_async(event_type, data))
     except Exception as e:
         logger.warning(f"Failed to send webhook notification: {type(e).__name__}: {e}")
+
+
+# ========== Slack Notifier (Lazy Import) ==========
+
+def _get_slack_notifier() -> "SlackNotifier | None":
+    """Lazy import to avoid circular dependency"""
+    try:
+        from .slack_notifier import get_slack_notifier
+        return get_slack_notifier()
+    except ImportError:
+        return None
+
+
+async def _send_slack_notification_async(event_type: str, data: Dict[str, Any]) -> bool:
+    """Send Slack notification (async)"""
+    try:
+        notifier = _get_slack_notifier()
+        if notifier:
+            return await notifier.send_notification(event_type, data)
+    except Exception as e:
+        logger.warning(f"Failed to send Slack notification: {type(e).__name__}: {e}")
+    return False
+
+
+def _send_slack_notification(event_type: str, data: Dict[str, Any]) -> None:
+    """Send Slack notification (sync wrapper)"""
+    try:
+        asyncio.get_event_loop()
+        # If we have an event loop running, schedule the coroutine
+        try:
+            loop = asyncio.get_running_loop()
+            # We're in an async context, schedule the task
+            loop.create_task(_send_slack_notification_async(event_type, data))
+        except RuntimeError:
+            # No running event loop, run in new one
+            asyncio.run(_send_slack_notification_async(event_type, data))
+    except Exception as e:
+        logger.warning(f"Failed to send Slack notification: {type(e).__name__}: {e}")
 
 
 # ========== WebSocket Event Pusher (Lazy Import) ==========
@@ -1704,6 +1743,12 @@ class AgentCore:
                         "task_name": task_name,
                         "status": "completed"
                     })
+                    # 发送Slack通知 - 任务完成
+                    _send_slack_notification("task_completed", {
+                        "task_id": task_id,
+                        "task_name": task_name,
+                        "status": "completed"
+                    })
                 else:
                     summary["errors"] += 1
                     _push_log_sync("warning", f"Task verification failed: {task_name} ({task_id})", "task")
@@ -1713,6 +1758,13 @@ class AgentCore:
 
                     # 发送Webhook通知 - 任务失败
                     _send_webhook_notification("task_failed", {
+                        "task_id": task_id,
+                        "task_name": task_name,
+                        "status": "failed",
+                        "error_message": result.get("message", "Verification failed")
+                    })
+                    # 发送Slack通知 - 任务失败
+                    _send_slack_notification("task_failed", {
                         "task_id": task_id,
                         "task_name": task_name,
                         "status": "failed",

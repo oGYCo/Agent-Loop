@@ -23,6 +23,15 @@ def _get_webhook_notifier():
         return None
 
 
+def _get_slack_notifier():
+    """Lazy import to avoid circular dependency"""
+    try:
+        from .slack_notifier import get_slack_notifier
+        return get_slack_notifier()
+    except ImportError:
+        return None
+
+
 async def _send_human_intervention_webhook_async(reason: str, task_id: str | None = None, context: Dict[str, Any] | None = None) -> None:
     """Send webhook notification for human intervention (async)"""
     try:
@@ -37,6 +46,20 @@ async def _send_human_intervention_webhook_async(reason: str, task_id: str | Non
         logger.warning(f"Failed to send human intervention webhook: {e}")
 
 
+async def _send_human_intervention_slack_async(reason: str, task_id: str | None = None, context: Dict[str, Any] | None = None) -> None:
+    """Send Slack notification for human intervention (async)"""
+    try:
+        notifier = _get_slack_notifier()
+        if notifier:
+            await notifier.notify_human_intervention(
+                reason=reason,
+                task_id=task_id,
+                context=context
+            )
+    except Exception as e:
+        logger.warning(f"Failed to send human intervention Slack notification: {e}")
+
+
 def _send_human_intervention_webhook(reason: str, task_id: str | None = None, context: Dict[str, Any] | None = None) -> None:
     """Send webhook notification for human intervention (sync wrapper)"""
     try:
@@ -47,6 +70,18 @@ def _send_human_intervention_webhook(reason: str, task_id: str | None = None, co
             asyncio.run(_send_human_intervention_webhook_async(reason, task_id, context))
     except Exception as e:
         logger.warning(f"Failed to send human intervention webhook: {e}")
+
+
+def _send_human_intervention_slack(reason: str, task_id: str | None = None, context: Dict[str, Any] | None = None) -> None:
+    """Send Slack notification for human intervention (sync wrapper)"""
+    try:
+        try:
+            loop = asyncio.get_running_loop()
+            loop.create_task(_send_human_intervention_slack_async(reason, task_id, context))
+        except RuntimeError:
+            asyncio.run(_send_human_intervention_slack_async(reason, task_id, context))
+    except Exception as e:
+        logger.warning(f"Failed to send human intervention Slack notification: {e}")
 
 
 class HumanIntervention:
@@ -111,6 +146,12 @@ class HumanIntervention:
 
         # 发送Webhook通知 - 需要人工干预
         _send_human_intervention_webhook(
+            reason=reason,
+            task_id=task_id,
+            context=context
+        )
+        # 发送Slack通知 - 需要人工干预
+        _send_human_intervention_slack(
             reason=reason,
             task_id=task_id,
             context=context
