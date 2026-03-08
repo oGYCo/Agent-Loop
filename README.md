@@ -10,14 +10,22 @@
 
 <p align="center">
   <a href="https://www.python.org/"><img src="https://img.shields.io/badge/python-3.11+-blue.svg" alt="Python 3.11+" /></a>
+  <a href="https://github.com/oGYCo/agent-loop/actions/workflows/test.yml"><img src="https://github.com/oGYCo/agent-loop/actions/workflows/test.yml/badge.svg" alt="Tests" /></a>
+  <a href="https://codecov.io/gh/oGYCo/agent-loop"><img src="https://codecov.io/gh/oGYCo/agent-loop/branch/main/graph/badge.svg" alt="Coverage" /></a>
   <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-green.svg" alt="License: MIT" /></a>
   <a href="https://github.com/oGYCo/agent-loop/stargazers"><img src="https://img.shields.io/github/stars/oGYCo/agent-loop" alt="Stars" /></a>
+  <a href="https://github.com/oGYCo/agent-loop/releases"><img src="https://img.shields.io/github/v/release/oGYCo/agent-loop?display_name=tag" alt="Version" /></a>
 </p>
 
 <p align="center">
   <a href="#quick-start"><strong>Get Started</strong></a> ·
+  <a href="#features"><strong>Features</strong></a> ·
   <a href="#cli-reference"><strong>CLI Reference</strong></a> ·
-  <a href="#configuration"><strong>Configuration</strong></a>
+  <a href="#docker-deployment"><strong>Docker</strong></a> ·
+  <a href="#configuration"><strong>Configuration</strong></a> ·
+  <a href="#api-documentation"><strong>API Docs</strong></a> ·
+  <a href="#faq"><strong>FAQ</strong></a> ·
+  <a href="CONTRIBUTING.md"><strong>Contribute</strong></a>
 </p>
 
 ---
@@ -49,6 +57,14 @@ Agent-Loop is an autonomous AI agent system that automates task execution with r
 | **Graceful Shutdown**      | Handle SIGINT/SIGTERM signals safely                            |
 | **Self-Review**            | Automatic task plan review after each task completion           |
 | **Customizable Prompts**   | Template-based prompt system with `{{variable}}` substitution   |
+| **Email Notifications**    | Send email alerts on task completion, failure, or intervention |
+| **Slack Notifications**    | Send Slack messages with Block Kit formatting                   |
+| **Webhook Notifications**  | HTTP POST notifications to external services                    |
+| **Structured Logging**      | JSON logging with structlog for log analysis tools              |
+| **Task Board UI**          | Visual Kanban-style task board with drag-and-drop support       |
+| **API Key Authentication** | Secure API access with configurable API keys                    |
+| **Grafana Dashboard**      | Pre-built Grafana dashboard template for monitoring             |
+| **Enhanced Error Handling**| Improved error recovery and graceful degradation                |
 
 ## Quick Start
 
@@ -76,42 +92,42 @@ export ANTHROPIC_BASE_URL="https://api.minimaxi.com/anthropic"
 
 ```bash
 # Initialize project (creates .agent/ directory)
-python main.py init
+uv run python main.py init
 
 # Run agent (default: 10 iterations)
-python main.py run
+uv run python main.py run
 
 # Or specify iterations
-python main.py run --iterations 3
+uv run python main.py run --iterations 3
 ```
 
 ## CLI Reference
 
 ```bash
 # Core commands
-python main.py init                          # Initialize project structure
-python main.py run                           # Start agent loop (default: 10 iterations)
-python main.py run --iterations N           # Run N iterations
-python main.py list                         # List all tasks
-python main.py status                       # Show project status
-python main.py add "Task Name" -d "Desc" -p 1  # Add new task
+uv run python main.py init                          # Initialize project structure
+uv run python main.py run                           # Start agent loop (default: 10 iterations)
+uv run python main.py run --iterations N           # Run N iterations
+uv run python main.py list                         # List all tasks
+uv run python main.py status                       # Show project status
+uv run python main.py add "Task Name" -d "Desc" -p 1  # Add new task
 
 # Prompt management
-python main.py prompt list                  # List all prompt presets
-python main.py prompt show <key>            # Show prompt details
-python main.py prompt set <key>             # Set active prompt
-python main.py prompt add <key> -n "Name"   # Add new prompt preset
-python main.py prompt delete <key>          # Delete a prompt preset
+uv run python main.py prompt list                  # List all prompt presets
+uv run python main.py prompt show <key>            # Show prompt details
+uv run python main.py prompt set <key>             # Set active prompt
+uv run python main.py prompt add <key> -n "Name"   # Add new prompt preset
+uv run python main.py prompt delete <key>          # Delete a prompt preset
 
 # Template management
-python main.py template list                # List all templates
-python main.py template show <name>         # Show template content
-python main.py template scaffold            # Export all templates to .agent/prompt_templates/
-python main.py template reset <name>        # Reset template to built-in default
+uv run python main.py template list                # List all templates
+uv run python main.py template show <name>         # Show template content
+uv run python main.py template scaffold            # Export all templates to .agent/prompt_templates/
+uv run python main.py template reset <name>        # Reset template to built-in default
 
 # Options
-python main.py --project-dir /path          # Specify project directory
-python main.py --help                       # Show help message
+uv run python main.py --project-dir /path          # Specify project directory
+uv run python main.py --help                       # Show help message
 ```
 
 ### Command Details
@@ -130,10 +146,10 @@ python main.py --help                       # Show help message
 
 ```bash
 # Add task with all options
-python main.py add "Add user auth" -d "Implement login/logout" -p 1 --id "feat-101"
+uv run python main.py add "Add user auth" -d "Implement login/logout" -p 1 --id "feat-101"
 
 # Add task with just name (priority defaults to 3)
-python main.py add "New Feature"
+uv run python main.py add "New Feature"
 ```
 
 ## Architecture
@@ -186,6 +202,11 @@ python main.py add "New Feature"
 | `test_runner.py`         | Test execution wrapper                               |
 | `performance_monitor.py` | Performance metrics tracking                         |
 | `config_reloader.py`     | Configuration hot reload                             |
+| `metrics.py`             | Prometheus metrics collection and export             |
+| `webhook.py`             | Webhook notification service                         |
+| `email_notifier.py`      | Email notification service with SMTP support         |
+| `slack_notifier.py`      | Slack notification with Block Kit formatting         |
+| `logging_.py`            | Structured logging with structlog (JSON/console)     |
 
 ## Usage Examples
 
@@ -193,16 +214,16 @@ python main.py add "New Feature"
 
 ```bash
 # 1. Initialize the project
-python main.py init
+uv run python main.py init
 
 # 2. Check existing tasks
-python main.py list
+uv run python main.py list
 
 # 3. Run the agent
-python main.py run --iterations 5
+uv run python main.py run --iterations 5
 
 # 4. Check status
-python main.py status
+uv run python main.py status
 ```
 
 ### Task Management
@@ -237,13 +258,13 @@ Tasks are managed in `.agent/feature_list.json`:
 
 ```bash
 # Run agent on a different project
-python main.py --project-dir /path/to/project run --iterations 3
+uv run python main.py --project-dir /path/to/project run --iterations 3
 
 # Check status of a specific project
-python main.py --project-dir /path/to/project status
+uv run python main.py --project-dir /path/to/project status
 
 # List tasks in another project
-python main.py --project-dir /path/to/project list
+uv run python main.py --project-dir /path/to/project list
 ```
 
 ## Configuration
@@ -273,7 +294,7 @@ python main.py --project-dir /path/to/project list
   "model": "MiniMax-M2.5-highspeed",
   "session_type": "coder",
   "context_files": ["README.md", "CLAUDE.md"],
-  "verify_command": "pytest tests/ -x -q",
+  "verify_command": "uv run pytest tests/ -x -q",
   "allowed_tools": ["Read", "Write", "Edit", "Bash", "Glob", "Grep", "MultiEdit"],
   "mcp_servers": []
 }
@@ -293,6 +314,53 @@ python main.py --project-dir /path/to/project list
 | `verify_command`                 | string   | Command to verify task completion           |
 | `allowed_tools`                  | string[] | SDK tools the agent is allowed to use       |
 | `mcp_servers`                    | object[] | MCP server configurations                   |
+
+### Email Configuration
+
+```json
+{
+  "email": {
+    "enabled": true,
+    "smtp_host": "smtp.gmail.com",
+    "smtp_port": 587,
+    "smtp_user": "your-email@gmail.com",
+    "smtp_password": "your-app-password",
+    "use_tls": true,
+    "from_name": "Agent-Loop",
+    "from_email": "agent-loop@example.com",
+    "to_emails": ["admin@example.com", "team@example.com"],
+    "events": ["task_completed", "task_failed", "human_intervention"],
+    "timeout": 30
+  }
+}
+```
+
+### Webhook Configuration
+
+```json
+{
+  "webhook": {
+    "enabled": true,
+    "url": "https://your-server.com/webhook",
+    "secret": "your-webhook-secret",
+    "timeout": 10,
+    "events": ["task_completed", "task_failed", "human_intervention"],
+    "retry_count": 3,
+    "retry_interval": 2
+  }
+}
+```
+
+### API Key Configuration
+
+```json
+{
+  "api_keys": {
+    "enabled": true,
+    "keys": ["your-api-key-1", "your-api-key-2"]
+  }
+}
+```
 
 ## SDK Usage
 
@@ -358,7 +426,7 @@ Set the variant via `session_type` in config.json.
 
 ```bash
 # Export all templates to .agent/prompt_templates/
-python main.py template scaffold
+uv run python main.py template scaffold
 
 # Edit any template file, e.g.:
 # .agent/prompt_templates/system.md
@@ -374,23 +442,23 @@ python main.py template scaffold
 # {{feature_list_path}}  - Path to feature_list.json
 
 # Reset a template to built-in default
-python main.py template reset system
+uv run python main.py template reset system
 ```
 
 ## Testing
 
 ```bash
 # Run all tests
-pytest tests/ -v
+uv run pytest tests/ -v
 
 # Run specific module
-pytest tests/test_agent_core.py -v
+uv run pytest tests/test_agent_core.py -v
 
 # With coverage
-pytest tests/ --cov=agent --cov-report=term-missing
+uv run pytest tests/ --cov=agent --cov-report=term-missing
 
 # Quick test (fail-fast)
-pytest tests/ -x -q
+uv run pytest tests/ -x -q
 ```
 
 ## Project Structure
@@ -408,12 +476,23 @@ agent-loop/
 │   ├── git_helper.py           # Git operations
 │   ├── test_runner.py          # Test execution
 │   ├── performance_monitor.py  # Performance tracking
-│   └── config_reloader.py      # Config hot reload
+│   ├── config_reloader.py      # Config hot reload
+│   ├── email_notifier.py       # Email notification service
+│   ├── webhook.py              # Webhook notification service
+│   ├── metrics.py              # Metrics collection
+│   └── console.py              # Console UI
 ├── tests/                      # Unit tests
 │   ├── test_agent_core.py
 │   ├── test_state_manager.py
 │   ├── test_task_selector.py
+│   ├── test_email_notifier.py
+│   ├── test_webhook.py
 │   └── ...
+├── dashboards/                  # Grafana dashboard templates
+│   └── agent-loop-dashboard.json
+├── static/                     # Web dashboard static files
+│   └── index.html
+├── api.py                      # REST API server
 ├── main.py                     # CLI entry point
 ├── pyproject.toml              # Project config (uv)
 ├── README.md                   # English documentation
@@ -439,6 +518,264 @@ agent-loop/
 - [Streaming Output](https://platform.claude.com/docs/en/agent-sdk/streaming-output)
 - [Session Management](https://platform.claude.com/docs/en/agent-sdk/sessions)
 - [MCP Protocol](https://modelcontextprotocol.io/introduction)
+
+## Docker Deployment
+
+Agent-Loop can be deployed using Docker and Docker Compose for a complete containerized environment with monitoring.
+
+### Prerequisites
+
+- Docker 20.10+
+- Docker Compose 2.0+
+- At least 2GB RAM available
+
+### Quick Start
+
+```bash
+# 1. Clone the repository
+git clone https://github.com/your-repo/agent-loop.git
+cd agent-loop
+
+# 2. Copy environment template
+cp .env.example .env
+
+# 3. Edit .env with your API credentials
+nano .env
+
+# 4. Build and start all services
+docker-compose up -d
+
+# 5. Check service status
+docker-compose ps
+
+# 6. View logs
+docker-compose logs -f
+```
+
+### Services
+
+The Docker Compose stack includes:
+
+| Service     | Port | Description                          |
+| ----------- | ---- | ------------------------------------ |
+| `agent-loop` | -    | Main Agent CLI (runs agent loop)     |
+| `agent-api`  | 8000 | FastAPI server with web dashboard    |
+| `prometheus` | 9090 | Metrics collection and monitoring    |
+| `grafana`    | 3000 | Visualization dashboard              |
+
+### Configuration
+
+Edit the `.env` file to configure:
+
+```bash
+# Required: API Authentication
+ANTHROPIC_AUTH_TOKEN=your-api-token-here
+ANTHROPIC_BASE_URL=https://api.minimaxi.com/anthropic
+
+# Optional: Logging
+LOG_LEVEL=INFO
+LOG_FILE=/app/logs/agent.log
+
+# Optional: Grafana
+GRAFANA_USER=admin
+GRAFANA_PASSWORD=admin
+```
+
+### Accessing Services
+
+- **API Dashboard**: http://localhost:8000
+- **API Docs**: http://localhost:8000/docs
+- **Prometheus**: http://localhost:9090
+- **Grafana**: http://localhost:3000 (admin/admin)
+
+### Common Commands
+
+```bash
+# Start all services
+docker-compose up -d
+
+# Stop all services
+docker-compose down
+
+# Rebuild images
+docker-compose build --no-cache
+
+# View logs for specific service
+docker-compose logs -f agent-api
+
+# View logs for all services
+docker-compose logs -f
+
+# Restart a specific service
+docker-compose restart agent-api
+
+# Scale agent-loop (run multiple instances)
+docker-compose up -d --scale agent-loop=2
+```
+
+### Data Persistence
+
+The `.agent/` directory is persisted using Docker volumes:
+
+- `agent-data` volume stores task lists, configuration, and session history
+- Logs are stored in `./logs` directory on host
+
+### Health Checks
+
+- **agent-api**: HTTP GET `http://localhost:8000/health`
+- **prometheus**: Scrapes `/metrics` endpoint every 10 seconds
+- **grafana**: Pre-configured with Agent-Loop dashboard
+
+### Customization
+
+#### Custom Grafana Dashboard
+
+1. Log into Grafana (http://localhost:3000)
+2. Import `dashboards/agent-loop-dashboard.json`
+3. Configure data source to Prometheus (`http://prometheus:9090`)
+
+#### Running Only the API Server
+
+```bash
+docker build -t agent-loop .
+docker run -p 8000:8000 --env-file .env agent-loop
+```
+
+### Troubleshooting
+
+```bash
+# Check container health
+docker inspect agent-api | grep -A 20 Health
+
+# View container logs
+docker-compose logs agent-api
+
+# Access container shell
+docker exec -it agent-api /bin/bash
+
+# Check disk usage
+docker system df
+
+# Clean up unused images
+docker image prune -f
+```
+
+### Security Notes
+
+- The container runs as a non-root user (`agent`)
+- Secrets are loaded from `.env` file
+- No credentials are baked into the image
+- Use Docker secrets in production deployments
+
+---
+
+## API Documentation
+
+Agent-Loop provides a RESTful API for programmatic access to agent operations, task management, and monitoring.
+
+### Quick Start
+
+```bash
+# Start the API server
+uv run python api.py
+
+# Access the interactive API documentation
+# Open http://localhost:8000/docs in your browser
+```
+
+### API Endpoints Overview
+
+| Endpoint | Method | Description |
+| -------- | GET | List all tasks |
+| /run | POST | Start agent execution |
+| /tasks | GET/POST | List or create tasks |
+| /tasks/{id} | GET/PATCH/DELETE | Manage individual tasks |
+| /status | GET | Get current agent status |
+| /session/history | GET | Get session history |
+| /metrics | GET | Prometheus metrics endpoint |
+| /health | GET | Health check endpoint |
+
+For complete API documentation with request/response examples, see the [API Reference Guide](docs/api-reference.md).
+
+---
+
+## FAQ
+
+### Frequently Asked Questions
+
+#### Q: How do I get started with Agent-Loop?
+
+A: Follow our [Quick Start](#quick-start) guide:
+1. Clone the repository
+2. Run `uv sync` to install dependencies
+3. Set your API credentials via environment variables
+4. Run `uv run python main.py init` to initialize
+5. Run `uv run python main.py run` to start the agent
+
+#### Q: What API credentials do I need?
+
+A: Agent-Loop requires:
+- `ANTHROPIC_AUTH_TOKEN` - Your API token for authentication
+- `ANTHROPIC_BASE_URL` - API endpoint (defaults to MiniMax API)
+
+#### Q: How do I configure notifications?
+
+A: See the [Notification Setup Guide](docs/notification-setup.md) for detailed instructions on configuring:
+- Email notifications (SMTP)
+- Slack webhooks
+- Custom webhooks
+
+#### Q: Can I run Agent-Loop in Docker?
+
+A: Yes! See the [Docker Deployment](#docker-deployment) section for:
+- Single container deployment
+- Full stack with Docker Compose
+- Integration with Prometheus and Grafana
+
+#### Q: How do I customize the agent prompts?
+
+A: Use the template system:
+```bash
+# Export all templates
+uv run python main.py template scaffold
+
+# Edit templates in .agent/prompt_templates/
+# Reset to default
+uv run python main.py template reset system
+```
+
+See [Prompt Customization](#prompt-customization) for more details.
+
+#### Q: What happens if the agent encounters an error?
+
+A: Agent-Loop has built-in error handling:
+1. Automatic retry with configurable attempts
+2. Session checkpointing for resume capability
+3. Human intervention triggers when error threshold exceeded
+4. Detailed logging for debugging
+
+#### Q: How do I integrate with my existing project?
+
+A: Use the `--project-dir` flag:
+```bash
+uv run python main.py --project-dir /path/to/your/project run
+```
+
+#### Q: Where can I find the API documentation?
+
+A: Start the API server and visit:
+- Swagger UI: http://localhost:8000/docs
+- ReDoc: http://localhost:8000/redoc
+
+---
+
+## Contributing
+
+We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for:
+- Development environment setup
+- Code style guidelines
+- Pull request process
+- Testing requirements
 
 ---
 

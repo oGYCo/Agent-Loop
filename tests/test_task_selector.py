@@ -319,3 +319,238 @@ class TestTaskSelector:
 
         task = task_selector.select_next_task()
         assert task is None
+
+    # Tests for dependency system
+
+    def test_get_dependencies(self, task_selector, state_manager):
+        """Test getting task dependencies"""
+        data = {
+            "features": [
+                {"id": "task-1", "status": "pending", "passes": False, "priority": 1},
+                {"id": "task-2", "status": "pending", "passes": False, "priority": 2, "depends_on": ["task-1"]},
+                {"id": "task-3", "status": "pending", "passes": False, "priority": 3, "depends_on": ["task-1", "task-2"]}
+            ]
+        }
+        state_manager.save_feature_list(data)
+
+        assert task_selector.get_dependencies("task-1") == []
+        assert task_selector.get_dependencies("task-2") == ["task-1"]
+        assert task_selector.get_dependencies("task-3") == ["task-1", "task-2"]
+        assert task_selector.get_dependencies("non-existent") == []
+
+    def test_is_dependency_satisfied_no_dependencies(self, task_selector, state_manager):
+        """Test dependency satisfaction when task has no dependencies"""
+        data = {
+            "features": [
+                {"id": "task-1", "status": "pending", "passes": False, "priority": 1}
+            ]
+        }
+        state_manager.save_feature_list(data)
+
+        assert task_selector.is_dependency_satisfied("task-1") is True
+
+    def test_is_dependency_satisfied_completed(self, task_selector, state_manager):
+        """Test dependency satisfaction when dependency is completed"""
+        data = {
+            "features": [
+                {"id": "task-1", "status": "completed", "passes": True, "priority": 1},
+                {"id": "task-2", "status": "pending", "passes": False, "priority": 2, "depends_on": ["task-1"]}
+            ]
+        }
+        state_manager.save_feature_list(data)
+
+        assert task_selector.is_dependency_satisfied("task-2") is True
+
+    def test_is_dependency_satisfied_not_completed(self, task_selector, state_manager):
+        """Test dependency satisfaction when dependency is not completed"""
+        data = {
+            "features": [
+                {"id": "task-1", "status": "pending", "passes": False, "priority": 1},
+                {"id": "task-2", "status": "pending", "passes": False, "priority": 2, "depends_on": ["task-1"]}
+            ]
+        }
+        state_manager.save_feature_list(data)
+
+        assert task_selector.is_dependency_satisfied("task-2") is False
+
+    def test_is_dependency_satisfied_passes_true(self, task_selector, state_manager):
+        """Test dependency satisfaction when dependency has passes=True"""
+        data = {
+            "features": [
+                {"id": "task-1", "status": "pending", "passes": True, "priority": 1},
+                {"id": "task-2", "status": "pending", "passes": False, "priority": 2, "depends_on": ["task-1"]}
+            ]
+        }
+        state_manager.save_feature_list(data)
+
+        assert task_selector.is_dependency_satisfied("task-2") is True
+
+    def test_is_dependency_satisfied_nonexistent(self, task_selector, state_manager):
+        """Test dependency satisfaction when dependency does not exist"""
+        data = {
+            "features": [
+                {"id": "task-1", "status": "pending", "passes": False, "priority": 1, "depends_on": ["nonexistent"]}
+            ]
+        }
+        state_manager.save_feature_list(data)
+
+        assert task_selector.is_dependency_satisfied("task-1") is False
+
+    def test_select_next_task_with_dependencies(self, task_selector, state_manager):
+        """Test selecting next task respects dependencies"""
+        data = {
+            "features": [
+                {"id": "task-1", "status": "pending", "passes": False, "priority": 2},
+                {"id": "task-2", "status": "pending", "passes": False, "priority": 1, "depends_on": ["task-1"]}
+            ]
+        }
+        state_manager.save_feature_list(data)
+
+        # Should select task-1 first (no dependencies)
+        task = task_selector.select_next_task()
+        assert task is not None
+        assert task["id"] == "task-1"
+
+    def test_select_next_task_all_blocked(self, task_selector, state_manager):
+        """Test selecting next task when all pending tasks are blocked"""
+        data = {
+            "features": [
+                {"id": "task-1", "status": "pending", "passes": False, "priority": 1},
+                {"id": "task-2", "status": "pending", "passes": False, "priority": 2, "depends_on": ["task-1"]}
+            ]
+        }
+        state_manager.save_feature_list(data)
+
+        # task-1 should be selected first
+        task = task_selector.select_next_task()
+        assert task["id"] == "task-1"
+
+        # Complete task-1
+        task_selector.mark_task_completed("task-1")
+
+        # Now task-2 should be selected
+        task = task_selector.select_next_task()
+        assert task["id"] == "task-2"
+
+    def test_get_blocked_tasks(self, task_selector, state_manager):
+        """Test getting blocked tasks"""
+        data = {
+            "features": [
+                {"id": "task-1", "status": "pending", "passes": False, "priority": 1},
+                {"id": "task-2", "status": "pending", "passes": False, "priority": 2, "depends_on": ["task-1"]},
+                {"id": "task-3", "status": "completed", "passes": True, "priority": 3, "depends_on": ["task-1"]}
+            ]
+        }
+        state_manager.save_feature_list(data)
+
+        blocked = task_selector.get_blocked_tasks()
+        assert len(blocked) == 1
+        assert blocked[0]["id"] == "task-2"
+
+    def test_topological_sort_simple(self, task_selector, state_manager):
+        """Test topological sort with simple chain"""
+        data = {
+            "features": [
+                {"id": "task-1", "status": "pending", "passes": False, "priority": 3},
+                {"id": "task-2", "status": "pending", "passes": False, "priority": 2, "depends_on": ["task-1"]},
+                {"id": "task-3", "status": "pending", "passes": False, "priority": 1, "depends_on": ["task-2"]}
+            ]
+        }
+        state_manager.save_feature_list(data)
+
+        order = task_selector.get_resolved_order()
+        ids = [t["id"] for t in order]
+        # task-1 should come before task-2, task-2 before task-3
+        assert ids.index("task-1") < ids.index("task-2")
+        assert ids.index("task-2") < ids.index("task-3")
+
+    def test_topological_sort_parallel(self, task_selector, state_manager):
+        """Test topological sort with parallel tasks"""
+        data = {
+            "features": [
+                {"id": "task-1", "status": "pending", "passes": False, "priority": 1},
+                {"id": "task-2", "status": "pending", "passes": False, "priority": 1},
+                {"id": "task-3", "status": "pending", "passes": False, "priority": 2, "depends_on": ["task-1", "task-2"]}
+            ]
+        }
+        state_manager.save_feature_list(data)
+
+        order = task_selector.get_resolved_order()
+        ids = [t["id"] for t in order]
+        # task-1 and task-2 should come before task-3
+        assert ids.index("task-3") > ids.index("task-1")
+        assert ids.index("task-3") > ids.index("task-2")
+
+    def test_topological_sort_circular_dependency(self, task_selector, state_manager):
+        """Test topological sort detects circular dependency"""
+        data = {
+            "features": [
+                {"id": "task-1", "status": "pending", "passes": False, "priority": 1, "depends_on": ["task-2"]},
+                {"id": "task-2", "status": "pending", "passes": False, "priority": 2, "depends_on": ["task-1"]}
+            ]
+        }
+        state_manager.save_feature_list(data)
+
+        # Should return empty list due to circular dependency
+        order = task_selector.get_resolved_order()
+        assert order == []
+
+    def test_validate_dependencies_valid(self, task_selector, state_manager):
+        """Test validating dependencies with valid graph"""
+        data = {
+            "features": [
+                {"id": "task-1", "status": "pending", "passes": False, "priority": 1},
+                {"id": "task-2", "status": "pending", "passes": False, "priority": 2, "depends_on": ["task-1"]}
+            ]
+        }
+        state_manager.save_feature_list(data)
+
+        is_valid, error = task_selector.validate_dependencies()
+        assert is_valid is True
+        assert error == ""
+
+    def test_validate_dependencies_circular(self, task_selector, state_manager):
+        """Test validating dependencies with circular graph"""
+        data = {
+            "features": [
+                {"id": "task-1", "status": "pending", "passes": False, "priority": 1, "depends_on": ["task-2"]},
+                {"id": "task-2", "status": "pending", "passes": False, "priority": 2, "depends_on": ["task-1"]}
+            ]
+        }
+        state_manager.save_feature_list(data)
+
+        is_valid, error = task_selector.validate_dependencies()
+        assert is_valid is False
+        assert "Circular dependency" in error
+
+    def test_select_next_task_priority_within_same_dependency_level(self, task_selector, state_manager):
+        """Test priority is respected within same dependency level"""
+        data = {
+            "features": [
+                {"id": "task-1", "status": "pending", "passes": False, "priority": 5},
+                {"id": "task-2", "status": "pending", "passes": False, "priority": 1},
+                {"id": "task-3", "status": "pending", "passes": False, "priority": 3, "depends_on": ["task-1", "task-2"]}
+            ]
+        }
+        state_manager.save_feature_list(data)
+
+        # Should select task-2 first (higher priority, no dependencies)
+        task = task_selector.select_next_task()
+        assert task["id"] == "task-2"
+
+    def test_get_task_by_id(self, task_selector, state_manager):
+        """Test getting task by ID"""
+        data = {
+            "features": [
+                {"id": "task-1", "status": "pending", "passes": False, "priority": 1}
+            ]
+        }
+        state_manager.save_feature_list(data)
+
+        task = task_selector.get_task_by_id("task-1")
+        assert task is not None
+        assert task["id"] == "task-1"
+
+        # Non-existent task
+        task = task_selector.get_task_by_id("non-existent")
+        assert task is None

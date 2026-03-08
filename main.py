@@ -5,7 +5,6 @@ task execution, and human intervention capabilities.
 """
 
 import argparse
-import logging
 import os
 import sys
 import signal
@@ -16,47 +15,17 @@ from typing import Any, Dict
 # 添加当前目录到路径
 sys.path.insert(0, str(Path(__file__).parent))
 
-# Configure logging
-def _configure_logging() -> None:
-    """Configure logging for the application."""
-    # Get log level from environment variable (default: INFO)
-    log_level = os.environ.get("LOG_LEVEL", "INFO").upper()
-    log_level_num = getattr(logging, log_level, logging.INFO)
+# Configure structured logging
+from agent.logging_ import configure_logging, get_logger
 
-    # Get log file path from environment variable (optional)
-    log_file = os.environ.get("LOG_FILE", "")
+# Get log level and file from environment variables
+log_level = os.environ.get("LOG_LEVEL", "INFO")
+log_file = os.environ.get("LOG_FILE", "")
 
-    # Create formatter
-    formatter = logging.Formatter(
-        fmt="%(asctime)s | %(levelname)-8s | %(name)s | %(message)s",
-        datefmt="%Y-%m-%d %H:%M:%S"
-    )
-
-    # Configure root logger
-    root_logger = logging.getLogger()
-    root_logger.setLevel(log_level_num)
-
-    # Remove existing handlers
-    for handler in root_logger.handlers[:]:
-        root_logger.removeHandler(handler)
-
-    # Console handler
-    console_handler = logging.StreamHandler(sys.stdout)
-    console_handler.setLevel(log_level_num)
-    console_handler.setFormatter(formatter)
-    root_logger.addHandler(console_handler)
-
-    # File handler (if LOG_FILE is set)
-    if log_file:
-        log_path = Path(log_file)
-        log_path.parent.mkdir(parents=True, exist_ok=True)
-        file_handler = logging.FileHandler(log_file, encoding="utf-8")
-        file_handler.setLevel(log_level_num)
-        file_handler.setFormatter(formatter)
-        root_logger.addHandler(file_handler)
-
-# Initialize logging
-_configure_logging()
+# Configure logging - use JSON format if log file is specified, otherwise console
+json_output = bool(log_file)
+configure_logging(log_level=log_level, log_file=log_file, json_output=json_output)
+logger = get_logger(__name__)
 
 from agent.state_manager import StateManager
 from agent.task_selector import TaskSelector
@@ -65,6 +34,29 @@ from agent.session_manager import SessionManager
 from agent.git_helper import GitHelper
 from agent.config_reloader import ConfigReloader
 from agent.prompt_manager import PromptManager
+from agent.model_provider import (
+    ModelProviderManager,
+    create_provider_manager,
+    ProviderHealthStatus,
+    mask_api_key,
+)
+from agent.console import (
+    agent_output,
+    console,
+    print_header,
+    print_success,
+    print_error,
+    print_warning,
+    print_info,
+    print_task_table,
+    print_status_panel,
+    print_run_summary,
+    create_progress,
+    print_init_info,
+    print_reload_result,
+    print_prompt_list,
+    print_template_list,
+)
 
 # 全局 shutdown 标志
 _shutdown_requested = False
@@ -77,24 +69,23 @@ def _signal_handler(signum: int, frame: Any) -> None:
     """处理 SIGINT/SIGTERM 信号，实现优雅关闭"""
     global _shutdown_requested
     if _shutdown_requested:
-        print("\n🛑 Force exit!")
+        agent_output.render_shutdown_notice(signal.Signals(signum).name, force=True)
         sys.exit(1)
     sig_name = signal.Signals(signum).name
-    print(f"\n⚠️  Received {sig_name}, initiating graceful shutdown...")
-    print("   Finishing current task before exit... (press Ctrl+C again to force quit)")
+    agent_output.render_shutdown_notice(sig_name)
     _shutdown_requested = True
 
 
 def init_project(args: argparse.Namespace) -> None:
     """初始化项目"""
-    print("Initializing Agent-Loop project...")
+    print_info("Initializing Agent-Loop project...")
 
     state_manager = StateManager(args.project_dir if args.project_dir else None)
     git_helper = GitHelper(args.project_dir if args.project_dir else None)
 
     # 初始化git仓库
     if not git_helper.is_git_repo():
-        print("Initializing git repository...")
+        print_info("Initializing git repository...")
         git_helper.init_repo()
 
     # 创建 .agent 目录
@@ -109,12 +100,21 @@ def init_project(args: argparse.Namespace) -> None:
             "project_type": "python",
             "model": "MiniMax-M2.5-highspeed",
             "session_type": "coder",
-            "test_command": "pytest tests/ -v",
+            "test_command": "uv run pytest tests/ -v",
             "test_pattern": "test_*.py",
             "max_errors_before_intervention": 3,
             "context_window_limit": 100000,
+            "active_provider": "default",
+            "providers": {
+                "default": {
+                    "provider": "minimax",
+                    "model": "MiniMax-M2.5-highspeed",
+                    "api_key_env": "ANTHROPIC_AUTH_TOKEN",
+                    "base_url_env": "ANTHROPIC_BASE_URL"
+                }
+            },
             "context_files": ["CLAUDE.md", "README.md"],
-            "verify_command": "pytest tests/ -x -q",
+            "verify_command": "uv run pytest tests/ -x -q",
             "allowed_tools": [
                 "Read", "Write", "Edit", "Bash", "Glob", "Grep",
                 "WebSearch", "WebFetch", "AskUserQuestion",
@@ -161,22 +161,7 @@ def init_project(args: argparse.Namespace) -> None:
     created_templates = prompt_manager.scaffold_templates()
 
     # 显示初始化信息
-    print(f"Project directory: {state_manager.agent_dir}")
-    print("Configuration files created:")
-    print("  - config.json")
-    print("  - feature_list.json")
-    print("  - progress.txt")
-    print("  - session_history.json")
-    print("  - state.json")
-    if created_templates:
-        print(f"  - prompt_templates/ ({len(created_templates)} templates)")
-        for t in created_templates:
-            print(f"      - {t}")
-
-    print("\nProject initialized successfully!")
-    print("\nTo add features, edit .agent/feature_list.json")
-    print("To customize prompts, edit files in .agent/prompt_templates/")
-    print("To run the agent, use: python main.py run")
+    print_init_info(str(state_manager.agent_dir), created_templates)
 
 
 def run_agent(args: argparse.Namespace, max_restarts: int = 3) -> None:
@@ -196,15 +181,13 @@ def run_agent(args: argparse.Namespace, max_restarts: int = 3) -> None:
     for restart_count in range(max_restarts + 1):
         # 检查是否需要优雅关闭
         if _shutdown_requested:
-            print("\n🛑 Shutdown requested, exiting gracefully...")
+            print_warning("Shutdown requested, exiting gracefully...")
             break
 
         if restart_count > 0:
-            print(f"\n{'='*50}")
-            print(f"RESTART {restart_count}/{max_restarts}")
-            print(f"{'='*50}")
+            print_header(f"RESTART {restart_count}/{max_restarts}", style="bold yellow")
 
-        print("Starting agent...")
+        print_info("Starting agent...")
 
         agent = AgentCore(project_root)
         session_manager = SessionManager(agent.state_manager)
@@ -227,22 +210,15 @@ def run_agent(args: argparse.Namespace, max_restarts: int = 3) -> None:
             state_manager.save_state(state)
 
             if restart_count < max_restarts:
-                print(f"\n{'='*50}")
-                print("Code changed, restarting to apply updates...")
-                print(f"{'='*50}\n")
+                print_warning("Code changed, restarting to apply updates...")
                 continue
             else:
-                print("\nMax restarts reached, exiting.")
+                print_error("Max restarts reached, exiting.")
 
         break
 
-    print("\n" + "=" * 50)
-    print("Agent Run Summary")
-    print("=" * 50)
-    print(f"Iterations: {summary['iterations']}")
-    print(f"Tasks completed: {summary['completed']}")
-    print(f"Errors: {summary['errors']}")
-    print("=" * 50)
+    print("\n")
+    print_run_summary(summary['iterations'], summary['completed'], summary['errors'])
 
 
 def list_tasks(args: argparse.Namespace) -> None:
@@ -253,18 +229,114 @@ def list_tasks(args: argparse.Namespace) -> None:
     data = state_manager.load_feature_list()
     features = data.get("features", [])
 
-    print("\nFeature List:")
-    print("-" * 60)
+    # Apply filter if specified
+    filter_type = getattr(args, 'filter', 'all')
+    if filter_type == "pending":
+        features = [f for f in features if not f.get("passes")]
+    elif filter_type == "completed":
+        features = [f for f in features if f.get("passes")]
+
+    # Check if tree view is requested
+    if getattr(args, 'tree', False):
+        print_task_tree(features, task_selector)
+    else:
+        print_task_table(
+            features,
+            task_selector.get_completed_count(),
+            task_selector.get_pending_count()
+        )
+
+
+def print_task_tree(features: list[dict], task_selector: TaskSelector) -> None:
+    """Print tasks in tree format with dependencies"""
+    from .console import print_info
+
+    # Build task map
+    task_map = {f.get("id", ""): f for f in features}
+
+    # Find root tasks (no dependencies or all dependencies are not in the task list)
+    in_degree = {}
+    dependents = {}  # task_id -> list of tasks that depend on it
 
     for f in features:
-        status_icon = "✓" if f.get("passes") else "○"
-        print(f"{status_icon} [{f.get('id')}] {f.get('name')}")
-        print(f"   Priority: {f.get('priority')}, Status: {f.get('status')}")
-        print(f"   {f.get('description')}")
-        print()
+        task_id = f.get("id", "")
+        deps = f.get("depends_on", [])
+        if not isinstance(deps, list):
+            deps = []
+        in_degree[task_id] = len(deps)
+        if task_id not in dependents:
+            dependents[task_id] = []
 
-    print("-" * 60)
-    print(f"Total: {len(features)} | Completed: {task_selector.get_completed_count()} | Pending: {task_selector.get_pending_count()}")
+    # Build dependents map
+    for f in features:
+        task_id = f.get("id", "")
+        deps = f.get("depends_on", [])
+        if not isinstance(deps, list):
+            deps = []
+        for dep_id in deps:
+            if dep_id in dependents:
+                dependents[dep_id].append(task_id)
+
+    # Print tree recursively
+    def print_tree(task_id: str, prefix: str = "", is_last: bool = True):
+        task = task_map.get(task_id)
+        if not task:
+            return
+
+        # Determine status
+        status = task.get("status", "pending")
+        passes = task.get("passes", False)
+
+        if status == "completed" or passes:
+            status_str = "\033[92m✓\033[0m"
+        elif status == "failed":
+            status_str = "\033[91m✗\033[0m"
+        elif status == "in_progress":
+            status_str = "\033[93m⋯\033[0m"
+        else:
+            # Check if blocked
+            if not task_selector.is_dependency_satisfied(task_id):
+                status_str = "\033[90m⊘\033[0m"  # Blocked - gray
+            else:
+                status_str = "○"
+
+        # Get dependencies
+        deps = task.get("depends_on", [])
+        if not isinstance(deps, list):
+            deps = []
+        dep_info = f" (depends on: {', '.join(deps)})" if deps else ""
+
+        print(f"{prefix}└─ {status_str} {task.get('id', '')}: {task.get('name', '')}{dep_info}")
+
+        # Print dependents
+        children = dependents.get(task_id, [])
+        for i, child_id in enumerate(children):
+            child_prefix = prefix + ("    " if is_last else "│   ")
+            print_tree(child_id, child_prefix, i == len(children) - 1)
+
+    # Find root tasks (no incoming edges)
+    roots = [tid for tid, degree in in_degree.items() if degree == 0]
+
+    # Also include tasks with external dependencies
+    all_task_ids = set(task_map.keys())
+    for f in features:
+        deps = f.get("depends_on", [])
+        if not isinstance(deps, list):
+            deps = []
+        for dep_id in deps:
+            if dep_id not in all_task_ids and f.get("id") not in roots:
+                roots.append(f.get("id"))
+
+    # Remove duplicates
+    roots = list(set(roots))
+
+    if not roots:
+        roots = list(task_map.keys())
+
+    # Print each root
+    for i, task_id in enumerate(sorted(roots)):
+        is_last = (i == len(roots) - 1)
+        print_tree(task_id, "", is_last)
 
 
 def add_feature(args: argparse.Namespace) -> None:
@@ -282,8 +354,14 @@ def add_feature(args: argparse.Namespace) -> None:
         "updated_at": datetime.now().strftime("%Y-%m-%d")
     }
 
+    # Add depends_on if provided
+    if args.depends_on:
+        feature["depends_on"] = args.depends_on
+
     state_manager.add_feature(feature)
     print(f"Added feature: {feature['id']} - {feature['name']}")
+    if args.depends_on:
+        print(f"  Depends on: {', '.join(args.depends_on)}")
 
 
 def show_status(args: argparse.Namespace) -> None:
@@ -291,30 +369,36 @@ def show_status(args: argparse.Namespace) -> None:
     state_manager = StateManager(args.project_dir if args.project_dir else None)
     git_helper = GitHelper(args.project_dir if args.project_dir else None)
 
-    print("\nAgent Status")
-    print("=" * 50)
-
     # 配置信息
     config = state_manager.load_config()
-    print(f"Project: {config.get('project_name', 'N/A')}")
-    print(f"Type: {config.get('project_type', 'N/A')}")
-    print(f"Test command: {config.get('test_command', 'N/A')}")
 
     # Git状态
-    print(f"\nGit Branch: {git_helper.get_current_branch()}")
-    print(f"Has changes: {git_helper.has_changes()}")
+    branch = git_helper.get_current_branch()
+    has_changes = git_helper.has_changes()
 
     # 任务统计
     task_selector = TaskSelector(state_manager)
-    print(f"\nTasks: {task_selector.get_completed_count()}/{task_selector.get_total_count()} completed")
-    print(f"Pending: {task_selector.get_pending_count()}")
+    tasks_completed = task_selector.get_completed_count()
+    tasks_total = task_selector.get_total_count()
+    tasks_pending = task_selector.get_pending_count()
 
     # 当前状态
     state = state_manager.load_state()
-    print(f"\nCurrent session: {state.get('current_session', {}).get('id', 'N/A')}")
-    print(f"Error count: {state.get('error_count', 0)}")
+    current_session = state.get('current_session', {}).get('id', 'N/A')
+    error_count = state.get('error_count', 0)
 
-    print("=" * 50)
+    print_status_panel(
+        project_name=config.get('project_name', 'N/A'),
+        project_type=config.get('project_type', 'N/A'),
+        test_command=config.get('test_command', 'N/A'),
+        branch=branch,
+        has_changes=has_changes,
+        tasks_completed=tasks_completed,
+        tasks_total=tasks_total,
+        tasks_pending=tasks_pending,
+        current_session=current_session,
+        error_count=error_count
+    )
 
 
 def reload_config(args: argparse.Namespace) -> None:
@@ -322,31 +406,232 @@ def reload_config(args: argparse.Namespace) -> None:
     state_manager = StateManager(args.project_dir if args.project_dir else None)
     reloader = ConfigReloader(args.project_dir if args.project_dir else None)
 
-    print("\nReloading configuration...")
-    print(f"Config path: {reloader.agent_dir}")
+    print_info(f"Reloading configuration from: {reloader.agent_dir}")
 
     # 执行重载
     force = getattr(args, 'force', False)
     result = reloader.reload(force=force)
 
     # 显示结果
-    print("\nReload Result:")
-    print("-" * 40)
-    if result["success"]:
-        print(f"✓ Success: {result['message']}")
-    else:
-        print(f"✗ Failed: {result['message']}")
+    print_reload_result(
+        success=result["success"],
+        message=result["message"],
+        reloaded=result.get("reloaded", []),
+        errors=result.get("errors", []),
+        timestamp=result.get("timestamp", "N/A")
+    )
 
-    if result.get("reloaded"):
-        print(f"  Reloaded files: {', '.join(result['reloaded'])}")
 
-    if result.get("errors"):
-        print("  Errors:")
-        for error in result["errors"]:
-            print(f"    - {error}")
+def config_get(args: argparse.Namespace) -> None:
+    """Get a configuration value"""
+    from agent.config_model import ConfigLoader
+    from pydantic import ValidationError
 
-    print(f"  Timestamp: {result.get('timestamp', 'N/A')}")
-    print("-" * 40)
+    agent_dir = args.project_dir if args.project_dir else None
+
+    try:
+        loader = ConfigLoader(agent_dir)
+        config = loader.load()
+
+        # Navigate to the key
+        key = args.key
+        keys = key.split(".")
+
+        value = config.model_dump()
+        for k in keys:
+            if isinstance(value, dict) and k in value:
+                value = value[k]
+            else:
+                print_error(f"Key not found: {key}")
+                return
+
+        # Print the value
+        import json
+        if isinstance(value, (dict, list)):
+            print(json.dumps(value, indent=2))
+        else:
+            print(value)
+
+    except ValidationError as e:
+        print_error(f"Configuration validation error: {e}")
+    except Exception as e:
+        print_error(f"Failed to get config: {e}")
+
+
+def config_set(args: argparse.Namespace) -> None:
+    """Set a configuration value"""
+    from agent.config_model import ConfigLoader
+    from agent.logging_ import log_audit
+    from pydantic import ValidationError
+    import json
+
+    agent_dir = args.project_dir if args.project_dir else None
+    key = args.key
+    value_str = args.value
+
+    try:
+        loader = ConfigLoader(agent_dir)
+        config = loader.load()
+
+        # Try to parse value as JSON first
+        try:
+            value = json.loads(value_str)
+        except json.JSONDecodeError:
+            # Use as string
+            value = value_str
+
+        # Convert value to appropriate type based on existing key type
+        keys = key.split(".")
+        config_dict = config.model_dump()
+
+        # Navigate to the parent dict
+        current = config_dict
+        for k in keys[:-1]:
+            if k not in current:
+                current[k] = {}
+            current = current[k]
+
+        # Try to maintain type consistency
+        last_key = keys[-1]
+        if last_key in current:
+            existing_type = type(current[last_key])
+            if existing_type == int and isinstance(value, float):
+                value = int(value)
+            elif existing_type == bool and isinstance(value, str):
+                value = value.lower() in ("true", "1", "yes")
+            elif existing_type == list and not isinstance(value, list):
+                value = [value]
+
+        current[last_key] = value
+
+        # Re-create config to validate
+        from agent.config_model import ProjectConfig
+        config = ProjectConfig(**config_dict)
+
+        # Save
+        loader.save(config)
+
+        print_success(f"Set {key} = {args.value}")
+
+        # Audit log
+        log_audit(
+            action="update",
+            entity_type="config",
+            entity_id=key,
+            details={"value": str(value)[:100]},  # Truncate for log
+        )
+
+    except ValidationError as e:
+        print_error(f"Configuration validation error: {e}")
+    except Exception as e:
+        print_error(f"Failed to set config: {e}")
+
+
+def config_validate(args: argparse.Namespace) -> None:
+    """Validate configuration"""
+    from agent.config_model import ConfigLoader
+    from pydantic import ValidationError
+
+    agent_dir = args.project_dir if args.project_dir else None
+
+    try:
+        loader = ConfigLoader(agent_dir)
+        config = loader.load()
+
+        print_success("Configuration is valid!")
+        print(f"\nSchema version: {config.schema_version}")
+        print(f"Model: {config.model}")
+        print(f"Context window: {config.context_window_limit}")
+
+    except ValidationError as e:
+        print_error("Configuration validation failed:")
+        for error in e.errors():
+            print_error(f"  - {error['loc']}: {error['msg']}")
+    except Exception as e:
+        print_error(f"Configuration error: {e}")
+
+
+def config_export(args: argparse.Namespace) -> None:
+    """Export configuration"""
+    from agent.config_model import export_config
+    import json
+
+    agent_dir = args.project_dir if args.project_dir else None
+
+    try:
+        config_dict = export_config(agent_dir, include_sensitive=args.include_sensitive)
+
+        output = json.dumps(config_dict, indent=2)
+
+        if args.output:
+            with open(args.output, "w") as f:
+                f.write(output)
+            print_success(f"Configuration exported to {args.output}")
+        else:
+            print(output)
+
+    except Exception as e:
+        print_error(f"Failed to export config: {e}")
+
+
+def config_import(args: argparse.Namespace) -> None:
+    """Import configuration"""
+    from agent.config_model import ConfigLoader, import_config, ProjectConfig
+    from agent.logging_ import log_audit
+    import json
+
+    agent_dir = args.project_dir if args.project_dir else None
+
+    try:
+        # Load the file
+        with open(args.file, "r") as f:
+            config_dict = json.load(f)
+
+        # Validate only mode
+        if args.validate_only:
+            config = import_config(config_dict, agent_dir)
+            print_success("Configuration is valid!")
+            return
+
+        # Full import
+        loader = ConfigLoader(agent_dir)
+        config = import_config(config_dict, agent_dir)
+        loader.save(config)
+
+        print_success(f"Configuration imported from {args.file}")
+
+        # Audit log
+        log_audit(
+            action="import",
+            entity_type="config",
+            entity_id="config.json",
+            details={"source_file": args.file},
+        )
+
+    except json.JSONDecodeError as e:
+        print_error(f"Invalid JSON in file: {e}")
+    except Exception as e:
+        print_error(f"Failed to import config: {e}")
+
+
+def start_server(args: argparse.Namespace) -> None:
+    """Start the REST API server"""
+    import uvicorn
+
+    browser_host = "localhost" if args.host in {"0.0.0.0", "::"} else args.host
+
+    print(f"Starting Agent-Loop API server...")
+    print(f"Host: {args.host}")
+    print(f"Port: {args.port}")
+    print(f"Dashboard: http://{browser_host}:{args.port}/")
+    print(f"API docs: http://{browser_host}:{args.port}/docs")
+
+    uvicorn.run(
+        "api:app",
+        host=args.host,
+        port=args.port,
+        reload=False
+    )
 
 
 def list_prompts(args: argparse.Namespace) -> None:
@@ -355,16 +640,7 @@ def list_prompts(args: argparse.Namespace) -> None:
 
     prompts = prompt_manager.list_prompts()
 
-    print("\nAvailable Prompts:")
-    print("-" * 60)
-
-    for p in prompts:
-        active_mark = " [ACTIVE]" if p["is_active"] else ""
-        print(f"[{p['key']}] {p['name']}{active_mark}")
-        print(f"   {p['description']}")
-        print()
-
-    print("-" * 60)
+    print_prompt_list(prompts)
 
 
 def show_prompt(args: argparse.Namespace) -> None:
@@ -437,19 +713,8 @@ def list_templates(args: argparse.Namespace) -> None:
 
     templates = prompt_manager.list_templates()
 
-    print("\nAvailable Templates:")
-    print("-" * 60)
-
-    for t in templates:
-        override_mark = " [OVERRIDE]" if t["has_override"] else ""
-        builtin_mark = " (built-in)" if t["builtin"] else " (custom)"
-        print(f"  {t['name']}{override_mark}{builtin_mark}")
-        if t["path"]:
-            print(f"    Path: {t['path']}")
-
-    print("-" * 60)
-    print("\nTo customize a template, edit: .agent/prompt_templates/<name>.md")
-    print("To scaffold all templates: python main.py template scaffold")
+    console.print("\n[bold magenta]Available Templates:[/bold magenta]")
+    print_template_list(templates)
 
 
 def show_template(args: argparse.Namespace) -> None:
@@ -479,7 +744,7 @@ def scaffold_templates(args: argparse.Namespace) -> None:
         print("\nEdit these files to customize prompts for your project.")
     else:
         print("\nAll template files already exist. No new files created.")
-        print("To reset a template to default, use: python main.py template reset <name>")
+        print("To reset a template to default, use: uv run python main.py template reset <name>")
 
 
 def reset_template(args: argparse.Namespace) -> None:
@@ -490,6 +755,125 @@ def reset_template(args: argparse.Namespace) -> None:
         print(f"Reset template '{args.name}' to built-in default.")
     else:
         print(f"No override found for template '{args.name}'.")
+
+
+# ========== Provider Command Handlers ==========
+
+def list_providers(args: argparse.Namespace) -> None:
+    """List all configured providers and their status"""
+    state_manager = StateManager(args.project_dir if args.project_dir else None)
+    config = state_manager.load_config()
+    provider_manager = create_provider_manager(config)
+
+    providers = provider_manager.list_providers()
+    active = provider_manager.get_active_provider()
+
+    if not providers:
+        print("No providers configured.")
+        return
+
+    print("\n=== Configured Providers ===\n")
+    print(f"{'Name':<20} {'Type':<12} {'Model':<25} {'Health':<12} {'Status':<10}")
+    print("-" * 80)
+
+    for name, provider in providers.items():
+        health = provider_manager.get_health_status(name)
+        status = "active" if active and active.config == provider else "inactive"
+
+        # Get masked API key info
+        keys = provider.get_all_api_keys()
+        key_info = f"{len(keys)} key(s)" if keys else "no key"
+
+        print(f"{name:<20} {provider.provider:<12} {provider.get_model():<25} {health.value:<12} {status:<10}")
+
+    print("\n=== Provider Statistics ===\n")
+    all_stats = provider_manager.get_all_stats()
+    if all_stats:
+        print(f"{'Provider':<20} {'Calls':<10} {'Success':<10} {'Success Rate':<15} {'Avg Response Time':<15}")
+        print("-" * 70)
+        for name, stats in all_stats.items():
+            print(f"{name:<20} {stats.total_calls:<10} {stats.successful_calls:<10} "
+                  f"{stats.success_rate:.2%}            {stats.average_response_time:.3f}s")
+    else:
+        print("No statistics available yet.")
+
+    print("\n=== Fallback Chains ===\n")
+    for name, provider in providers.items():
+        if provider.fallback_provider:
+            print(f"  {name} -> {provider.fallback_provider}")
+        else:
+            print(f"  {name} -> (no fallback)")
+
+    print()
+
+
+def switch_provider_cmd(args: argparse.Namespace) -> None:
+    """Switch to a different provider"""
+    state_manager = StateManager(args.project_dir if args.project_dir else None)
+    config = state_manager.load_config()
+    provider_manager = create_provider_manager(config)
+
+    # Get the provider to switch to
+    provider_name = args.name
+
+    # Check if provider exists
+    providers = provider_manager.list_providers()
+    if provider_name not in providers:
+        print(f"Error: Provider '{provider_name}' not found.")
+        print("\nAvailable providers:")
+        for name in providers:
+            print(f"  - {name}")
+        return
+
+    # Validate and switch
+    warnings = provider_manager.validate_providers()
+    if provider_name in warnings:
+        print(f"Warning: Provider '{provider_name}' has validation issues:")
+        for warning in warnings[provider_name]:
+            print(f"  - {warning}")
+
+    success = provider_manager.switch_provider(provider_name)
+    if success:
+        # Update config to persist the change
+        config["active_provider"] = provider_name
+        state_manager.save_config(config)
+
+        print(f"Switched to provider '{provider_name}'.")
+    else:
+        print(f"Failed to switch to provider '{provider_name}'.")
+
+
+async def check_provider_health(args: argparse.Namespace) -> None:
+    """Check provider health status"""
+    state_manager = StateManager(args.project_dir if args.project_dir else None)
+    config = state_manager.load_config()
+    provider_manager = create_provider_manager(config)
+
+    providers = provider_manager.list_providers()
+
+    if not providers:
+        print("No providers configured.")
+        return
+
+    # Check specific provider or all
+    if args.name:
+        providers_to_check = {args.name: providers[args.name]} if args.name in providers else {}
+        if not providers_to_check:
+            print(f"Error: Provider '{args.name}' not found.")
+            return
+    else:
+        providers_to_check = providers
+
+    print("\n=== Provider Health Check ===\n")
+
+    for name in providers_to_check:
+        print(f"Checking {name}...", end=" ")
+        is_healthy = await provider_manager.provider_health_check(name)
+        health = provider_manager.get_health_status(name)
+        status = "✓ Healthy" if is_healthy else "✗ Unhealthy"
+        print(status)
+
+    print()
 
 
 def main() -> None:
@@ -569,6 +953,11 @@ For more information, see: https://github.com/oGYCo/Agent-Loop
         default="all",
         help="Filter tasks by status (default: all)"
     )
+    list_parser.add_argument(
+        "--tree",
+        action="store_true",
+        help="Show tasks in tree format with dependencies"
+    )
 
     # add command
     add_parser = subparsers.add_parser(
@@ -597,6 +986,12 @@ For more information, see: https://github.com/oGYCo/Agent-Loop
         type=int,
         help="Priority (lower number = higher priority, default: 99)"
     )
+    add_parser.add_argument(
+        "--depends-on",
+        type=str,
+        nargs="*",
+        help="Task IDs this task depends on (space-separated)"
+    )
 
     # status command
     status_parser = subparsers.add_parser(
@@ -621,6 +1016,25 @@ For more information, see: https://github.com/oGYCo/Agent-Loop
         "--force",
         action="store_true",
         help="Force reload even if files haven't changed"
+    )
+
+    # server command
+    server_parser = subparsers.add_parser(
+        "server",
+        help="Start REST API server",
+        description="Start FastAPI REST API server"
+    )
+    server_parser.add_argument(
+        "--host",
+        type=str,
+        default="0.0.0.0",
+        help="Host to bind to (default: 0.0.0.0)"
+    )
+    server_parser.add_argument(
+        "--port",
+        type=int,
+        default=8000,
+        help="Port to bind to (default: 8000)"
     )
 
     # prompt command
@@ -694,6 +1108,41 @@ For more information, see: https://github.com/oGYCo/Agent-Loop
         help="Prompt key to delete"
     )
 
+    # provider command
+    provider_parser = subparsers.add_parser(
+        "provider",
+        help="Manage model providers",
+        description="Manage model providers for failover and load balancing"
+    )
+    provider_subparsers = provider_parser.add_subparsers(dest="provider_action", help="Provider actions")
+
+    # provider list
+    provider_subparsers.add_parser(
+        "list",
+        help="List all configured providers and their status"
+    )
+
+    # provider switch
+    provider_switch_parser = provider_subparsers.add_parser(
+        "switch",
+        help="Switch to a different provider"
+    )
+    provider_switch_parser.add_argument(
+        "name",
+        help="Provider name to switch to"
+    )
+
+    # provider health
+    provider_health_parser = provider_subparsers.add_parser(
+        "health",
+        help="Check provider health status"
+    )
+    provider_health_parser.add_argument(
+        "name",
+        nargs="?",  # Optional - if not provided, check all providers
+        help="Provider name to check (optional, checks all if not provided)"
+    )
+
     # template command
     template_parser = subparsers.add_parser(
         "template",
@@ -734,6 +1183,76 @@ For more information, see: https://github.com/oGYCo/Agent-Loop
         help="Template name to reset"
     )
 
+    # config command
+    config_parser = subparsers.add_parser(
+        "config",
+        help="Manage configuration",
+        description="View, set, validate, export, and import configuration"
+    )
+    config_subparsers = config_parser.add_subparsers(dest="config_action", help="Config actions")
+
+    # config get
+    config_get_parser = config_subparsers.add_parser(
+        "get",
+        help="Get a configuration value"
+    )
+    config_get_parser.add_argument(
+        "key",
+        help="Configuration key (e.g., project_name, model, providers.default.model)"
+    )
+
+    # config set
+    config_set_parser = config_subparsers.add_parser(
+        "set",
+        help="Set a configuration value"
+    )
+    config_set_parser.add_argument(
+        "key",
+        help="Configuration key (e.g., project_name, model)"
+    )
+    config_set_parser.add_argument(
+        "value",
+        help="Configuration value"
+    )
+
+    # config validate
+    config_subparsers.add_parser(
+        "validate",
+        help="Validate configuration"
+    )
+
+    # config export
+    config_export_parser = config_subparsers.add_parser(
+        "export",
+        help="Export configuration"
+    )
+    config_export_parser.add_argument(
+        "--include-sensitive",
+        action="store_true",
+        help="Include sensitive data (API keys, passwords)"
+    )
+    config_export_parser.add_argument(
+        "--output", "-o",
+        type=str,
+        help="Output file (default: stdout)"
+    )
+
+    # config import
+    config_import_parser = config_subparsers.add_parser(
+        "import",
+        help="Import configuration"
+    )
+    config_import_parser.add_argument(
+        "file",
+        type=str,
+        help="Configuration file to import"
+    )
+    config_import_parser.add_argument(
+        "--validate-only",
+        action="store_true",
+        help="Only validate without importing"
+    )
+
     # Backwards compatibility: --init and --run flags
     parser.add_argument("--init", action="store_true", help="Initialize the project (deprecated, use 'init' subcommand)")
     parser.add_argument("--run", action="store_true", help="Run the agent (deprecated, use 'run' subcommand)")
@@ -765,6 +1284,8 @@ For more information, see: https://github.com/oGYCo/Agent-Loop
             show_status(args)
         elif args.command == "reload":
             reload_config(args)
+        elif args.command == "server":
+            start_server(args)
         elif args.command == "prompt":
             if args.prompt_action == "list":
                 list_prompts(args)
@@ -778,6 +1299,29 @@ For more information, see: https://github.com/oGYCo/Agent-Loop
                 delete_prompt(args)
             else:
                 prompt_parser.print_help()
+        elif args.command == "provider":
+            import asyncio
+            if args.provider_action == "list":
+                list_providers(args)
+            elif args.provider_action == "switch":
+                switch_provider_cmd(args)
+            elif args.provider_action == "health":
+                asyncio.run(check_provider_health(args))
+            else:
+                provider_parser.print_help()
+        elif args.command == "config":
+            if args.config_action == "get":
+                config_get(args)
+            elif args.config_action == "set":
+                config_set(args)
+            elif args.config_action == "validate":
+                config_validate(args)
+            elif args.config_action == "export":
+                config_export(args)
+            elif args.config_action == "import":
+                config_import(args)
+            else:
+                config_parser.print_help()
         elif args.command == "template":
             if args.template_action == "list":
                 list_templates(args)

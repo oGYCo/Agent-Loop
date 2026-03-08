@@ -8,12 +8,17 @@ import logging
 import resource
 import threading
 from datetime import datetime
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Generator
 from contextlib import contextmanager
 from functools import wraps
 
 # 配置性能日志记录器
 perf_logger = logging.getLogger("agent_core.performance")
+
+
+# Maximum number of entries to keep in memory
+MAX_TASK_TIMINGS = 100
+MAX_OPERATION_STACK = 200
 
 
 class PerformanceMetrics:
@@ -50,6 +55,8 @@ class PerformanceMetrics:
             stats["total_task_time"] = round(sum(task_durations), 2)
 
         perf_logger.info(f"Session completed: {stats}")
+        # Clear task timings after session to prevent memory leak
+        self.task_timings.clear()
         return stats
 
     def record_task(self, task_id: str, task_name: str, duration: float, status: str, error: str | None = None) -> None:
@@ -65,6 +72,9 @@ class PerformanceMetrics:
             task_info["error"] = error
 
         self.task_timings.append(task_info)
+        # Prevent unbounded growth - keep only recent entries
+        if len(self.task_timings) > MAX_TASK_TIMINGS:
+            self.task_timings = self.task_timings[-MAX_TASK_TIMINGS:]
         perf_logger.info(
             f"Task performance: {task_name} ({task_id}) - {duration:.2f}s - Status: {status}"
         )
@@ -115,6 +125,9 @@ class PerformanceMonitor:
             }
 
             self._operation_stack.append(operation_info)
+            # Prevent unbounded growth - keep only recent entries
+            if len(self._operation_stack) > MAX_OPERATION_STACK:
+                self._operation_stack = self._operation_stack[-MAX_OPERATION_STACK:]
 
             perf_logger.info(
                 f"Performance: {operation_name} - Duration: {duration:.4f}s, "
@@ -204,7 +217,7 @@ def reset_monitor() -> None:
 
 
 @contextmanager
-def monitor_scope() -> "PerformanceMonitor":
+def monitor_scope() -> Generator["PerformanceMonitor", None, None]:
     """上下文管理器：创建作用域内的性能监控器实例
 
     推荐使用此方法代替全局 get_monitor() 以避免多线程/异步环境中的竞态条件。

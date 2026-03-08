@@ -1,11 +1,14 @@
 """Config Reloader - 配置热重载模块
 
 支持手动触发和文件监控两种方式重新加载配置文件。
+支持验证重载后的配置有效性。
 """
 
 import asyncio
+import logging
 import os
 import time
+import threading
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Callable, Dict, List, cast
@@ -14,6 +17,9 @@ from watchdog.events import FileSystemEventHandler, FileModifiedEvent
 from watchdog.observers import Observer
 
 from agent.state_manager import StateManager
+from agent.config_model import ConfigLoader
+
+logger = logging.getLogger("config_reloader")
 
 
 class ConfigReloader:
@@ -115,8 +121,12 @@ class ConfigReloader:
             "success": True,
             "reloaded": [],
             "errors": [],
+            "warnings": [],
             "timestamp": datetime.now().isoformat(),
         }
+
+        # 保留旧配置用于回滚
+        old_config_cache = self._config_cache
 
         try:
             # 检查是否有变化（除非强制重载）
@@ -131,8 +141,21 @@ class ConfigReloader:
                 config_path = self.agent_dir / "config.json"
                 if config_path.exists():
                     self._config_mtime = config_path.stat().st_mtime
-                    self._config_cache = self.state_manager.load_config()
-                    cast(List[str], result["reloaded"]).append("config.json")
+                    raw_config = self.state_manager.load_config()
+
+                    # 验证配置有效性
+                    try:
+                        loader = ConfigLoader(str(self.agent_dir))
+                        config_loader = loader._load_from_file()
+                        validated_config = ConfigLoader(str(self.agent_dir)).load()
+                        self._config_cache = validated_config.model_dump(mode="json")
+                        cast(List[str], result["reloaded"]).append("config.json")
+                    except Exception as validation_error:
+                        # 验证失败，保持旧配置并发出警告
+                        logger.warning(f"Reloaded config is invalid, keeping old config: {validation_error}")
+                        cast(List[str], result["warnings"]).append(f"config.json: Invalid config, keeping old - {str(validation_error)}")
+                        # 恢复旧配置
+                        self._config_cache = old_config_cache
             except Exception as e:
                 cast(List[str], result["errors"]).append(f"config.json: {str(e)}")
 
@@ -161,6 +184,9 @@ class ConfigReloader:
 
             reloaded_items = cast(List[str], result["reloaded"])
             result["message"] = f"Reloaded: {', '.join(reloaded_items) if reloaded_items else 'nothing'}"
+
+            if result["warnings"]:
+                result["message"] += f" (with {len(result['warnings'])} warning(s))"
 
         except Exception as e:
             result["success"] = False
@@ -223,12 +249,23 @@ class _ConfigFileEventHandler(FileSystemEventHandler):
     监听 config.json 和 feature_list.json 的变化并触发重载。
     """
 
-    def __init__(self, reloader: ConfigReloader) -> None:
+    def __init__(self, reloader: ConfigReloader, debounce_seconds: float = 0.5) -> None:
         super().__init__()
         self.reloader = reloader
+        self._debounce_seconds = debounce_seconds
+        self._last_event_time: float = 0.0
+        self._debounce_timer: threading.Timer | None = None
+        self._lock = threading.Lock()
+
+    def _do_reload(self) -> None:
+        """Execute the actual reload (called after debounce delay)."""
+        try:
+            self.reloader.reload()
+        except Exception as e:
+            logger.warning(f"Config reload failed: {type(e).__name__}: {e}")
 
     def on_modified(self, event: Any) -> None:
-        """文件修改事件处理。
+        """文件修改事件处理（带防抖）。
 
         Args:
             event: 文件系统事件。
@@ -238,7 +275,13 @@ class _ConfigFileEventHandler(FileSystemEventHandler):
 
         filename = os.path.basename(event.src_path)
         if filename in ("config.json", "feature_list.json"):
-            self.reloader.reload()
+            with self._lock:
+                # 取消之前的定时器，重新计时
+                if self._debounce_timer is not None:
+                    self._debounce_timer.cancel()
+                self._debounce_timer = threading.Timer(self._debounce_seconds, self._do_reload)
+                self._debounce_timer.daemon = True
+                self._debounce_timer.start()
 
 
 class ConfigWatcher:
@@ -258,30 +301,25 @@ class ConfigWatcher:
         self.reloader = reloader
         self.interval = interval
         self._running = False
-        self._observer: Observer | None = None
+        self._observer: "Observer | None" = None  # type: ignore[valid-type]
         self._async_watcher_task: asyncio.Task[None] | None = None
 
     def start(self) -> None:
-        """启动监控（阻塞方法，使用 watchdog Observer）。
+        """启动监控（后台线程方式，非阻塞）。
 
-        使用 watchdog 的 Observer 线程进行非阻塞监控，
-        但 start() 方法本身会阻塞直到 stop() 被调用。
+        使用 watchdog 的 Observer 守护线程进行文件监控。
+        当主线程退出时自动停止。
         """
         self._running = True
         event_handler = _ConfigFileEventHandler(self.reloader)
         self._observer = Observer()
+        self._observer.daemon = True
         self._observer.schedule(
             event_handler,
             str(self.reloader.agent_dir),
             recursive=False
         )
         self._observer.start()
-
-        try:
-            while self._running:
-                time.sleep(0.1)
-        finally:
-            self.stop()
 
     def start_async(self) -> None:
         """启动异步监控（非阻塞方法）。
@@ -307,7 +345,12 @@ class ConfigWatcher:
             while self._running:
                 await asyncio.sleep(0.1)
         finally:
-            self.stop()
+            # 只清理 observer，不取消自身 task（避免自取消反模式）
+            self._running = False
+            if self._observer is not None:
+                self._observer.stop()
+                self._observer.join()
+                self._observer = None
 
     def stop(self) -> None:
         """停止监控。"""

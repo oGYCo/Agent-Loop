@@ -10,6 +10,8 @@
 
 <p align="center">
   <a href="https://www.python.org/"><img src="https://img.shields.io/badge/python-3.11+-blue.svg" alt="Python 3.11+" /></a>
+  <a href="https://github.com/oGYCo/agent-loop/actions/workflows/test.yml"><img src="https://github.com/oGYCo/agent-loop/actions/workflows/test.yml/badge.svg" alt="Tests" /></a>
+  <a href="https://codecov.io/gh/oGYCo/agent-loop"><img src="https://codecov.io/gh/oGYCo/agent-loop/branch/main/graph/badge.svg" alt="Coverage" /></a>
   <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-green.svg" alt="License: MIT" /></a>
   <a href="https://github.com/oGYCo/agent-loop/stargazers"><img src="https://img.shields.io/github/stars/oGYCo/agent-loop" alt="Stars" /></a>
   <a href="https://github.com/oGYCo/agent-loop/releases"><img src="https://img.shields.io/github/v/release/oGYCo/agent-loop?display_name=tag" alt="Version" /></a>
@@ -17,8 +19,13 @@
 
 <p align="center">
   <a href="#快速开始"><strong>快速开始</strong></a> ·
+  <a href="#核心特性"><strong>核心特性</strong></a> ·
   <a href="#cli-命令参考"><strong>CLI 参考</strong></a> ·
-  <a href="#配置"><strong>配置</strong></a>
+  <a href="#docker-部署"><strong>Docker</strong></a> ·
+  <a href="#配置"><strong>配置</strong></a> ·
+  <a href="#api-文档"><strong>API 文档</strong></a> ·
+  <a href="#常见问题"><strong>FAQ</strong></a> ·
+  <a href="CONTRIBUTING.md"><strong>贡献指南</strong></a>
 </p>
 
 ---
@@ -37,19 +44,25 @@ Agent-Loop 是一个自主 AI Agent 系统，通过实时流式输出、会话�
 
 ## 核心特性
 
-| 特性             | 描述                                                  |
-| ---------------- | ----------------------------------------------------- |
-| **实时流式输出** | AI 决策过程和工具调用的实时显示                       |
-| **会话管理**     | 支持会话恢复、分支和检查点                            |
-| **Hook 机制**    | PreToolUse、PostToolUse、Notification、Stop 钩子      |
-| **人工干预**     | 错误阈值超出时自动暂停                                |
-| **Git 集成**     | Agent 自主执行 git commit 和 push，每个任务后保存进度 |
-| **任务重试**     | 可配置的任务失败重试机制                              |
-| **性能监控**     | 跟踪任务执行时间、会话时长和资源使用                  |
-| **配置热重载**   | 支持手动或文件监控方式重新加载配置                    |
-| **优雅关闭**     | 安全处理 SIGINT/SIGTERM 信号                          |
-| **自动审查**     | 任务完成后自动进行任务计划审查                        |
-| **可定制提示词** | 基于模板的提示词系统，支持 `{{variable}}` 变量替换    |
+| 特性                   | 描述                                                  |
+| ---------------------- | ----------------------------------------------------- |
+| **实时流式输出**       | AI 决策过程和工具调用的实时显示                       |
+| **会话管理**           | 支持会话恢复、分支和检查点                            |
+| **Hook 机制**          | PreToolUse、PostToolUse、Notification、Stop 钩子        |
+| **人工干预**           | 错误阈值超出时自动暂停                                |
+| **Git 集成**           | Agent 自主执行 git commit 和 push，每个任务后保存进度 |
+| **任务重试**           | 可配置的任务失败重试机制                              |
+| **性能监控**           | 跟踪任务执行时间、会话时长和资源使用                  |
+| **配置热重载**         | 支持手动或文件监控方式重新加载配置                    |
+| **优雅关闭**           | 安全处理 SIGINT/SIGTERM 信号                          |
+| **自动审查**           | 任务完成后自动进行任务计划审查                        |
+| **可定制提示词**       | 基于模板的提示词系统，支持 `{{variable}}` 变量替换    |
+| **邮件通知**           | 任务完成、失败或干预时发送邮件提醒                    |
+| **Webhook 通知**       | 向外部服务发送 HTTP POST 通知                         |
+| **任务看板 UI**        | 可视化 Kanban 风格任务看板，支持拖拽                   |
+| **API 密钥认证**       | 安全 API 访问，支持可配置 API 密钥                    |
+| **Grafana 监控面板**   | 预置 Grafana 监控面板模板                             |
+| **增强的错误处理**     | 改进的错误恢复和优雅降级                              |
 
 ## 快速开始
 
@@ -77,42 +90,42 @@ export ANTHROPIC_BASE_URL="https://api.minimaxi.com/anthropic"
 
 ```bash
 # 初始化项目（创建 .agent/ 目录）
-python main.py init
+uv run python main.py init
 
 # 运行 Agent（默认 10 次迭代）
-python main.py run
+uv run python main.py run
 
 # 指定迭代次数
-python main.py run --iterations 3
+uv run python main.py run --iterations 3
 ```
 
 ## CLI 命令参考
 
 ```bash
 # 核心命令
-python main.py init                          # 初始化项目结构
-python main.py run                           # 启动 Agent 循环（默认 10 次迭代）
-python main.py run --iterations N           # 运行 N 次迭代
-python main.py list                         # 列出所有任务
-python main.py status                       # 显示项目状态
-python main.py add "任务名称" -d "描述" -p 1 # 添加新任务
+uv run python main.py init                          # 初始化项目结构
+uv run python main.py run                           # 启动 Agent 循环（默认 10 次迭代）
+uv run python main.py run --iterations N           # 运行 N 次迭代
+uv run python main.py list                         # 列出所有任务
+uv run python main.py status                       # 显示项目状态
+uv run python main.py add "任务名称" -d "描述" -p 1 # 添加新任务
 
 # 提示词管理
-python main.py prompt list                  # 列出所有提示词预设
-python main.py prompt show <key>            # 显示提示词详情
-python main.py prompt set <key>             # 设置活跃提示词
-python main.py prompt add <key> -n "名称"   # 添加新的提示词预设
-python main.py prompt delete <key>          # 删除提示词预设
+uv run python main.py prompt list                  # 列出所有提示词预设
+uv run python main.py prompt show <key>            # 显示提示词详情
+uv run python main.py prompt set <key>             # 设置活跃提示词
+uv run python main.py prompt add <key> -n "名称"   # 添加新的提示词预设
+uv run python main.py prompt delete <key>          # 删除提示词预设
 
 # 模板管理
-python main.py template list                # 列出所有模板
-python main.py template show <name>         # 显示模板内容
-python main.py template scaffold            # 导出所有模板到 .agent/prompt_templates/
-python main.py template reset <name>        # 重置模板为内置默认值
+uv run python main.py template list                # 列出所有模板
+uv run python main.py template show <name>         # 显示模板内容
+uv run python main.py template scaffold            # 导出所有模板到 .agent/prompt_templates/
+uv run python main.py template reset <name>        # 重置模板为内置默认值
 
 # 选项
-python main.py --project-dir /path          # 指定项目目录
-python main.py --help                       # 显示帮助信息
+uv run python main.py --project-dir /path          # 指定项目目录
+uv run python main.py --help                       # 显示帮助信息
 ```
 
 ### 命令详情
@@ -131,10 +144,10 @@ python main.py --help                       # 显示帮助信息
 
 ```bash
 # 添加带所有选项的任务
-python main.py add "添加用户认证" -d "实现登录/登出" -p 1 --id "feat-101"
+uv run python main.py add "添加用户认证" -d "实现登录/登出" -p 1 --id "feat-101"
 
 # 仅添加名称的任务（优先级默认为 3）
-python main.py add "新功能"
+uv run python main.py add "新功能"
 ```
 
 ## 架构设计
@@ -194,16 +207,16 @@ python main.py add "新功能"
 
 ```bash
 # 1. 初始化项目
-python main.py init
+uv run python main.py init
 
 # 2. 查看现有任务
-python main.py list
+uv run python main.py list
 
 # 3. 运行 Agent
-python main.py run --iterations 5
+uv run python main.py run --iterations 5
 
 # 4. 查看状态
-python main.py status
+uv run python main.py status
 ```
 
 ### 任务管理
@@ -238,13 +251,13 @@ python main.py status
 
 ```bash
 # 在其他项目上运行 Agent
-python main.py --project-dir /path/to/project run --iterations 3
+uv run python main.py --project-dir /path/to/project run --iterations 3
 
 # 查看特定项目状态
-python main.py --project-dir /path/to/project status
+uv run python main.py --project-dir /path/to/project status
 
 # 列出其他项目的任务
-python main.py --project-dir /path/to/project list
+uv run python main.py --project-dir /path/to/project list
 ```
 
 ## 配置
@@ -274,7 +287,7 @@ python main.py --project-dir /path/to/project list
   "model": "MiniMax-M2.5-highspeed",
   "session_type": "coder",
   "context_files": ["README.md", "CLAUDE.md"],
-  "verify_command": "pytest tests/ -x -q",
+  "verify_command": "uv run pytest tests/ -x -q",
   "allowed_tools": ["Read", "Write", "Edit", "Bash", "Glob", "Grep", "MultiEdit"],
   "mcp_servers": []
 }
@@ -294,6 +307,53 @@ python main.py --project-dir /path/to/project list
 | `verify_command`                 | 字符串     | 任务完成后的验证命令       |
 | `allowed_tools`                  | 字符串数组 | Agent 允许使用的 SDK 工具  |
 | `mcp_servers`                    | 对象数组   | MCP 服务器配置             |
+
+### 邮件配置
+
+```json
+{
+  "email": {
+    "enabled": true,
+    "smtp_host": "smtp.gmail.com",
+    "smtp_port": 587,
+    "smtp_user": "your-email@gmail.com",
+    "smtp_password": "your-app-password",
+    "use_tls": true,
+    "from_name": "Agent-Loop",
+    "from_email": "agent-loop@example.com",
+    "to_emails": ["admin@example.com", "team@example.com"],
+    "events": ["task_completed", "task_failed", "human_intervention"],
+    "timeout": 30
+  }
+}
+```
+
+### Webhook 配置
+
+```json
+{
+  "webhook": {
+    "enabled": true,
+    "url": "https://your-server.com/webhook",
+    "secret": "your-webhook-secret",
+    "timeout": 10,
+    "events": ["task_completed", "task_failed", "human_intervention"],
+    "retry_count": 3,
+    "retry_interval": 2
+  }
+}
+```
+
+### API 密钥配置
+
+```json
+{
+  "api_keys": {
+    "enabled": true,
+    "keys": ["your-api-key-1", "your-api-key-2"]
+  }
+}
+```
 
 ## SDK 使用示例
 
@@ -359,7 +419,7 @@ Agent-Loop 使用基于模板的提示词系统。所有提示词支持 `{{varia
 
 ```bash
 # 导出所有模板到 .agent/prompt_templates/
-python main.py template scaffold
+uv run python main.py template scaffold
 
 # 编辑任意模板文件，例如：
 # .agent/prompt_templates/system.md
@@ -375,23 +435,23 @@ python main.py template scaffold
 # {{feature_list_path}}  - feature_list.json 的路径
 
 # 重置模板为内置默认值
-python main.py template reset system
+uv run python main.py template reset system
 ```
 
 ## 测试
 
 ```bash
 # 运行所有测试
-pytest tests/ -v
+uv run pytest tests/ -v
 
 # 运行特定模块
-pytest tests/test_agent_core.py -v
+uv run pytest tests/test_agent_core.py -v
 
 # 带覆盖率
-pytest tests/ --cov=agent --cov-report=term-missing
+uv run pytest tests/ --cov=agent --cov-report=term-missing
 
 # 快速测试（快速失败）
-pytest tests/ -x -q
+uv run pytest tests/ -x -q
 ```
 
 ## 项目结构
@@ -409,12 +469,23 @@ agent-loop/
 │   ├── git_helper.py           # Git 操作
 │   ├── test_runner.py          # 测试执行
 │   ├── performance_monitor.py  # 性能跟踪
-│   └── config_reloader.py      # 配置热重载
+│   ├── config_reloader.py      # 配置热重载
+│   ├── email_notifier.py       # 邮件通知服务
+│   ├── webhook.py              # Webhook 通知服务
+│   ├── metrics.py              # 指标收集
+│   └── console.py              # 控制台 UI
 ├── tests/                      # 单元测试
 │   ├── test_agent_core.py
 │   ├── test_state_manager.py
 │   ├── test_task_selector.py
+│   ├── test_email_notifier.py
+│   ├── test_webhook.py
 │   └── ...
+├── dashboards/                  # Grafana 监控面板模板
+│   └── agent-loop-dashboard.json
+├── static/                     # Web 看板静态文件
+│   └── index.html
+├── api.py                      # REST API 服务
 ├── main.py                     # CLI 入口点
 ├── pyproject.toml              # 项目配置 (uv)
 ├── README.md                   # 英文文档
@@ -440,6 +511,117 @@ agent-loop/
 - [流式输出](https://platform.claude.com/docs/en/agent-sdk/streaming-output)
 - [会话管理](https://platform.claude.com/docs/en/agent-sdk/sessions)
 - [MCP 协议](https://modelcontextprotocol.io/introduction)
+
+---
+
+## API 文档
+
+Agent-Loop 提供 RESTful API 用于程序化访问 Agent 操作、任务管理和监控。
+
+### 快速启动
+
+```bash
+# 启动 API 服务器
+uv run python api.py
+
+# 访问交互式 API 文档
+# 在浏览器中打开 http://localhost:8000/docs
+```
+
+### API 端点概览
+
+| 端点 | 方法 | 描述 |
+| -------- | ------ | ----------- |
+| /tasks | GET | 列出所有任务 |
+| /run | POST | 启动 Agent 执行 |
+| /tasks | GET/POST | 列出或创建任务 |
+| /tasks/{id} | GET/PATCH/DELETE | 管理单个任务 |
+| /status | GET | 获取当前 Agent 状态 |
+| /session/history | GET | 获取会话历史 |
+| /metrics | GET | Prometheus 指标端点 |
+| /health | GET | 健康检查端点 |
+
+完整的 API 文档和请求/响应示例，请参阅 [API 参考指南](docs/api-reference.md)。
+
+---
+
+## 常见问题
+
+### 常见问题解答
+
+#### Q: 如何开始使用 Agent-Loop？
+
+A: 按照我们的 [快速开始](#快速开始) 指南：
+1. 克隆仓库
+2. 运行 `uv sync` 安装依赖
+3. 通过环境变量设置 API 凭证
+4. 运行 `uv run python main.py init` 初始化
+5. 运行 `uv run python main.py run` 启动 Agent
+
+#### Q: 我需要哪些 API 凭证？
+
+A: Agent-Loop 需要：
+- `ANTHROPIC_AUTH_TOKEN` - 用于认证的 API 令牌
+- `ANTHROPIC_BASE_URL` - API 端点（默认为 MiniMax API）
+
+#### Q: 如何配置通知？
+
+A: 请参阅 [通知设置指南](docs/notification-setup.md) 了解配置详情：
+- 邮件通知 (SMTP)
+- Slack Webhook
+- 自定义 Webhook
+
+#### Q: 可以在 Docker 中运行 Agent-Loop 吗？
+
+A: 可以！请参阅 [Docker 部署](#docker-部署) 部分：
+- 单容器部署
+- Docker Compose 完整栈
+- Prometheus 和 Grafana 集成
+
+#### Q: 如何自定义 Agent 提示词？
+
+A: 使用模板系统：
+```bash
+# 导出所有模板
+uv run python main.py template scaffold
+
+# 在 .agent/prompt_templates/ 中编辑模板
+# 重置为默认
+uv run python main.py template reset system
+```
+
+更多详情请参阅 [提示词定制](#提示词定制)。
+
+#### Q: 如果 Agent 遇到错误会发生什么？
+
+A: Agent-Loop 内置错误处理：
+1. 可配置重试次数的自动重试
+2. 用于恢复的会话检查点
+3. 错误阈值超过时触发人工干预
+4. 详细日志用于调试
+
+#### Q: 如何与现有项目集成？
+
+A: 使用 `--project-dir` 标志：
+```bash
+uv run python main.py --project-dir /path/to/your/project run
+```
+
+#### Q: 在哪里可以找到 API 文档？
+
+A: 启动 API 服务器并访问：
+- Swagger UI: http://localhost:8000/docs
+- ReDoc: http://localhost:8000/redoc
+
+---
+
+## 贡献
+
+我们欢迎贡献！请参阅我们的 [贡献指南](CONTRIBUTING.md) 了解：
+- 开发环境设置
+- 代码风格指南
+- Pull Request 流程
+- 测试要求
 
 ---
 

@@ -5,10 +5,86 @@
 
 import asyncio
 import json
+import logging
 from datetime import datetime
 from typing import Dict, Any, Callable
 
+from .console import agent_output
 from .state_manager import StateManager
+
+logger = logging.getLogger(__name__)
+
+
+def _get_webhook_notifier():
+    """Lazy import to avoid circular dependency"""
+    try:
+        from .webhook import get_webhook_notifier
+        return get_webhook_notifier()
+    except ImportError:
+        return None
+
+
+def _get_slack_notifier():
+    """Lazy import to avoid circular dependency"""
+    try:
+        from .slack_notifier import get_slack_notifier
+        return get_slack_notifier()
+    except ImportError:
+        return None
+
+
+async def _send_human_intervention_webhook_async(reason: str, task_id: str | None = None, context: Dict[str, Any] | None = None) -> None:
+    """Send webhook notification for human intervention (async)"""
+    try:
+        notifier = _get_webhook_notifier()
+        if notifier:
+            await notifier.notify_human_intervention(
+                reason=reason,
+                task_id=task_id,
+                context=context
+            )
+    except Exception as e:
+        logger.warning(f"Failed to send human intervention webhook: {e}")
+
+
+async def _send_human_intervention_slack_async(reason: str, task_id: str | None = None, context: Dict[str, Any] | None = None) -> None:
+    """Send Slack notification for human intervention (async)"""
+    try:
+        notifier = _get_slack_notifier()
+        if notifier:
+            await notifier.notify_human_intervention(
+                reason=reason,
+                task_id=task_id,
+                context=context
+            )
+    except Exception as e:
+        logger.warning(f"Failed to send human intervention Slack notification: {e}")
+
+
+def _send_human_intervention_webhook(reason: str, task_id: str | None = None, context: Dict[str, Any] | None = None) -> None:
+    """Send webhook notification for human intervention (sync wrapper)"""
+    try:
+        try:
+            loop = asyncio.get_running_loop()
+            task = loop.create_task(_send_human_intervention_webhook_async(reason, task_id, context))
+            task.add_done_callback(lambda t: t.exception() if not t.cancelled() and t.done() else None)
+        except RuntimeError:
+            asyncio.run(_send_human_intervention_webhook_async(reason, task_id, context))
+    except Exception as e:
+        logger.warning(f"Failed to send human intervention webhook: {e}")
+
+
+def _send_human_intervention_slack(reason: str, task_id: str | None = None, context: Dict[str, Any] | None = None) -> None:
+    """Send Slack notification for human intervention (sync wrapper)"""
+    try:
+        try:
+            loop = asyncio.get_running_loop()
+            task = loop.create_task(_send_human_intervention_slack_async(reason, task_id, context))
+            task.add_done_callback(lambda t: t.exception() if not t.cancelled() and t.done() else None)
+        except RuntimeError:
+            asyncio.run(_send_human_intervention_slack_async(reason, task_id, context))
+    except Exception as e:
+        logger.warning(f"Failed to send human intervention Slack notification: {e}")
 
 
 class HumanIntervention:
@@ -71,6 +147,19 @@ class HumanIntervention:
         # 保存干预请求
         self._save_intervention_request(request)
 
+        # 发送Webhook通知 - 需要人工干预
+        _send_human_intervention_webhook(
+            reason=reason,
+            task_id=task_id,
+            context=context
+        )
+        # 发送Slack通知 - 需要人工干预
+        _send_human_intervention_slack(
+            reason=reason,
+            task_id=task_id,
+            context=context
+        )
+
         return request
 
     def _save_intervention_request(self, request: Dict[str, Any]) -> None:
@@ -127,14 +216,7 @@ class HumanIntervention:
         Returns:
             人类是否批准继续
         """
-        print("\n" + "=" * 60)
-        print("Human Intervention Required")
-        print("=" * 60)
-        print(f"Reason: {request.get('reason')}")
-        print(f"Timestamp: {request.get('timestamp')}")
-        if request.get("context"):
-            print(f"Context: {json.dumps(request['context'], indent=2)}")
-        print("=" * 60)
+        agent_output.render_human_intervention(request)
 
         # 写入待处理文件
         pending_file = self.state_manager.agent_dir / "PENDING_INTERVENTION.txt"
@@ -163,7 +245,7 @@ class HumanIntervention:
             return False
         else:
             # 终止
-            print("Agent stopped. Please resolve the issue and restart.")
+            agent_output.render_shutdown_notice("human intervention", force=True)
             exit(1)
 
     async def _async_input(self, prompt: str) -> str:

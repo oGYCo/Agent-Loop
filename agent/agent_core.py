@@ -10,7 +10,24 @@ import sys
 import logging
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, Any, List, cast, Callable
+from typing import Dict, Any, List, cast, Callable, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .webhook import WebhookNotifier
+    from .slack_notifier import SlackNotifier
+
+from .constants import EventTypes
+from .console import agent_output
+from .metrics import get_metrics_collector
+from .model_provider import ModelProviderManager, create_provider_manager
+from .exceptions import (
+    AgentLoopError,
+    WebhookError,
+    SlackError,
+    TaskExecutionError,
+    TaskTimeoutError,
+    ProviderError,
+)
 
 from claude_agent_sdk import (
     query,
@@ -37,6 +54,168 @@ from claude_agent_sdk.types import (
 )
 
 
+# ========== Service Factory ==========
+
+class ServiceFactory:
+    """Service factory for lazy-loading services
+
+    Provides a unified interface for getting service instances,
+    avoiding circular imports and managing service lifecycle.
+    """
+
+    _instances: dict[str, Any] = {}
+
+    @staticmethod
+    def get(service_name: str) -> Any:
+        """Get a service instance by name
+
+        Args:
+            service_name: Name of the service ('webhook', 'slack', 'event_pusher')
+
+        Returns:
+            Service instance or None if not available
+        """
+        if service_name in ServiceFactory._instances:
+            return ServiceFactory._instances[service_name]
+
+        instance = ServiceFactory._create_service(service_name)
+        if instance is not None:
+            ServiceFactory._instances[service_name] = instance
+        return instance
+
+    @staticmethod
+    def _create_service(service_name: str) -> Any:
+        """Create a service instance by name"""
+        try:
+            if service_name == "webhook":
+                from .webhook import get_webhook_notifier
+                return get_webhook_notifier()
+            elif service_name == "slack":
+                from .slack_notifier import get_slack_notifier
+                return get_slack_notifier()
+            elif service_name == "event_pusher":
+                from api import EventPusher
+                return EventPusher.get_instance()
+        except ImportError:
+            return None
+        return None
+
+    @staticmethod
+    def reset() -> None:
+        """Reset all cached service instances (for testing)"""
+        ServiceFactory._instances.clear()
+
+
+# ========== Webhook Notifier (Lazy Import) ==========
+
+def _get_webhook_notifier() -> "WebhookNotifier | None":
+    """Get webhook notifier using ServiceFactory"""
+    return ServiceFactory.get("webhook")
+
+
+async def _send_webhook_notification_async(event_type: str, data: Dict[str, Any]) -> bool:
+    """Send webhook notification (async)"""
+    try:
+        notifier = _get_webhook_notifier()
+        if notifier:
+            return await notifier.send_notification(event_type, data)
+    except WebhookError as e:
+        logger.warning(f"Webhook notification failed: {e}")
+    except Exception as e:
+        logger.warning(f"Failed to send webhook notification: {type(e).__name__}: {e}")
+    return False
+
+
+def _send_webhook_notification(event_type: str, data: Dict[str, Any]) -> None:
+    """Send webhook notification (sync wrapper)"""
+    try:
+        try:
+            loop = asyncio.get_running_loop()
+            # We're in an async context, schedule the task
+            task = loop.create_task(_send_webhook_notification_async(event_type, data))
+            # Add callback to suppress unhandled exceptions
+            task.add_done_callback(lambda t: t.exception() if not t.cancelled() and t.done() else None)
+        except RuntimeError:
+            # No running event loop, run in new one
+            asyncio.run(_send_webhook_notification_async(event_type, data))
+    except WebhookError as e:
+        logger.warning(f"Webhook notification failed: {e}")
+    except Exception as e:
+        logger.warning(f"Failed to send webhook notification: {type(e).__name__}: {e}")
+
+
+# ========== Slack Notifier (Lazy Import) ==========
+
+def _get_slack_notifier() -> "SlackNotifier | None":
+    """Get slack notifier using ServiceFactory"""
+    return ServiceFactory.get("slack")
+
+
+async def _send_slack_notification_async(event_type: str, data: Dict[str, Any]) -> bool:
+    """Send Slack notification (async)"""
+    try:
+        notifier = _get_slack_notifier()
+        if notifier:
+            return await notifier.send_notification(event_type, data)
+    except SlackError as e:
+        logger.warning(f"Slack notification failed: {e}")
+    except Exception as e:
+        logger.warning(f"Failed to send Slack notification: {type(e).__name__}: {e}")
+    return False
+
+
+def _send_slack_notification(event_type: str, data: Dict[str, Any]) -> None:
+    """Send Slack notification (sync wrapper)"""
+    try:
+        try:
+            loop = asyncio.get_running_loop()
+            # We're in an async context, schedule the task
+            task = loop.create_task(_send_slack_notification_async(event_type, data))
+            # Add callback to suppress unhandled exceptions
+            task.add_done_callback(lambda t: t.exception() if not t.cancelled() and t.done() else None)
+        except RuntimeError:
+            # No running event loop, run in new one
+            asyncio.run(_send_slack_notification_async(event_type, data))
+    except SlackError as e:
+        logger.warning(f"Slack notification failed: {e}")
+    except Exception as e:
+        logger.warning(f"Failed to send Slack notification: {type(e).__name__}: {e}")
+
+
+# ========== WebSocket Event Pusher (Lazy Import) ==========
+
+def _get_event_pusher():
+    """Get event pusher using ServiceFactory"""
+    return ServiceFactory.get("event_pusher")
+
+
+async def _push_log_async(level: str, message: str, source: str = "agent_core"):
+    """Push log to WebSocket clients (async)"""
+    pusher = _get_event_pusher()
+    if pusher:
+        try:
+            await pusher.push_log(level, message, source)
+        except Exception as e:
+            logger.warning(f"Failed to push log to WebSocket: {type(e).__name__}: {e}")
+
+
+def _push_log_sync(level: str, message: str, source: str = "agent_core"):
+    """Push log to WebSocket clients (sync wrapper)"""
+    try:
+        pusher = _get_event_pusher()
+        if pusher:
+            try:
+                loop = asyncio.get_running_loop()
+                if loop.is_running():
+                    task = asyncio.create_task(_push_log_async(level, message, source))
+                    task.add_done_callback(lambda t: t.exception() if not t.cancelled() and t.done() else None)
+            except RuntimeError:
+                # No running event loop - skip WebSocket push in sync context
+                pass
+    except Exception as e:
+        logger.warning(f"Failed to push log to WebSocket: {type(e).__name__}: {e}")
+
+
 # ========== Hooks 实现 ==========
 
 async def pre_tool_hook(input_data: Any, tool_use_id: str | None, context: Any) -> AsyncHookJSONOutput:
@@ -45,55 +224,41 @@ async def pre_tool_hook(input_data: Any, tool_use_id: str | None, context: Any) 
     tool_input = input_data.get("tool_input", {})
 
     logger.debug(f"PreToolUse: {tool_name}")
-    # 显示简化后的输入
     input_preview = json.dumps(tool_input, ensure_ascii=False)
     if len(input_preview) > 300:
         input_preview = input_preview[:300] + "..."
-    # Keep print for user feedback
-    print(f"\n[PreToolUse] {tool_name}", flush=True)
-    print(f"  Input: {input_preview}", flush=True)
+    agent_output.render_tool_call(tool_name, tool_input, tool_use_id)
+
+    # Push to WebSocket
+    await _push_log_async("info", f"[PreToolUse] {tool_name}: {input_preview}", "tool")
 
     return {"async_": True}  # 允许执行
 
 
 async def post_tool_hook(input_data: Any, tool_use_id: str | None, context: Any) -> AsyncHookJSONOutput:
     """工具执行后调用 - 流式输出结果"""
-    import sys
-
     tool_name = input_data.get("tool_name", "unknown")
     result = input_data.get("tool_response", {})
+    agent_output.render_tool_result(result, tool_name=tool_name, tool_use_id=tool_use_id)
 
-    # 检查结果是否为文本类型
-    if isinstance(result, str):
-        # 文本结果直接打印（流式）
-        text_content = result
-        if text_content:
-            print(f"\n📤 Result: ", end="", flush=True)
-            # 流式输出每个字符或行
-            print(text_content, end="", flush=True)
-            sys.stdout.flush()
-            print()  # 换行
-    else:
-        # 非文本结果（如文件操作）显示摘要
-        result_preview = str(result)
-        if len(result_preview) > 500:
-            result_preview = result_preview[:500] + "..."
-
-        print(f"\n✅ [PostToolUse] {tool_name}: completed")
-        if result_preview:
-            print(f"  Result: {result_preview[:300]}...")
-        sys.stdout.flush()
+    # Push to WebSocket
+    await _push_log_async("info", f"[PostToolUse] {tool_name}: completed", "tool")
 
     return {"async_": True}
 
 
 async def notification_hook(input_data: Any, tool_use_id: str | None, context: Any) -> AsyncHookJSONOutput:
     """处理通知消息"""
-    message = input_data.get("message", "")
-    notification_type = input_data.get("notification_type", "")
+    notification = input_data.get("notification", {}) or {}
+    message = input_data.get("message") or notification.get("message", "")
+    notification_type = input_data.get("notification_type") or notification.get("type", "")
+    details = input_data.get("details") or notification.get("details")
 
     logger.info(f"Notification: {notification_type}: {message[:200]}")
-    print(f"\n[Notification] {notification_type}: {message[:200]}", flush=True)
+    agent_output.render_notification(notification_type, message, details)
+
+    # Push to WebSocket
+    await _push_log_async("info", f"[Notification] {notification_type}: {message[:200]}", "notification")
 
     return {"async_": True}
 
@@ -101,8 +266,12 @@ async def notification_hook(input_data: Any, tool_use_id: str | None, context: A
 async def stop_hook(input_data: Any, tool_use_id: str | None, context: Any) -> AsyncHookJSONOutput:
     """处理停止事件"""
     session_id = input_data.get("session_id", "")
+    reason = input_data.get("reason", "")
     logger.info(f"Session {session_id} ended")
-    print(f"\n[Stop] Session {session_id} ended", flush=True)
+    agent_output.render_session_stop(session_id, reason)
+
+    # Push to WebSocket
+    await _push_log_async("info", f"Session {session_id} ended", "session")
 
     return {"async_": True}
 
@@ -112,6 +281,7 @@ from .git_helper import GitHelper
 from .human_intervention import HumanIntervention
 from .performance_monitor import PerformanceMonitor, get_monitor
 from .prompt_manager import PromptManager, render_template, scan_project_structure
+from .config_reloader import ConfigReloader
 
 
 # 配置日志
@@ -159,6 +329,9 @@ class AgentCore:
         self.config = self.state_manager.load_config()
         self.project_root = project_root or str(Path(__file__).parent.parent)
 
+        # Initialize model provider manager
+        self.provider_manager = create_provider_manager(self.config)
+
         # 缓存 CLAUDE.md 内容
         self._claude_md_cache: str | None = None
 
@@ -170,8 +343,15 @@ class AgentCore:
         self._code_changed: bool = False
         self._initial_file_state()
 
+        # 配置热重载器
+        self.config_reloader = ConfigReloader()
+        self.config_reloader.add_reload_callback(self._on_config_reloaded)
+
         # 性能监控
         self.perf_monitor = get_monitor()
+
+        # 指标收集器
+        self.metrics_collector = get_metrics_collector()
 
     def _initial_file_state(self) -> None:
         """记录初始文件状态，用于检测代码变更"""
@@ -186,36 +366,63 @@ class AgentCore:
         if not agent_dir.exists():
             return False
 
+        changed = False
+        current_files: Dict[str, float] = {}
         for f in agent_dir.glob("*.py"):
             f_path = str(f)
             current_mtime = f.stat().st_mtime
+            current_files[f_path] = current_mtime
             if f_path in self._last_known_files:
                 if current_mtime > self._last_known_files[f_path]:
-                    self._code_changed = True
-                    return True
+                    changed = True
             else:
                 # 新文件
-                self._code_changed = True
-                return True
+                changed = True
 
-        return False
+        if changed:
+            self._code_changed = True
+            # 更新跟踪状态，避免重复触发
+            self._last_known_files = current_files
+
+        return changed
 
     def needs_reload(self) -> bool:
         """检查是否需要重新加载（代码变更或配置变更）"""
+        # 检查配置文件变更
+        config_changes = self.config_reloader.check_for_changes()
+        if config_changes["config"] or config_changes["feature_list"]:
+            self.config_reloader.reload()
         return self._code_changed or self.check_code_changes()
 
     def reload_modules(self) -> bool:
-        """热更新 Python 模块，重新加载修改过的代码"""
+        """热更新 Python 模块，重新加载修改过的代码
+
+        注意: 不重载 agent.agent_core 自身，因为当前实例仍引用旧类定义，
+        importlib.reload 后新方法不会对已有实例生效。
+        若 agent_core.py 自身被修改，应走 graceful_restart 路径。
+        """
         import importlib
 
+        # 检查 agent_core.py 自身是否被修改
+        core_path = Path(self.project_root) / "agent" / "agent_core.py"
+        if core_path.exists():
+            core_mtime = core_path.stat().st_mtime
+            tracked_mtime = self._last_known_files.get(str(core_path), 0.0)
+            if core_mtime > tracked_mtime:
+                logger.warning("agent_core.py itself was modified, hot reload cannot apply — need graceful restart")
+                return False
+
+        # 只重载非自身的依赖模块
         modules_to_reload = [
-            "agent.agent_core",
             "agent.state_manager",
             "agent.task_selector",
             "agent.session_manager",
             "agent.git_helper",
             "agent.human_intervention",
             "agent.test_runner",
+            "agent.prompt_manager",
+            "agent.performance_monitor",
+            "agent.config_reloader",
         ]
 
         reloaded = []
@@ -232,8 +439,6 @@ class AgentCore:
         # 重新初始化组件
         if not failed:
             self._reinitialize_components()
-            # 更新文件状态
-            self._initial_file_state()
             self._code_changed = False
             logger.info(f"Hot reload successful: {len(reloaded)} modules reloaded")
             return True
@@ -241,13 +446,36 @@ class AgentCore:
             logger.error(f"Hot reload failed: {failed}")
             return False
 
+    def _on_config_reloaded(self) -> None:
+        """配置热重载回调 — 更新运行时使用的配置"""
+        self.config = self.config_reloader.get_cached_config()
+        self.task_selector = TaskSelector(self.state_manager)
+        self.provider_manager = create_provider_manager(self.config)
+        self._claude_md_cache = None
+        logger.info("Runtime config reloaded")
+
     def _reinitialize_components(self) -> None:
-        """重新初始化组件（热更新后）"""
+        """重新初始化所有组件（热更新后）"""
+        # Clear old references before creating new instances
+        self._last_known_files.clear()
+        self._claude_md_cache = None
+
         self.state_manager = StateManager()
         self.task_selector = TaskSelector(self.state_manager)
+        self.git_helper = GitHelper(self.project_root)
+        self.human_intervention = HumanIntervention(self.state_manager)
+        self.prompt_manager = PromptManager()
         self.config = self.state_manager.load_config()
-        # 清除 CLAUDE.md 缓存
-        self._claude_md_cache = None
+        self.provider_manager = create_provider_manager(self.config)
+        self.config_reloader = ConfigReloader()
+        self.config_reloader.add_reload_callback(self._on_config_reloaded)
+
+        # Reset performance monitor to clear accumulated data
+        from .performance_monitor import reset_monitor
+        reset_monitor()
+        self.perf_monitor = get_monitor()
+        self.metrics_collector = get_metrics_collector()
+
         logger.info("Components reinitialized after hot reload")
 
     def graceful_restart(self) -> None:
@@ -260,12 +488,154 @@ class AgentCore:
         state["restart_reason"] = "code_changed"
         self.state_manager.save_state(state)
 
-        print("\n" + "=" * 60)
-        print("CODE CHANGES DETECTED")
-        print("=" * 60)
-        print("The agent has modified its own code and needs to restart.")
-        print("Please restart the agent to continue with updated code.")
-        print("=" * 60 + "\n")
+        agent_output.render_restart_required()
+
+    @staticmethod
+    def _normalize_tool_result_content(result_content: Any) -> str:
+        """Normalize SDK tool result payloads into a bounded string."""
+        if isinstance(result_content, list):
+            return " ".join(str(item) for item in result_content)
+        return str(result_content)
+
+    @staticmethod
+    def _remember_tool_result(
+        tool_results: dict[str, str],
+        tool_use_id: str,
+        result_content: Any,
+        max_tool_results: int,
+    ) -> None:
+        """Store recent tool results without unbounded growth."""
+        if not tool_use_id:
+            return
+
+        result_str = AgentCore._normalize_tool_result_content(result_content)
+        if tool_use_id not in tool_results and len(tool_results) >= max_tool_results:
+            oldest_key = next(iter(tool_results))
+            del tool_results[oldest_key]
+        tool_results[tool_use_id] = result_str
+
+    def _handle_stream_event(self, event: Dict[str, Any]) -> set[str]:
+        """Render Claude SDK stream events to the unified console."""
+        event_type = event.get("type", "")
+        streamed_block_types: set[str] = set()
+
+        if event_type == "content_block_start":
+            content_block = event.get("content_block", {})
+            block_type = content_block.get("type", "")
+            if block_type == "thinking":
+                thinking = content_block.get("thinking", "")
+                if thinking:
+                    agent_output.stream_thinking_text(thinking)
+                    streamed_block_types.add("thinking")
+            elif block_type == "redacted_thinking":
+                agent_output.stream_thinking_text("[redacted thinking]")
+                streamed_block_types.add("thinking")
+            elif block_type == "text":
+                text = content_block.get("text", "")
+                if text:
+                    agent_output.stream_assistant_text(text)
+                    streamed_block_types.add("text")
+            return streamed_block_types
+
+        if event_type == "content_block_delta":
+            delta = event.get("delta", {})
+            delta_type = delta.get("type", "")
+            if delta_type == "text_delta":
+                agent_output.stream_assistant_text(delta.get("text", ""))
+                streamed_block_types.add("text")
+            elif delta_type == "thinking_delta":
+                thinking = delta.get("thinking", "")
+                if thinking:
+                    agent_output.stream_thinking_text(thinking)
+                    streamed_block_types.add("thinking")
+            return streamed_block_types
+
+        if event_type == "content_block_stop":
+            agent_output.finish_stream()
+            return streamed_block_types
+
+        if event_type == "message_delta":
+            delta = event.get("delta", {})
+            agent_output.render_stop_reason(delta.get("stop_reason", ""))
+        return streamed_block_types
+
+    def _handle_assistant_message(
+        self,
+        message: AssistantMessage,
+        tool_results: dict[str, str],
+        max_tool_results: int,
+        streamed_block_types: set[str] | None = None,
+    ) -> None:
+        """Handle assistant message blocks without duplicating tool logs."""
+        content = message.content
+        if not isinstance(content, list):
+            return
+
+        streamed_block_types = streamed_block_types or set()
+        for block in content:
+            block_type = getattr(block, 'type', None)
+            if block_type == "tool_result":
+                tool_use_id = getattr(block, 'tool_use_id', '')
+                result_content = getattr(block, 'content', '')
+                self._remember_tool_result(tool_results, tool_use_id, result_content, max_tool_results)
+            elif block_type == "text":
+                text = getattr(block, 'text', '')
+                if text and "text" not in streamed_block_types:
+                    agent_output.stream_assistant_text(text)
+            elif block_type == "thinking":
+                thinking = getattr(block, 'thinking', '')
+                if thinking and "thinking" not in streamed_block_types:
+                    agent_output.stream_thinking_text(thinking)
+
+    def _handle_user_message(
+        self,
+        message: UserMessage,
+        tool_results: dict[str, str],
+        max_tool_results: int,
+    ) -> None:
+        """Capture tool results emitted through user messages."""
+        content = message.content
+        if not isinstance(content, list):
+            return
+
+        for block in content:
+            if getattr(block, 'type', None) != "tool_result":
+                continue
+            tool_use_id = getattr(block, 'tool_use_id', '')
+            result_content = getattr(block, 'content', '')
+            self._remember_tool_result(tool_results, tool_use_id, result_content, max_tool_results)
+
+    async def _run_follow_up_query(
+        self,
+        client: ClaudeSDKClient,
+        prompt: str,
+        session_id: str,
+        phase_title: str,
+    ) -> str:
+        """Run self-review or cleanup prompts with the same terminal renderer."""
+        agent_output.render_phase(phase_title)
+        await client.query(prompt, session_id=session_id)
+
+        tool_results: dict[str, str] = {}
+        streamed_block_types: set[str] = set()
+        async for follow_up_msg in client.receive_response():
+            if isinstance(follow_up_msg, StreamEvent):
+                streamed_block_types.update(self._handle_stream_event(follow_up_msg.event))
+            elif isinstance(follow_up_msg, AssistantMessage):
+                self._handle_assistant_message(
+                    follow_up_msg,
+                    tool_results,
+                    10,
+                    streamed_block_types,
+                )
+            elif isinstance(follow_up_msg, UserMessage):
+                self._handle_user_message(follow_up_msg, tool_results, 10)
+            elif isinstance(follow_up_msg, ResultMessage):
+                agent_output.finish_stream()
+                return str(follow_up_msg.result or '')
+
+        agent_output.finish_stream()
+        return ""
 
     def read_claude_md(self) -> str:
         """读取 CLAUDE.md 文件内容"""
@@ -804,12 +1174,9 @@ class AgentCore:
         system_prompt = self.get_system_prompt()
         user_prompt = self.get_task_prompt(task)
 
-        # 配置选项 - 模型从配置文件读取
-        model = self.config.get("model", "MiniMax-M2.5-highspeed")
-
-        # 获取环境变量
-        api_key = os.environ.get("ANTHROPIC_AUTH_TOKEN", "")
-        base_url = os.environ.get("ANTHROPIC_BASE_URL", "https://api.minimaxi.com/anthropic")
+        # 使用模型提供者系统获取配置
+        model = self.provider_manager.get_model()
+        provider_env = self.provider_manager.get_sdk_env_vars()
 
         # 从配置文件加载工具列表和 MCP 服务器（而非硬编码）
         default_tools = [
@@ -824,11 +1191,8 @@ class AgentCore:
         options = ClaudeAgentOptions(
             model=model,
             system_prompt=system_prompt,
-            # 通过 env 传递 API 配置
-            env={
-                "ANTHROPIC_AUTH_TOKEN": api_key,
-                "ANTHROPIC_BASE_URL": base_url,
-            },
+            # 通过 env 传递 API 配置 (from provider manager)
+            env=provider_env,
             # 工具列表从配置加载
             allowed_tools=allowed_tools,
             # 启用完整流式输出
@@ -852,134 +1216,36 @@ class AgentCore:
 
         # 使用 SDK 执行任务 - 使用 ClaudeSDKClient 获得更精细的控制
         result_text = ""
-        tool_call_count = 0
-        tool_results: dict[str, str] = {}  # tool_use_id -> result
+        tool_results: dict[str, str] = {}  # tool_use_id -> result (bounded)
+        MAX_TOOL_RESULTS = 50  # Limit stored tool results to prevent memory bloat
         session_id = None
+        agent_output.reset_session()
         try:
             async with ClaudeSDKClient(options=options) as client:
                 await client.query(user_prompt)
+                streamed_block_types: set[str] = set()
 
                 async for message in client.receive_response():
                     # 处理流事件 - 实时显示 AI 思考过程和工具调用
                     if isinstance(message, StreamEvent):
-                        event = message.event
-                        event_type = event.get("type", "")
-
-                        if event_type == "content_block_start":
-                            # 工具开始调用
-                            content_block = event.get("content_block", {})
-                            block_type = content_block.get("type", "")
-                            if block_type == "tool_use":
-                                tool_name = content_block.get("name", "unknown")
-                                tool_call_count += 1
-                                print(f"\n🔧 Tool #{tool_call_count}: {tool_name}", flush=True)
-
-                        elif event_type == "content_block_delta":
-                            # 增量内容 - 实时文本或工具输入或工具结果
-                            delta = event.get("delta", {})
-                            delta_type = delta.get("type", "")
-
-                            if delta_type == "text_delta":
-                                # 实时文本输出（AI思考或工具结果）
-                                text = delta.get("text", "")
-                                print(text, end="", flush=True)
-
-                            elif delta_type == "input_json_delta":
-                                # 工具输入增量
-                                partial_json = delta.get("partial_json", "")
-                                if partial_json:
-                                    print(partial_json, end="", flush=True)
-
-                            elif delta_type == "content_block_stop":
-                                print()  # 换行
-
-                        elif event_type == "message_delta":
-                            # 消息级别的更新
-                            delta = event.get("delta", {})
-                            stop_reason = delta.get("stop_reason", "")
-                            if stop_reason:
-                                print(f"\n[Stop Reason: {stop_reason}]")
-
-                        elif event_type == "message_stop":
-                            # 消息流结束
-                            pass
+                        streamed_block_types.update(self._handle_stream_event(message.event))
 
                     # 处理 AssistantMessage - 完整消息
                     elif isinstance(message, AssistantMessage):
-                        content = message.content
-                        if isinstance(content, list):
-                            for block in content:
-                                block_type = getattr(block, 'type', None)
-                                if block_type == "tool_use":
-                                    tool_call_count += 1
-                                    tool_name = getattr(block, 'name', 'unknown')
-                                    tool_input = getattr(block, 'input', {})
-                                    tool_id = getattr(block, 'id', '')
-                                    # 简化显示输入内容
-                                    input_str = json.dumps(tool_input, ensure_ascii=False, indent=2)
-                                    if len(input_str) > 500:
-                                        input_str = input_str[:500] + "..."
-                                    print(f"\n🔧 Tool #{tool_call_count}: {tool_name}", flush=True)
-                                    print(f"   Input: {input_str[:300]}...", flush=True)
-                                elif block_type == "tool_result":
-                                    # 工具结果 - 流式输出
-                                    tool_use_id = getattr(block, 'tool_use_id', '')
-                                    result_content = getattr(block, 'content', '')
-                                    is_error = getattr(block, 'is_error', False)
-
-                                    # 流式输出结果
-                                    prefix = "❌" if is_error else "📤"
-                                    print(f"   {prefix} Result:", end=" ", flush=True)
-
-                                    if isinstance(result_content, list):
-                                        for item in result_content:
-                                            print(str(item), end="", flush=True)
-                                    else:
-                                        print(str(result_content), end="", flush=True)
-                                    print()  # 换行
-
-                                    # 保存完整结果
-                                    if isinstance(result_content, list):
-                                        result_str = " ".join([str(item) for item in result_content])
-                                    else:
-                                        result_str = str(result_content)
-                                    tool_results[tool_use_id] = result_str
-
-                                elif block_type == "text":
-                                    # 文本内容 - 流式输出
-                                    text = getattr(block, 'text', '')
-                                    if text:
-                                        print(f"\n🤖 {text}", end="", flush=True)
-                                elif block_type == "thinking":
-                                    # 思考过程 - 流式输出
-                                    thinking = getattr(block, 'thinking', '')
-                                    if thinking:
-                                        print(f"\n💭 {thinking[:200]}...", end="", flush=True)
+                        self._handle_assistant_message(
+                            message,
+                            tool_results,
+                            MAX_TOOL_RESULTS,
+                            streamed_block_types,
+                        )
 
                     # 处理 UserMessage - 工具结果（来自工具执行）
                     elif isinstance(message, UserMessage):
-                        user_content = message.content
-                        if isinstance(user_content, list):
-                            for block in user_content:
-                                block_type = getattr(block, 'type', None)
-                                if block_type == "tool_result":
-                                    tool_use_id = getattr(block, 'tool_use_id', '')
-                                    result_content = getattr(block, 'content', '')
-                                    is_error = getattr(block, 'is_error', False)
-
-                                    # 流式输出工具结果
-                                    prefix = "❌" if is_error else "📤"
-                                    print(f"   {prefix} Result:", end=" ", flush=True)
-
-                                    if isinstance(result_content, list):
-                                        for item in result_content:
-                                            print(str(item), end="", flush=True)
-                                    else:
-                                        print(str(result_content), end="", flush=True)
-                                    print()
+                        self._handle_user_message(message, tool_results, MAX_TOOL_RESULTS)
 
                     # 处理 ResultMessage - 最终结果
                     elif isinstance(message, ResultMessage):
+                        agent_output.finish_stream()
                         result_text = str(message.result or '')
                         is_error = message.is_error
                         num_turns = message.num_turns
@@ -987,76 +1253,49 @@ class AgentCore:
                         session_id = message.session_id
                         logger.info(f"Final Result (turns: {num_turns}, stop: {stop_reason}): {result_text[:500]}...")
 
+                        # 检测 API 错误（如 429 rate limit）被包装为正常结果的情况
+                        if not is_error and self._is_api_error_in_result(result_text):
+                            logger.warning(f"Detected API error in result text: {result_text[:200]}")
+                            is_error = True
+
                         # 任务完成后执行自省（仅当任务成功时）
                         if not is_error and session_id:
                             # 1. 任务计划自省
                             logger.info("Starting post-task self-review...")
                             review_prompt = self._build_self_review_prompt(task)
-                            await client.query(review_prompt, session_id=session_id)
-
-                            # 处理自省响应
-                            async for review_msg in client.receive_response():
-                                # 处理自省过程中的流事件和消息
-                                if isinstance(review_msg, StreamEvent):
-                                    event = review_msg.event
-                                    event_type = event.get("type", "")
-                                    if event_type == "content_block_delta":
-                                        delta = event.get("delta", {})
-                                        if delta.get("type") == "text_delta":
-                                            print(delta.get("text", ""), end="", flush=True)
-                                elif isinstance(review_msg, AssistantMessage):
-                                    content = review_msg.content
-                                    if isinstance(content, list):
-                                        for block in content:
-                                            block_type = getattr(block, 'type', None)
-                                            if block_type == "text":
-                                                text = getattr(block, 'text', '')
-                                                if text:
-                                                    print(f"\n🤖 {text}", end="", flush=True)
-                                elif isinstance(review_msg, ResultMessage):
-                                    review_result = str(review_msg.result or '')
-                                    logger.info(f"Self-review completed: {review_result[:300]}...")
-                                    break
+                            review_result = await self._run_follow_up_query(
+                                client,
+                                review_prompt,
+                                session_id,
+                                "Self-review",
+                            )
+                            logger.info(f"Self-review completed: {review_result[:300]}...")
 
                             # 2. MEMORY.md 清理（每5次迭代执行一次）
                             if self._iteration_count > 0 and self._iteration_count % 5 == 0:
                                 memory_prompt = self._build_memory_cleanup_prompt()
                                 if memory_prompt:
                                     logger.info("Starting MEMORY.md cleanup...")
-                                    await client.query(memory_prompt, session_id=session_id)
-
-                                    async for cleanup_msg in client.receive_response():
-                                        if isinstance(cleanup_msg, StreamEvent):
-                                            event = cleanup_msg.event
-                                            event_type = event.get("type", "")
-                                            if event_type == "content_block_delta":
-                                                delta = event.get("delta", {})
-                                                if delta.get("type") == "text_delta":
-                                                    print(delta.get("text", ""), end="", flush=True)
-                                        elif isinstance(cleanup_msg, ResultMessage):
-                                            cleanup_result = str(cleanup_msg.result or '')
-                                            logger.info(f"MEMORY.md cleanup completed: {cleanup_result[:200]}...")
-                                            break
+                                    cleanup_result = await self._run_follow_up_query(
+                                        client,
+                                        memory_prompt,
+                                        session_id,
+                                        "MEMORY.md cleanup",
+                                    )
+                                    logger.info(f"MEMORY.md cleanup completed: {cleanup_result[:200]}...")
 
                             # 3. CLAUDE.md 清理（每10次迭代执行一次）
                             if self._iteration_count > 0 and self._iteration_count % 10 == 0:
                                 claude_prompt = self._build_claude_md_cleanup_prompt()
                                 if claude_prompt:
                                     logger.info("Starting CLAUDE.md cleanup...")
-                                    await client.query(claude_prompt, session_id=session_id)
-
-                                    async for cleanup_msg in client.receive_response():
-                                        if isinstance(cleanup_msg, StreamEvent):
-                                            event = cleanup_msg.event
-                                            event_type = event.get("type", "")
-                                            if event_type == "content_block_delta":
-                                                delta = event.get("delta", {})
-                                                if delta.get("type") == "text_delta":
-                                                    print(delta.get("text", ""), end="", flush=True)
-                                        elif isinstance(cleanup_msg, ResultMessage):
-                                            cleanup_result = str(cleanup_msg.result or '')
-                                            logger.info(f"CLAUDE.md cleanup completed: {cleanup_result[:200]}...")
-                                            break
+                                    cleanup_result = await self._run_follow_up_query(
+                                        client,
+                                        claude_prompt,
+                                        session_id,
+                                        "CLAUDE.md cleanup",
+                                    )
+                                    logger.info(f"CLAUDE.md cleanup completed: {cleanup_result[:200]}...")
 
                     # 处理其他消息类型
                     else:
@@ -1112,14 +1351,41 @@ class AgentCore:
                 "status": "error",
                 "message": error_msg
             }
+        finally:
+            agent_output.finish_stream()
+
+        # 如果检测到 API 错误，返回 error 状态以触发重试
+        if is_error and result_text and self._is_api_error_in_result(result_text):
+            return {
+                "task_id": task_id,
+                "status": "error",
+                "message": result_text[:500],
+                "is_rate_limit": "rate_limit" in result_text.lower(),
+                "session_id": session_id,
+                "tool_call_count": agent_output.tool_count
+            }
 
         return {
             "task_id": task_id,
             "status": "completed",
             "message": result_text[:500] if result_text else "Task completed",
             "session_id": session_id,
-            "tool_call_count": tool_call_count
+            "tool_call_count": agent_output.tool_count
         }
+
+    @staticmethod
+    def _is_api_error_in_result(result_text: str) -> bool:
+        """检测结果文本中是否包含 API 错误信息"""
+        error_indicators = [
+            '"type":"error"',
+            'rate_limit_error',
+            'overloaded_error',
+            'api_error',
+            'authentication_error',
+            'invalid_request_error',
+        ]
+        text_lower = result_text.lower()
+        return any(indicator.lower() in text_lower for indicator in error_indicators)
 
     def execute_task(self, task: Dict[str, Any]) -> Dict[str, Any]:
         """同步包装器 - 执行任务（带重试机制）"""
@@ -1154,10 +1420,17 @@ class AgentCore:
                         if retry_count < max_retries:
                             retry_count += 1
                             retry_reasons.append(f"Attempt {retry_count}: {error_msg}")
-                            logger.warning(f"Task {task.get('id')} failed: {error_msg}. Retrying in {retry_interval}s (attempt {retry_count}/{max_retries})...")
+
+                            # 速率限制错误使用指数退避
+                            if result.get("is_rate_limit"):
+                                wait_time = retry_interval * (2 ** (retry_count - 1))  # 5s, 10s, 20s...
+                                logger.warning(f"Task {task.get('id')} hit rate limit. Waiting {wait_time}s before retry (attempt {retry_count}/{max_retries})...")
+                            else:
+                                wait_time = retry_interval
+                                logger.warning(f"Task {task.get('id')} failed: {error_msg}. Retrying in {wait_time}s (attempt {retry_count}/{max_retries})...")
 
                             # 等待后重试
-                            time_module.sleep(retry_interval)
+                            time_module.sleep(wait_time)
 
                             # 继续下一次尝试
                             continue
@@ -1208,6 +1481,13 @@ class AgentCore:
             duration = time_module.time() - start_time
             status = result.get("status", "unknown")
             self.perf_monitor.metrics.record_task(task_id, task_name, duration, status)
+
+            # Record task completion metrics
+            if status == "error":
+                self.metrics_collector.increment_task_completed(success=False)
+                self.metrics_collector.increment_error("task_execution_error")
+            else:
+                self.metrics_collector.increment_task_completed(success=True)
 
             return result
 
@@ -1333,6 +1613,13 @@ class AgentCore:
             self.state_manager.save_session_history(history)
 
         self._write_progress_summary()
+
+        # Clear accumulated data to free memory
+        self.perf_monitor.clear_operations()
+        self._claude_md_cache = None
+        self._last_known_files.clear()
+        self._initial_file_state()
+
         logger.info(f"Session {session_id} completed")
 
     def _write_progress_summary(self) -> None:
@@ -1359,60 +1646,39 @@ class AgentCore:
         # 解析并去重
         updated_content = self._merge_experience(current_content, task, result)
 
-        with open(memory_file, "w", encoding="utf-8") as f:
-            f.write(updated_content)
+        self.state_manager.save_text_file(memory_file, updated_content)
 
         logger.info(f"经验已更新到 {memory_file}")
 
     def _merge_experience(self, content: str, task: Dict[str, Any], result: Dict[str, Any]) -> str:
         """解析现有内容，合并新经验，去除重复"""
-        import re
+        task_id = str(task.get("id", "unknown"))
+        task_name = str(task.get("name", "Untitled Task"))
+        task_description = str(task.get("description", ""))
+        status = str(result.get("status", "unknown"))
+        raw_message = str(result.get("message", "") or "")
+        message = self._format_memory_message(raw_message)
 
-        task_id = task.get("id")
-        task_name = task.get("name")
-        task_description = task.get("description")
-        status = result.get('status', 'unknown')
-        message = result.get('message', '')[:500] if result.get('message') else ''
-
-        # 定义分隔符：静态内容和任务记录
-        static_sections = []
-        task_records = []
+        static_content = content.strip()
+        task_records: List[str] = []
+        existing_same_task: str | None = None
 
         # 分离静态部分（项目概述、技术栈、模式等）和任务记录
         if "## Task Experience Records" in content:
-            parts = content.split("## Task Experience Records")
-            static_sections.append(parts[0].strip())
+            parts = content.split("## Task Experience Records", 1)
+            static_content = parts[0].strip()
             task_section = parts[1] if len(parts) > 1 else ""
         else:
-            # 没有任务记录部分，全部作为静态内容
-            static_sections.append(content.strip())
             task_section = ""
 
-        # 解析现有任务记录
-        if task_section:
-            # 按 ### 分割任务记录
-            entries = re.split(r'\n### ', task_section)
-            for entry in entries:
-                if not entry.strip():
-                    continue
-                # 检查是否是重复任务
-                entry_match = re.match(r'(\d{4}-\d{2}-\d{2}) - (.+?) \((\w+)\)', entry)
-                if entry_match:
-                    existing_id = entry_match.group(3)
-                    # 只保留非重复的，或内容更完整的
-                    if existing_id != task_id:
-                        task_records.append(entry)
-                    else:
-                        # 检查现有条目是否有实际经验内容
-                        if "**学到的经验**:" in entry and "[待填写]" not in entry:
-                            task_records.append(entry)
-                        # 如果新结果有实际内容，则用新的替换
-                        elif status == 'completed' and message:
-                            pass  # 跳过旧条目，用新的
-                        else:
-                            task_records.append(entry)
-                else:
-                    task_records.append(entry)
+        for entry in self._split_memory_task_entries(task_section):
+            existing_id = self._extract_memory_task_id(entry)
+            if existing_id != task_id:
+                task_records.append(entry)
+                continue
+
+            if existing_same_task is None or len(entry) > len(existing_same_task):
+                existing_same_task = entry
 
         # 生成新条目
         new_entry_lines = [
@@ -1424,29 +1690,101 @@ class AgentCore:
         ]
 
         if message:
-            new_entry_lines.append(f"**执行消息**: {message}")
+            new_entry_lines.extend(["**执行消息**:", message, ""])
 
         # 从执行结果中提取经验（如果任务完成）
         if status == 'completed' and message:
             # 尝试从消息中提取关键学习点
-            learned = self._extract_learned_from_message(message)
+            learned = self._extract_learned_from_message(raw_message)
             if learned:
                 new_entry_lines.extend(["", f"**学到的经验**:", learned])
 
-        new_entry = "\n".join(new_entry_lines)
+        new_entry = "\n".join(new_entry_lines).strip()
 
-        # 添加新条目
-        task_records.append(new_entry)
+        if existing_same_task and not (status == "completed" and raw_message.strip()):
+            task_records.append(existing_same_task)
+        else:
+            task_records.append(new_entry)
 
         # 限制保留最近的任务记录（最多50条）
         if len(task_records) > 50:
             task_records = task_records[-50:]
 
         # 重组内容
-        static_content = "\n\n".join(static_sections)
         task_content = "\n\n---\n\n".join(task_records)
 
-        return f"{static_content}\n\n## Task Experience Records\n\n{task_content}"
+        if static_content:
+            return f"{static_content}\n\n## Task Experience Records\n\n{task_content}\n"
+        return f"## Task Experience Records\n\n{task_content}\n"
+
+    def _split_memory_task_entries(self, task_section: str) -> List[str]:
+        """Split task records while preserving and normalizing heading markers."""
+        import re
+
+        section = task_section.strip()
+        if not section:
+            return []
+
+        header_pattern = re.compile(
+            r"(?m)^\s*(?:###\s+)?\d{4}-\d{2}-\d{2}\s+-\s+.+?\s+\([^)]+\)\s*$"
+        )
+        matches = list(header_pattern.finditer(section))
+        if not matches:
+            fallback = section.strip()
+            return [fallback] if fallback else []
+
+        entries: List[str] = []
+        for index, match in enumerate(matches):
+            start = match.start()
+            end = matches[index + 1].start() if index + 1 < len(matches) else len(section)
+            entry = section[start:end].strip()
+            normalized = self._normalize_memory_task_entry(entry)
+            if normalized:
+                entries.append(normalized)
+
+        return entries
+
+    def _normalize_memory_task_entry(self, entry: str) -> str:
+        """Normalize task record headings and remove stray separators."""
+        import re
+
+        lines = [line.rstrip() for line in entry.strip().splitlines()]
+        while lines and (not lines[0].strip() or lines[0].strip() == "---"):
+            lines.pop(0)
+        while lines and (not lines[-1].strip() or lines[-1].strip() == "---"):
+            lines.pop()
+
+        if not lines:
+            return ""
+
+        first_line = lines[0].strip()
+        if re.match(r"^\d{4}-\d{2}-\d{2}\s+-\s+.+\s+\([^)]+\)$", first_line):
+            lines[0] = f"### {first_line}"
+        elif first_line.startswith("### "):
+            lines[0] = first_line
+
+        return "\n".join(lines).strip()
+
+    def _extract_memory_task_id(self, entry: str) -> str | None:
+        """Extract task id from a normalized MEMORY.md task entry."""
+        import re
+
+        match = re.match(r"^###\s+\d{4}-\d{2}-\d{2}\s+-\s+.+?\s+\(([^)]+)\)", entry.strip())
+        return match.group(1) if match else None
+
+    def _format_memory_message(self, message: str, max_chars: int = 4000) -> str:
+        """Keep long messages readable without silently truncating them at 500 chars."""
+        normalized = message.strip()
+        if len(normalized) <= max_chars:
+            return normalized
+
+        cutoff = max_chars
+        last_newline = normalized.rfind("\n", 0, max_chars)
+        if last_newline >= int(max_chars * 0.7):
+            cutoff = last_newline
+
+        truncated = normalized[:cutoff].rstrip()
+        return f"{truncated}\n...[truncated from {len(normalized)} chars]"
 
     def _extract_learned_from_message(self, message: str) -> str:
         """从执行消息中提取关键经验"""
@@ -1501,6 +1839,12 @@ class AgentCore:
             logger.info(f"Resuming from session: {resume_session_id}")
         logger.info(f"Pending tasks: {init_info['pending_tasks']}")
 
+        # Push session start status to WebSocket
+        _push_log_sync("info", f"Session initialized: {init_info['session_id']}", "session")
+
+        # Record session start for metrics
+        self.metrics_collector.start_session(init_info["session_id"])
+
         # 保存会话ID用于可能的恢复
         current_sdk_session_id = resume_session_id
 
@@ -1515,17 +1859,26 @@ class AgentCore:
             # 检查是否请求了优雅关闭
             if shutdown_flag and shutdown_flag():
                 logger.info("Shutdown requested, finishing current iteration...")
+                _push_log_sync("info", "Shutdown requested, finishing current iteration...", "agent")
                 break
 
             logger.info(f"--- Iteration {i + 1} ---")
+            _push_log_sync("info", f"--- Iteration {i + 1} ---", "iteration")
 
             context = self.gather_context()
 
             if not context["current_task"]:
                 logger.info("No pending tasks. Exiting.")
+                _push_log_sync("info", "No pending tasks. Exiting.", "agent")
                 break
 
             task = context["current_task"]
+            task_id = task.get("id", "unknown")
+            task_name = task.get("name", "unknown")
+
+            # Push task start
+            _push_log_sync("info", f"Starting task: {task_name} ({task_id})", "task")
+
             try:
                 # 传递 session_id 以支持会话恢复
                 result = self.execute_task(task)
@@ -1540,8 +1893,41 @@ class AgentCore:
 
                 if verified:
                     summary["completed"] += 1
+                    _push_log_sync("info", f"Task completed: {task_name} ({task_id})", "task")
+
+                    # 发送Webhook通知 - 任务完成
+                    _send_webhook_notification(EventTypes.TASK_COMPLETED, {
+                        "task_id": task_id,
+                        "task_name": task_name,
+                        "status": "completed"
+                    })
+                    # 发送Slack通知 - 任务完成
+                    _send_slack_notification(EventTypes.TASK_COMPLETED, {
+                        "task_id": task_id,
+                        "task_name": task_name,
+                        "status": "completed"
+                    })
                 else:
                     summary["errors"] += 1
+                    _push_log_sync("warning", f"Task verification failed: {task_name} ({task_id})", "task")
+
+                    # Record verification failure metrics
+                    self.metrics_collector.increment_error("task_verification_failed")
+
+                    # 发送Webhook通知 - 任务失败
+                    _send_webhook_notification(EventTypes.TASK_FAILED, {
+                        "task_id": task_id,
+                        "task_name": task_name,
+                        "status": "failed",
+                        "error_message": result.get("message", "Verification failed")
+                    })
+                    # 发送Slack通知 - 任务失败
+                    _send_slack_notification(EventTypes.TASK_FAILED, {
+                        "task_id": task_id,
+                        "task_name": task_name,
+                        "status": "failed",
+                        "error_message": result.get("message", "Verification failed")
+                    })
 
                 # 提取并保存经验
                 self.extract_and_save_experience(task, result)
@@ -1570,9 +1956,17 @@ class AgentCore:
                 logger.error(f"Error executing task: {error_msg}")
                 self.handle_error(error_msg, task)
                 summary["errors"] += 1
+                # Record error metrics for unexpected exceptions
+                self.metrics_collector.increment_error(f"loop_exception_{type(e).__name__}")
 
             summary["iterations"] += 1
             self._iteration_count = summary["iterations"]
+
+        # Push session completion
+        _push_log_sync("info", f"Session completed. Iterations: {summary['iterations']}, Completed: {summary['completed']}, Errors: {summary['errors']}", "session")
+
+        # Record session end for metrics
+        self.metrics_collector.end_session(init_info["session_id"])
 
         self.complete_session(summary)
         return summary

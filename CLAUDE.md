@@ -14,6 +14,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 4. **Research first**: Always gather sufficient context before implementing - check documentation and existing code
 5. **System integration**: New modules must integrate properly with the existing system, not just work in isolation
 6. **No TODO shortcuts**: Never use TODO comments to reduce workload - complete all requirements genuinely
+7. **First principles thinking**: You cannot always assume that the person assigning a task knows exactly what they want or how to achieve it. Exercise critical judgment and ground your approach in the fundamental needs and core problems. If the motivations and objectives are ambiguous, prioritize gathering accurate and relevant context by all available means. If the goal is clear but the proposed path is suboptimal, take the initiative to adjust it and implement a more efficient solution.
 
 ## Common Commands
 
@@ -22,38 +23,63 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 uv sync
 
 # Run all tests
-pytest tests/ -v
+uv run pytest tests/ -v
 
 # Run specific test file
-pytest tests/test_agent_core.py -v
+uv run pytest tests/test_agent_core.py -v
 
 # Quick test with fail-fast
-pytest tests/ -x -q
+uv run pytest tests/ -x -q
+
+# Run tests with coverage
+uv run pytest tests/ --cov=agent --cov-report=term-missing
+uv run pytest tests/ --cov=agent --cov-report=html  # HTML report in htmlcov/
 
 # Type checking
-mypy agent/agent_core.py
+uv run mypy agent/agent_core.py
 
 # Run agent
-python main.py run --iterations 3
+uv run python main.py run --iterations 3
 
 # List tasks
-python main.py list
+uv run python main.py list
+uv run python main.py list --filter pending        # Filter by status
+uv run python main.py list --tree                 # Show dependency tree
 
 # Check status
-python main.py status
+uv run python main.py status
 
 # Initialize project
-python main.py init
+uv run python main.py init
+
+# Config management
+uv run python main.py config get <key>            # Get config value
+uv run python main.py config set <key> <value>    # Set config value
+uv run python main.py config validate             # Validate config
+uv run python main.py config export               # Export config
+uv run python main.py config import <file>       # Import config
+
+# Provider management
+uv run python main.py provider list               # List all providers
+uv run python main.py provider switch <name>     # Switch provider
+uv run python main.py provider health [name]     # Check provider health
+
+# API server
+uv run python main.py server                     # Start API server
+uv run python main.py server --host 0.0.0.0 --port 8000
+
+# Reload config
+uv run python main.py reload
 
 # Template management
-python main.py template list              # List all prompt templates
-python main.py template show <name>       # Show template content
-python main.py template scaffold          # Export templates to .agent/prompt_templates/
-python main.py template reset <name>      # Reset template to built-in default
+uv run python main.py template list              # List all prompt templates
+uv run python main.py template show <name>       # Show template content
+uv run python main.py template scaffold          # Export templates to .agent/prompt_templates/
+uv run python main.py template reset <name>      # Reset template to built-in default
 
 # Prompt preset management
-python main.py prompt list                # List prompt presets
-python main.py prompt set <key>           # Set active prompt
+uv run python main.py prompt list                # List prompt presets
+uv run python main.py prompt set <key>           # Set active prompt
 ```
 
 ## Architecture
@@ -64,15 +90,28 @@ python main.py prompt set <key>           # Set active prompt
 |--------|----------------|
 | `agent/agent_core.py` | Core agent logic, SDK integration, task execution |
 | `agent/prompt_manager.py` | Template engine, prompt presets, user-overridable prompt templates |
-| `agent/session_manager.py` | Session lifecycle, context management |
+| `agent/session_manager.py` | Session lifecycle, context management, archiving |
 | `agent/state_manager.py` | State persistence to JSON files in `.agent/` |
-| `agent/task_selector.py` | Priority-based task selection |
+| `agent/task_selector.py` | Priority-based task selection with DAG support |
 | `agent/human_intervention.py` | Human intervention when error threshold exceeded |
 | `agent/git_helper.py` | Git status, branch, and diff operations |
 | `agent/test_runner.py` | Test execution wrapper |
 | `agent/performance_monitor.py` | Performance metrics tracking |
 | `agent/config_reloader.py` | Configuration hot reload |
+| `agent/config_model.py` | Pydantic configuration model with env var support |
+| `agent/constants.py` | Centralized constants, enums for config keys, paths, events |
+| `agent/metrics.py` | Prometheus metrics collection and export |
+| `agent/webhook.py` | Webhook notification system |
+| `agent/email_notifier.py` | Email notification service with SMTP support |
+| `agent/slack_notifier.py` | Slack notification service with Block Kit formatting |
+| `agent/notification_router.py` | Routes notifications to appropriate channels |
+| `agent/notification_queue.py` | Async notification queue for batching |
+| `agent/logging_.py` | Structured logging with structlog (JSON for file, console for terminal) |
+| `agent/console.py` | Rich console utilities for interactive CLI output |
+| `agent/exceptions.py` | Exception hierarchy and error code system |
+| `agent/model_provider.py` | Multi-provider support (OpenAI, Anthropic, MiniMax) |
 | `main.py` | CLI entry point |
+| `api.py` | FastAPI REST API server |
 
 ### Data Flow
 
@@ -138,6 +177,35 @@ Configuration URLs are also available in `.agent/config.json` under `documentati
 - Git operations tested with real git commands in temp dirs
 - State isolation ensured via fixture replacement
 
+## Best Practices
+
+### Error Handling
+- **NEVER** use `except Exception: pass` - this silently swallows errors
+- Always log exceptions with `logger.warning()` or `logger.error()`
+- Include exception type and message in logs for debugging
+- Use `logger.debug()` for expected runtime errors (e.g., no event loop) to avoid log noise
+- Good examples: `webhook.py`, `email_notifier.py`, `git_helper.py`, `test_runner.py`
+
+### Type Annotations
+- Use `TYPE_CHECKING` to avoid circular imports
+- Use `type: ignore[valid-type]` for third-party library type issues
+- Use `cast()` for complex type narrowing
+- Use explicit `Dict[str, Any]` for heterogeneous dictionaries
+- Run `uv run mypy agent/ --ignore-missing-imports` to check types
+
+### Documentation Maintenance
+- Update MEMORY.md after completing important tasks
+- Keep CLAUDE.md in sync with architecture changes
+- Maintain clear `context_files` in feature_list.json tasks
+- Ensure feature_list.json reflects current project state
+
+### Post-Task Actions (Critical)
+After completing any task, the agent MUST:
+1. Review feature_list.json - manually adjust priorities, remove obsolete tasks, add new tasks if needed
+2. Update MEMORY.md - extract key learnings from this task
+3. Update CLAUDE.md - add important patterns or insights discovered
+4. Commit and push changes - save progress with git and push to remote
+
 ## Environment Variables
 
 ```bash
@@ -147,7 +215,7 @@ ANTHROPIC_BASE_URL      # API endpoint (default: https://api.minimaxi.com/anthro
 
 ## Current Tasks
 
-Run `python main.py list` to see pending refactoring tasks in `.agent/feature_list.json`.
+Run `uv run python main.py list` to see pending refactoring tasks in `.agent/feature_list.json`.
 
 ## Self-Improvement Features
 
@@ -170,10 +238,3 @@ Instead of auto-deleting content, the system provides suggestions:
 
 The Agent then decides whether and how to clean up - never automatic deletion.
 
-### Post-Task Actions (Agent Must Do)
-
-After completing any task, the agent MUST:
-1. Review feature_list.json - manually adjust priorities, remove obsolete tasks, add new tasks if needed
-2. Update MEMORY.md - extract key learnings from this task
-3. Update CLAUDE.md - add important patterns or insights discovered
-4. Commit and push changes - save progress with git and push to remote

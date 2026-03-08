@@ -153,23 +153,29 @@ You MUST read the project's context files to understand the codebase:
 
 Use the Read tool to read these files completely before starting work.
 
+**Use Web Tools to Research**: Before executing any task, use WebSearch and WebFetch to look up:
+- Task-related documentation and references
+- API documentation if needed
+- Best practices and relevant patterns
+
 ## Your Workflow
 
 1. Read project context and relevant documentation
-2. Understand the current task requirements
-3. Read and understand relevant source files
-4. Plan your approach - keep changes minimal and focused
-5. Implement the solution
-6. Test and verify your changes
-7. Commit and push changes with descriptive messages
-8. Record lessons learned in the .agent/MEMORY.md file
+2. Research task-related information using WebSearch/WebFetch
+3. Understand the current task requirements
+4. Read and understand relevant source files
+5. Plan your approach - keep changes minimal and focused
+6. Implement the solution
+7. Test and verify your changes
+8. Commit (do not add:Co-Authored-By in commit messages) and push changes with descriptive messages
+9. Record lessons learned in the .agent/MEMORY.md file
 
 ## Available Tools
 
 You have access to the following tool categories:
 - **File Tools**: Read, Write, Edit, Glob, Grep - for file operations
 - **Terminal Tools**: Bash - for running commands
-- **Web Tools**: WebSearch, WebFetch - for searching information
+- **Web Tools**: WebSearch, WebFetch - for researching documentation and task-related information before and during execution
 - **Browser Tools**: Navigate, Snapshot, Click, Type - for browser automation
 
 ## Working Principles
@@ -224,7 +230,7 @@ Before starting:
 3. **Plan your change** - Keep it minimal and focused
 4. **Implement** - Make the smallest possible change
 5. **Test** - Run tests to verify
-6. **Commit and push** - Save and push progress with git
+6. **Commit(do not add:Co-Authored-By in commit messages) and push** - Save and push progress with git
 7. **Record learnings** - Document what you learned
 
 ## Key Instructions
@@ -244,7 +250,7 @@ After completing this task, you MUST:
 1. Review and update the task list - check if any pending tasks need priority adjustments, removal, or new tasks added
 2. Update project memory - extract key learnings from this task
 3. Consider if project documentation needs updates based on new patterns or insights discovered
-4. Commit and push all changes
+4. Commit(do not add:Co-Authored-By in commit messages) and push all changes
 
 Start by reading the project documentation and the relevant source files for this task.
 """
@@ -461,7 +467,7 @@ class PromptManager:
         self.templates_dir = self.agent_dir / "prompt_templates"
 
         # Template cache: {name: {"content": str, "timestamp": float}}
-        self._template_cache: dict[str, dict[str, Any]] = {}
+        self._template_cache: dict[str, dict[str, str | float]] = {}
         self._cache_ttl: int | None = cache_ttl  # None = disabled, 0 = never expire, >0 = TTL in seconds
 
     # ============================================================
@@ -527,16 +533,20 @@ class PromptManager:
 
         # If TTL is 0, cache never expires
         if self._cache_ttl == 0:
-            return self._template_cache[name]["content"]
+            return cast(str, self._template_cache[name]["content"])
+
+        # If TTL is None, caching is disabled (shouldn't happen, but handle gracefully)
+        if self._cache_ttl is None:
+            return None
 
         # Check if cache has expired
         cached_time = self._template_cache[name]["timestamp"]
-        if time.time() - cached_time > self._cache_ttl:
+        if time.time() - cast(float, cached_time) > self._cache_ttl:
             # Cache expired, remove it
             del self._template_cache[name]
             return None
 
-        return self._template_cache[name]["content"]
+        return cast(str, self._template_cache[name]["content"])
 
     def clear_cache(self) -> None:
         """Clear all cached templates."""
@@ -728,7 +738,7 @@ class PromptManager:
         """
         data = self.load_prompts()
         active_key = data.get("active_prompt", "default")
-        prompts = data.get("prompts", {})
+        prompts: dict[str, dict[str, str]] = data.get("prompts", {})
 
         if active_key not in prompts:
             active_key = "default"
