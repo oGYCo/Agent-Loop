@@ -808,6 +808,20 @@ class RunResponse(BaseModel):
     errors: int
 
 
+class LogLevelRequest(BaseModel):
+    """Request model for changing log level"""
+    level: str
+    lock: bool = False
+
+
+class LogLevelResponse(BaseModel):
+    """Response model for log level change"""
+    success: bool
+    current_level: str
+    locked: bool
+    message: str
+
+
 # ========== XSS Sanitization ==========
 
 def sanitize_for_html(text: str) -> str:
@@ -1603,6 +1617,61 @@ def health_check() -> HealthCheckResponse:
         service="agent-loop-api",
         timestamp=datetime.now().isoformat(),
         dependencies=dependencies
+    )
+
+
+@app.post("/config/log-level", response_model=LogLevelResponse)
+@app.post("/api/v1/config/log-level", response_model=LogLevelResponse, tags=["Config"])
+def set_log_level_config(
+    request: LogLevelRequest,
+    api_key: str = Depends(get_api_key),
+) -> LogLevelResponse:
+    """Dynamically adjust logging level at runtime.
+
+    Allows changing the log level without restarting the application.
+    Supported levels: DEBUG, INFO, WARNING, ERROR, CRITICAL
+
+    Can optionally lock the log level to prevent further changes.
+    """
+    from agent.logging_ import set_log_level, get_log_level, lock_log_level
+
+    # Lock/unlock if requested
+    if request.lock:
+        lock_log_level(True)
+    else:
+        lock_log_level(False)
+
+    # Try to set the new level
+    success = set_log_level(request.level)
+
+    if success:
+        return LogLevelResponse(
+            success=True,
+            current_level=get_log_level(),
+            locked=request.lock,
+            message=f"Log level set to {request.level.upper()}",
+        )
+    else:
+        return LogLevelResponse(
+            success=False,
+            current_level=get_log_level(),
+            locked=request.lock,
+            message=f"Invalid log level: {request.level}. Use DEBUG, INFO, WARNING, ERROR, or CRITICAL",
+        )
+
+
+@app.get("/config/log-level", response_model=LogLevelResponse)
+@app.get("/api/v1/config/log-level", response_model=LogLevelResponse, tags=["Config"])
+def get_log_level_config() -> LogLevelResponse:
+    """Get current logging level configuration."""
+    from agent.logging_ import get_log_level
+
+    current = get_log_level()
+    return LogLevelResponse(
+        success=True,
+        current_level=current,
+        locked=False,
+        message=f"Current log level: {current}",
     )
 
 

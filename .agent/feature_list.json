@@ -525,8 +525,8 @@
       "name": "日志系统全面升级",
       "description": "将当前基础的structlog配置升级为生产级日志系统，支持日志轮转、关联追踪、敏感数据脱敏。具体包括：\n\n1) **日志轮转**：使用logging.handlers.RotatingFileHandler实现按大小轮转（默认10MB/文件，保留5个备份），避免日志文件无限增长。\n2) **关联ID追踪**：为每个Agent session、task execution、API request生成唯一的correlation_id（UUID），贯穿整个调用链，便于分布式日志追踪。在logging_.py中添加CorrelationIdProcessor。\n3) **敏感数据脱敏**：添加structlog processor自动检测和屏蔽日志中的API Key、密码、token等敏感字段（正则匹配 sk-*、password=*、token=* 等模式），替换为[REDACTED]。\n4) **日志级别动态调整**：支持通过API端点 POST /config/log-level 在运行时动态调整日志级别，无需重启。\n5) **结构化上下文**：为每条日志自动附加module、function、line_number等上下文信息。\n6) **审计日志**：创建独立的audit logger记录所有状态变更操作（任务创建/修改/删除、配置变更、Agent启停），输出到独立文件audit.log。\n\n**关键指令**：参考structlog文档：https://www.structlog.org/en/stable/ 。确保console输出仍然可读（不被correlation_id等元数据干扰）。添加logging_.py的测试用例。",
       "priority": 3,
-      "status": "pending",
-      "passes": false,
+      "status": "completed",
+      "passes": true,
       "context_files": [
         "agent/logging_.py",
         "agent/agent_core.py",

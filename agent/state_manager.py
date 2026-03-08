@@ -14,6 +14,14 @@ from typing import Any, cast
 
 import portalocker
 
+# Import audit logging
+try:
+    from .logging_ import log_audit
+except ImportError:
+    # Fallback if logging_ is not available
+    def log_audit(*args: Any, **kwargs: Any) -> None:
+        pass
+
 # Secure file permissions - owner read/write only (0o600)
 SECURE_FILE_PERMISSIONS = 0o600
 
@@ -342,6 +350,14 @@ class StateManager:
                 feature["updated_at"] = datetime.now().strftime("%Y-%m-%d")
                 updated = True
 
+                # Audit log the update
+                log_audit(
+                    action="update",
+                    entity_type="task",
+                    entity_id=feature_id,
+                    details=updates,
+                )
+
         if updated:
             self.save_feature_list(data)
         return updated
@@ -355,6 +371,14 @@ class StateManager:
         data = self.load_feature_list()
         data["features"].append(feature)
         self.save_feature_list(data)
+
+        # Audit log the creation
+        log_audit(
+            action="create",
+            entity_type="task",
+            entity_id=feature.get("id", "unknown"),
+            details={"name": feature.get("name", "")},
+        )
 
     # ========== Progress 操作 ==========
 
