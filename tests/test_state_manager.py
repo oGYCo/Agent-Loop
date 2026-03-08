@@ -122,6 +122,15 @@ class TestStateManager:
         assert "Initial" in result
         assert "Added" in result
 
+    def test_save_text_file(self, state_manager):
+        """Test saving arbitrary text files atomically."""
+        memory_path = Path(state_manager.agent_dir) / "MEMORY.md"
+        content = "# Memory\n\nTest content"
+
+        state_manager.save_text_file(memory_path, content)
+
+        assert memory_path.read_text(encoding="utf-8") == content
+
     # ========== State Tests ==========
 
     def test_load_state_default(self, state_manager):

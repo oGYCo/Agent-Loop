@@ -61,3 +61,4 @@ dmypy.json
 Thumbs.db
 .agent/
 .playwright-mcp/
+logs/

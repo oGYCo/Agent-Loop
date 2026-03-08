@@ -138,10 +138,13 @@ class MetricsCollector:
 
     _instance = None
     _lock = threading.Lock()
+    # Maximum tracked concurrent sessions/tasks to prevent memory leaks
+    _MAX_TRACKED_ENTRIES = 100
 
     def __init__(self):
         self._session_start_times: dict[str, float] = {}
         self._task_start_times: dict[str, float] = {}
+        self._providers_set: set[str] = set()
 
     @classmethod
     def get_instance(cls) -> "MetricsCollector":
@@ -169,6 +172,10 @@ class MetricsCollector:
     # Session methods
     def start_session(self, session_id: str):
         """Record session start time"""
+        # Prevent unbounded growth: evict oldest entries if over limit
+        if len(self._session_start_times) >= self._MAX_TRACKED_ENTRIES:
+            oldest_key = min(self._session_start_times, key=self._session_start_times.get)  # type: ignore[arg-type]
+            self._session_start_times.pop(oldest_key, None)
         self._session_start_times[session_id] = time.time()
         SESSIONS_ACTIVE.inc()
         SESSIONS_TOTAL.inc()
@@ -208,6 +215,10 @@ class MetricsCollector:
     # Task duration methods
     def start_task(self, task_id: str):
         """Record task start time"""
+        # Prevent unbounded growth: evict oldest entries if over limit
+        if len(self._task_start_times) >= self._MAX_TRACKED_ENTRIES:
+            oldest_key = min(self._task_start_times, key=self._task_start_times.get)  # type: ignore[arg-type]
+            self._task_start_times.pop(oldest_key, None)
         self._task_start_times[task_id] = time.time()
 
     def end_task(self, task_id: str):
@@ -239,12 +250,10 @@ class MetricsCollector:
     def set_active_provider(self, provider: str):
         """Set the currently active provider"""
         # Reset all providers first
-        for p in self._providers_set if hasattr(self, '_providers_set') else []:
+        for p in self._providers_set:
             PROVIDER_ACTIVE.labels(provider=p).set(0)
         # Set active provider
         PROVIDER_ACTIVE.labels(provider=provider).set(1)
-        if not hasattr(self, '_providers_set'):
-            self._providers_set = set()
         self._providers_set.add(provider)
 
 

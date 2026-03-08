@@ -161,6 +161,66 @@ class StateManager:
                 raise
             raise FileOperationError(f"Failed to write file: {e}")
 
+    def _atomic_write_text(self, file_path: Path, content: str) -> None:
+        """原子写入文本文件并保留备份。
+
+        Args:
+            file_path: 目标文件路径
+            content: 要写入的文本内容
+
+        Raises:
+            FileOperationError: 写入失败时抛出
+        """
+        backup_path = self._get_backup_path(file_path)
+        file_path.parent.mkdir(parents=True, exist_ok=True)
+
+        if file_path.exists():
+            try:
+                if backup_path.exists():
+                    backup_path.unlink()
+            except OSError:
+                pass
+
+            try:
+                import shutil
+                shutil.copy2(file_path, backup_path)
+            except OSError:
+                pass
+
+        try:
+            with tempfile.NamedTemporaryFile(
+                mode="w",
+                encoding="utf-8",
+                dir=file_path.parent,
+                delete=False,
+            ) as tmp_file:
+                tmp_file.write(content)
+                tmp_path = tmp_file.name
+
+            os.replace(tmp_path, file_path)
+            os.chmod(file_path, SECURE_FILE_PERMISSIONS)
+        except Exception as e:
+            if backup_path.exists():
+                try:
+                    os.replace(backup_path, file_path)
+                except OSError:
+                    pass
+            raise FileOperationError(f"Failed to write text file: {e}")
+
+    def save_text_file(self, file_path: Path, content: str) -> None:
+        """保存任意 .agent 文本文件，使用原子写入。
+
+        Args:
+            file_path: 目标文件路径
+            content: 文本内容
+        """
+        try:
+            self._atomic_write_text(file_path, content)
+        except FileOperationError:
+            with open(file_path, "w", encoding="utf-8") as f:
+                f.write(content)
+            os.chmod(file_path, SECURE_FILE_PERMISSIONS)
+
     def _read_json_with_lock(self, file_path: Path) -> dict[str, Any]:
         """使用文件锁读取JSON文件
 
@@ -401,45 +461,9 @@ class StateManager:
         Args:
             content: The progress content to save.
         """
-        # 对于非JSON文件，使用简化的原子写入
-        backup_path = self._get_backup_path(self.progress_path)
-
-        # 如果原文件存在，先创建备份
-        if self.progress_path.exists():
-            try:
-                if backup_path.exists():
-                    backup_path.unlink()
-            except OSError:
-                pass
-            try:
-                import shutil
-                shutil.copy2(self.progress_path, backup_path)
-            except OSError:
-                pass
-
-        # 写入临时文件
         try:
-            with tempfile.NamedTemporaryFile(
-                mode="w",
-                encoding="utf-8",
-                dir=self.progress_path.parent,
-                delete=False,
-            ) as tmp_file:
-                tmp_file.write(content)
-                tmp_path = tmp_file.name
-
-            # 原子替换目标文件
-            os.replace(tmp_path, self.progress_path)
-
-            # 设置安全权限
-            os.chmod(self.progress_path, SECURE_FILE_PERMISSIONS)
-        except Exception as e:
-            # 发生错误时尝试回滚到备份
-            if backup_path.exists():
-                try:
-                    os.replace(backup_path, self.progress_path)
-                except OSError:
-                    pass
+            self._atomic_write_text(self.progress_path, content)
+        except FileOperationError as e:
             raise FileOperationError(f"Failed to write progress file: {e}")
 
     def append_progress(self, entry: str) -> None:

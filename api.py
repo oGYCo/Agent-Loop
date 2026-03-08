@@ -1918,6 +1918,46 @@ async def test_email(request: Request, api_key: str = Depends(get_api_key)) -> D
         }
 
 
+def request_uses_https(request: Request) -> bool:
+    """Detect whether the effective client-facing request scheme is HTTPS.
+
+    This keeps local HTTP development working while still allowing HTTPS
+    deployments behind a reverse proxy to opt into CSP upgrades.
+    """
+    if request.url.scheme == "https":
+        return True
+
+    forwarded_proto = request.headers.get("x-forwarded-proto", "")
+    if forwarded_proto:
+        first_proto = forwarded_proto.split(",")[0].strip().lower()
+        if first_proto == "https":
+            return True
+
+    forwarded = request.headers.get("forwarded", "").lower()
+    return "proto=https" in forwarded
+
+
+def build_dashboard_csp(request: Request) -> str:
+    """Build dashboard CSP without forcing HTTPS upgrades on plain HTTP."""
+    directives = [
+        "default-src 'self'",
+        "script-src 'self' 'unsafe-inline'",
+        "style-src 'self' 'unsafe-inline'",
+        "connect-src 'self' ws: wss:",
+        "img-src 'self' data:",
+        "font-src 'self'",
+        "frame-ancestors 'none'",
+        "form-action 'self'",
+        "base-uri 'self'",
+        "object-src 'none'",
+    ]
+
+    if request_uses_https(request):
+        directives.append("upgrade-insecure-requests")
+
+    return "; ".join(directives)
+
+
 @app.get("/")
 @limiter.limit("60/minute")
 def serve_dashboard(request: Request, api_key: str = Depends(get_api_key)):
@@ -1926,21 +1966,11 @@ def serve_dashboard(request: Request, api_key: str = Depends(get_api_key)):
 
     # Create response with CSP headers
     # Note: 'unsafe-inline' is required because the dashboard has inline JavaScript
-    # In production, consider extracting scripts to external files
+    # In production, consider extracting scripts to external files.
+    # Only enable upgrade-insecure-requests for HTTPS traffic, otherwise
+    # browsers will upgrade ws/http calls to wss/https and break local dev.
     response = FileResponse(static_path)
-    response.headers["Content-Security-Policy"] = (
-        "default-src 'self'; "
-        "script-src 'self' 'unsafe-inline'; "  # Required for inline scripts in dashboard
-        "style-src 'self' 'unsafe-inline'; "   # Required for inline styles
-        "connect-src 'self' ws: wss:; "          # Allow WebSocket connections
-        "img-src 'self' data:; "
-        "font-src 'self'; "
-        "frame-ancestors 'none'; "
-        "form-action 'self'; "
-        "base-uri 'self'; "
-        "object-src 'none'; "
-        "upgrade-insecure-requests"
-    )
+    response.headers["Content-Security-Policy"] = build_dashboard_csp(request)
     # Prevent clickjacking
     response.headers["X-Frame-Options"] = "DENY"
     # Prevent MIME type sniffing

@@ -2246,7 +2246,10 @@ Features Added:
 
 ---
 
-### 2026-03-08 - 通知系统测试补全与增强 (feature-042)
+
+---
+
+2026-03-08 - 通知系统测试补全与增强 (feature-042)
 
 **任务描述**: 当前webhook.py(78%)、email_notifier.py(71%)、slack_notifier.py(73%)测试覆盖率不足，需要全面提升并增强通知系统功能。具体包括：
 
@@ -2277,11 +2280,54 @@ Features Added:
 
 I've completed the notification system test enhancement task (feature-042). Here's what was accomplished:
 
-### Test Coverage Results:
+
+---
+
+Test Coverage Results:
 - **Webhook tests**: 78% → **93.30%** (target 90%+) ✅
 - **Email tests**: 86.77% (target 85%+) ✅  
 - **Slack tests**: 84.13% (target 85%+) - Close to target
 - **Notification Router**: 73.18% - Already implemented with tests
 - **Notification Queue**: 82.01% - Already implemented with tests
 
-### Tests Ad
+
+---
+
+Tests Ad
+
+---
+
+### 2026-03-08 - 代码质量基础设施：常量提取与懒加载重构 (feature-043)
+
+**任务描述**: 消除代码中散布的魔法数字、魔法字符串和重复的懒加载模式，提高代码可维护性。具体包括：
+
+1) **常量模块**：创建agent/constants.py集中定义：
+   - DEFAULT_PRIORITY = 999（当前散布在task_selector.py中）
+   - MAX_RETRY_COUNT = 3, RETRY_BASE_DELAY = 5（当前在agent_core.py中硬编码）
+   - CONFIG_KEYS枚举（'webhook', 'email', 'slack', 'api_keys'等，当前到处用字符串字面量）
+   - FILE_NAMES枚举（'feature_list.json', 'state.json', 'config.json'等）
+   - API_PATHS枚举（'/status', '/tasks', '/health'等）
+   - EVENT_TYPES枚举（'task_completed', 'task_failed', 'session_started'等）
+   - LOG_LEVELS、STATUS_VALUES等
+2) **服务工厂重构**：将agent_core.py中6个独立的懒加载函数（_get_webhook_notifier, _get_slack_notifier, _get_event_pusher等）统一为ServiceFactory类：
+   ```python
+   class ServiceFactory:
+       @staticmethod
+       def get(service_name: str) -> Optional[Any]: ...
+   ```
+3) **HTTP客户端生命周期管理**：为webhook.py和slack_notifier.py的httpx.AsyncClient添加async context manager模式（__aenter__/__aexit__），确保连接正确关闭。
+4) **命名一致性**：统一项目中'task'/'feature'/'item'的混用命名，在代码层面统一为'task'，在文件层面保留'feature_list.json'以向后兼容。
+
+**关键指令**：使用全局搜索确保所有魔法值都被替换。每个替换都要确保现有测试仍然通过。
+
+**执行结果**: completed
+**执行消息**: ## Summary
+
+I have completed the code quality infrastructure refactoring task (feature-043). Here's what was accomplished:
+
+### 1. Created `agent/constants.py`
+- **Task Constants**: DEFAULT_PRIORITY = 999, MIN_PRIORITY, MAX_PRIORITY
+- **Retry Constants**: MAX_RETRY_COUNT = 3, RETRY_BASE_DELAY = 5
+- **Enums**: ConfigKeys, FileNames, ApiPaths, EventTypes, StatusValues, LogLevels, NotificationChannel, NotificationSeverity
+- **HTTP Constants**: Default timeout, user agent, content type
+- **Misc Cons

@@ -1659,60 +1659,39 @@ class AgentCore:
         # 解析并去重
         updated_content = self._merge_experience(current_content, task, result)
 
-        with open(memory_file, "w", encoding="utf-8") as f:
-            f.write(updated_content)
+        self.state_manager.save_text_file(memory_file, updated_content)
 
         logger.info(f"经验已更新到 {memory_file}")
 
     def _merge_experience(self, content: str, task: Dict[str, Any], result: Dict[str, Any]) -> str:
         """解析现有内容，合并新经验，去除重复"""
-        import re
+        task_id = str(task.get("id", "unknown"))
+        task_name = str(task.get("name", "Untitled Task"))
+        task_description = str(task.get("description", ""))
+        status = str(result.get("status", "unknown"))
+        raw_message = str(result.get("message", "") or "")
+        message = self._format_memory_message(raw_message)
 
-        task_id = task.get("id")
-        task_name = task.get("name")
-        task_description = task.get("description")
-        status = result.get('status', 'unknown')
-        message = result.get('message', '')[:500] if result.get('message') else ''
-
-        # 定义分隔符：静态内容和任务记录
-        static_sections = []
-        task_records = []
+        static_content = content.strip()
+        task_records: List[str] = []
+        existing_same_task: str | None = None
 
         # 分离静态部分（项目概述、技术栈、模式等）和任务记录
         if "## Task Experience Records" in content:
-            parts = content.split("## Task Experience Records")
-            static_sections.append(parts[0].strip())
+            parts = content.split("## Task Experience Records", 1)
+            static_content = parts[0].strip()
             task_section = parts[1] if len(parts) > 1 else ""
         else:
-            # 没有任务记录部分，全部作为静态内容
-            static_sections.append(content.strip())
             task_section = ""
 
-        # 解析现有任务记录
-        if task_section:
-            # 按 ### 分割任务记录
-            entries = re.split(r'\n### ', task_section)
-            for entry in entries:
-                if not entry.strip():
-                    continue
-                # 检查是否是重复任务
-                entry_match = re.match(r'(\d{4}-\d{2}-\d{2}) - (.+?) \((\w+)\)', entry)
-                if entry_match:
-                    existing_id = entry_match.group(3)
-                    # 只保留非重复的，或内容更完整的
-                    if existing_id != task_id:
-                        task_records.append(entry)
-                    else:
-                        # 检查现有条目是否有实际经验内容
-                        if "**学到的经验**:" in entry and "[待填写]" not in entry:
-                            task_records.append(entry)
-                        # 如果新结果有实际内容，则用新的替换
-                        elif status == 'completed' and message:
-                            pass  # 跳过旧条目，用新的
-                        else:
-                            task_records.append(entry)
-                else:
-                    task_records.append(entry)
+        for entry in self._split_memory_task_entries(task_section):
+            existing_id = self._extract_memory_task_id(entry)
+            if existing_id != task_id:
+                task_records.append(entry)
+                continue
+
+            if existing_same_task is None or len(entry) > len(existing_same_task):
+                existing_same_task = entry
 
         # 生成新条目
         new_entry_lines = [
@@ -1724,29 +1703,101 @@ class AgentCore:
         ]
 
         if message:
-            new_entry_lines.append(f"**执行消息**: {message}")
+            new_entry_lines.extend(["**执行消息**:", message, ""])
 
         # 从执行结果中提取经验（如果任务完成）
         if status == 'completed' and message:
             # 尝试从消息中提取关键学习点
-            learned = self._extract_learned_from_message(message)
+            learned = self._extract_learned_from_message(raw_message)
             if learned:
                 new_entry_lines.extend(["", f"**学到的经验**:", learned])
 
-        new_entry = "\n".join(new_entry_lines)
+        new_entry = "\n".join(new_entry_lines).strip()
 
-        # 添加新条目
-        task_records.append(new_entry)
+        if existing_same_task and not (status == "completed" and raw_message.strip()):
+            task_records.append(existing_same_task)
+        else:
+            task_records.append(new_entry)
 
         # 限制保留最近的任务记录（最多50条）
         if len(task_records) > 50:
             task_records = task_records[-50:]
 
         # 重组内容
-        static_content = "\n\n".join(static_sections)
         task_content = "\n\n---\n\n".join(task_records)
 
-        return f"{static_content}\n\n## Task Experience Records\n\n{task_content}"
+        if static_content:
+            return f"{static_content}\n\n## Task Experience Records\n\n{task_content}\n"
+        return f"## Task Experience Records\n\n{task_content}\n"
+
+    def _split_memory_task_entries(self, task_section: str) -> List[str]:
+        """Split task records while preserving and normalizing heading markers."""
+        import re
+
+        section = task_section.strip()
+        if not section:
+            return []
+
+        header_pattern = re.compile(
+            r"(?m)^\s*(?:###\s+)?\d{4}-\d{2}-\d{2}\s+-\s+.+?\s+\([^)]+\)\s*$"
+        )
+        matches = list(header_pattern.finditer(section))
+        if not matches:
+            fallback = section.strip()
+            return [fallback] if fallback else []
+
+        entries: List[str] = []
+        for index, match in enumerate(matches):
+            start = match.start()
+            end = matches[index + 1].start() if index + 1 < len(matches) else len(section)
+            entry = section[start:end].strip()
+            normalized = self._normalize_memory_task_entry(entry)
+            if normalized:
+                entries.append(normalized)
+
+        return entries
+
+    def _normalize_memory_task_entry(self, entry: str) -> str:
+        """Normalize task record headings and remove stray separators."""
+        import re
+
+        lines = [line.rstrip() for line in entry.strip().splitlines()]
+        while lines and (not lines[0].strip() or lines[0].strip() == "---"):
+            lines.pop(0)
+        while lines and (not lines[-1].strip() or lines[-1].strip() == "---"):
+            lines.pop()
+
+        if not lines:
+            return ""
+
+        first_line = lines[0].strip()
+        if re.match(r"^\d{4}-\d{2}-\d{2}\s+-\s+.+\s+\([^)]+\)$", first_line):
+            lines[0] = f"### {first_line}"
+        elif first_line.startswith("### "):
+            lines[0] = first_line
+
+        return "\n".join(lines).strip()
+
+    def _extract_memory_task_id(self, entry: str) -> str | None:
+        """Extract task id from a normalized MEMORY.md task entry."""
+        import re
+
+        match = re.match(r"^###\s+\d{4}-\d{2}-\d{2}\s+-\s+.+?\s+\(([^)]+)\)", entry.strip())
+        return match.group(1) if match else None
+
+    def _format_memory_message(self, message: str, max_chars: int = 4000) -> str:
+        """Keep long messages readable without silently truncating them at 500 chars."""
+        normalized = message.strip()
+        if len(normalized) <= max_chars:
+            return normalized
+
+        cutoff = max_chars
+        last_newline = normalized.rfind("\n", 0, max_chars)
+        if last_newline >= int(max_chars * 0.7):
+            cutoff = last_newline
+
+        truncated = normalized[:cutoff].rstrip()
+        return f"{truncated}\n...[truncated from {len(normalized)} chars]"
 
     def _extract_learned_from_message(self, message: str) -> str:
         """从执行消息中提取关键经验"""

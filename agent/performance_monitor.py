@@ -16,6 +16,11 @@ from functools import wraps
 perf_logger = logging.getLogger("agent_core.performance")
 
 
+# Maximum number of entries to keep in memory
+MAX_TASK_TIMINGS = 100
+MAX_OPERATION_STACK = 200
+
+
 class PerformanceMetrics:
     """性能指标收集器"""
 
@@ -50,6 +55,8 @@ class PerformanceMetrics:
             stats["total_task_time"] = round(sum(task_durations), 2)
 
         perf_logger.info(f"Session completed: {stats}")
+        # Clear task timings after session to prevent memory leak
+        self.task_timings.clear()
         return stats
 
     def record_task(self, task_id: str, task_name: str, duration: float, status: str, error: str | None = None) -> None:
@@ -65,6 +72,9 @@ class PerformanceMetrics:
             task_info["error"] = error
 
         self.task_timings.append(task_info)
+        # Prevent unbounded growth - keep only recent entries
+        if len(self.task_timings) > MAX_TASK_TIMINGS:
+            self.task_timings = self.task_timings[-MAX_TASK_TIMINGS:]
         perf_logger.info(
             f"Task performance: {task_name} ({task_id}) - {duration:.2f}s - Status: {status}"
         )
@@ -115,6 +125,9 @@ class PerformanceMonitor:
             }
 
             self._operation_stack.append(operation_info)
+            # Prevent unbounded growth - keep only recent entries
+            if len(self._operation_stack) > MAX_OPERATION_STACK:
+                self._operation_stack = self._operation_stack[-MAX_OPERATION_STACK:]
 
             perf_logger.info(
                 f"Performance: {operation_name} - Duration: {duration:.4f}s, "

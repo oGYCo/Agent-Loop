@@ -49,6 +49,7 @@ def count_tokens(text: str) -> int:
 DEFAULT_ARCHIVE_AFTER_DAYS = 30
 DEFAULT_MAX_SESSIONS_BEFORE_ARCHIVE = 100
 DEFAULT_KEEP_RECENT_MESSAGES = 10
+MAX_TOKEN_CACHE_ENTRIES = 500
 
 
 class SessionManager:
@@ -128,8 +129,9 @@ class SessionManager:
         Args:
             messages: Current message list
         """
-        # Clear cache if message count changed significantly
-        if abs(len(messages) - len(self._token_cache)) > 5:
+        # Clear cache if message count changed significantly or cache is too large
+        if (abs(len(messages) - len(self._token_cache)) > 5
+                or len(self._token_cache) > MAX_TOKEN_CACHE_ENTRIES):
             self._token_cache.clear()
             self._last_total_tokens = 0
 

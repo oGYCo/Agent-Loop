@@ -618,10 +618,13 @@ def start_server(args: argparse.Namespace) -> None:
     """Start the REST API server"""
     import uvicorn
 
+    browser_host = "localhost" if args.host in {"0.0.0.0", "::"} else args.host
+
     print(f"Starting Agent-Loop API server...")
     print(f"Host: {args.host}")
     print(f"Port: {args.port}")
-    print(f"API docs: http://{args.host}:{args.port}/docs")
+    print(f"Dashboard: http://{browser_host}:{args.port}/")
+    print(f"API docs: http://{browser_host}:{args.port}/docs")
 
     uvicorn.run(
         "api:app",

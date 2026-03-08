@@ -610,7 +610,49 @@ Old content.
         updated = agent_core._merge_experience(content, task, result)
 
         # Should have updated content, not duplicated
-        assert updated.count("feature-001") >= 1
+        assert updated.count("feature-001") == 1
+        assert "### 2026" in updated
+
+    def test_merge_experience_normalizes_legacy_headers(self, agent_core):
+        """Test merge_experience normalizes legacy entries that lost ### markers."""
+        content = """# Memory
+
+## Task Experience Records
+
+2026-01-01 - Old Task (feature-old)
+Old content.
+"""
+        task = {
+            "id": "feature-new",
+            "name": "New Task",
+            "description": "Task description"
+        }
+        result = {
+            "status": "completed",
+            "message": "Task completed"
+        }
+
+        updated = agent_core._merge_experience(content, task, result)
+
+        assert "### 2026-01-01 - Old Task (feature-old)" in updated
+        assert "### 2026" in updated
+
+    def test_merge_experience_keeps_long_messages(self, agent_core):
+        """Test merge_experience no longer silently truncates messages at 500 chars."""
+        long_message = "\n".join(f"Line {i:03d}" for i in range(120))
+        task = {
+            "id": "feature-long",
+            "name": "Long Task",
+            "description": "Long description"
+        }
+        result = {
+            "status": "completed",
+            "message": long_message
+        }
+
+        updated = agent_core._merge_experience("# Memory", task, result)
+
+        assert "Line 090" in updated
 
     def test_extract_learned_from_message(self, agent_core):
         """Test extracting learned information from message"""

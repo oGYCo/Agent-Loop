@@ -92,6 +92,25 @@ def client(mock_state_manager):
         yield TestClient(app)
 
 
+@pytest.fixture
+def https_client(mock_state_manager):
+    """Create a test client that simulates direct HTTPS access."""
+    with patch('api.StateManager', return_value=mock_state_manager), \
+         patch('api.GitHelper') as mock_git, \
+         patch('api.TaskSelector') as mock_task, \
+         patch('api.SessionManager') as mock_session:
+        mock_git.return_value.get_current_branch.return_value = "main"
+        mock_git.return_value.has_changes.return_value = False
+        mock_task.return_value.get_completed_count.return_value = 0
+        mock_task.return_value.get_total_count.return_value = 0
+        mock_task.return_value.get_pending_count.return_value = 0
+        mock_session.return_value.get_session_stats.return_value = {
+            "total_sessions": 0,
+            "completed_sessions": 0
+        }
+        yield TestClient(app, base_url="https://testserver")
+
+
 # ========== Rate Limiting Tests ==========
 
 class TestRateLimiting:
@@ -308,6 +327,21 @@ class TestCSPHeaders:
         csp = response.headers["Content-Security-Policy"]
         assert "default-src 'self'" in csp
         assert "script-src 'self'" in csp
+        assert "upgrade-insecure-requests" not in csp
+
+    def test_dashboard_csp_headers_https(self, https_client):
+        """Test that HTTPS dashboard responses opt into secure upgrades."""
+        response = https_client.get("/")
+
+        csp = response.headers["Content-Security-Policy"]
+        assert "upgrade-insecure-requests" in csp
+
+    def test_dashboard_csp_headers_forwarded_https(self, client):
+        """Test that reverse-proxied HTTPS also enables secure upgrades."""
+        response = client.get("/", headers={"x-forwarded-proto": "https"})
+
+        csp = response.headers["Content-Security-Policy"]
+        assert "upgrade-insecure-requests" in csp
 
     def test_dashboard_x_frame_options(self, client):
         """Test X-Frame-Options header"""
