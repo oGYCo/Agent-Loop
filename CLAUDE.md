@@ -31,6 +31,10 @@ pytest tests/test_agent_core.py -v
 # Quick test with fail-fast
 pytest tests/ -x -q
 
+# Run tests with coverage
+pytest tests/ --cov=agent --cov-report=term-missing
+pytest tests/ --cov=agent --cov-report=html  # HTML report in htmlcov/
+
 # Type checking
 mypy agent/agent_core.py
 
