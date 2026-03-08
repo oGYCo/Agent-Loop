@@ -4,6 +4,54 @@ Accumulated experience and lessons learned from task execution.
 
 ---
 
+## 2026-03-08 - Docker Containerization & Deployment (feature-037)
+
+**任务描述**: 为项目创建完整的容器化部署方案，使其可以一键部署到Docker/Kubernetes环境。
+
+**Lessons Learned:**
+
+1. **Multi-Stage Dockerfile Best Practices**:
+   - Use `python:3.11-slim` as base image for minimal size
+   - First stage: Install `uv` for fast package management
+   - Second stage: Copy only the virtual environment and necessary runtime files
+   - Use `--from=builder` to copy between stages
+
+2. **Security Configuration**:
+   - Create non-root user (`agent`) for container execution
+   - Use `USER agent` directive before CMD
+   - Set `PIP_NO_CACHE_DIR=1` and `PIP_DISABLE_PIP_VERSION_CHECK=1` to reduce image size
+   - Copy files with `--chown=agent:agent` to set correct ownership
+
+3. **Health Checks**:
+   - Use HTTP health check against `/health` endpoint
+   - Set appropriate intervals: `--interval=30s --timeout=10s --start-period=5s --retries=3`
+
+4. **Docker Compose Service Architecture**:
+   - `agent-loop`: CLI service running agent loop (no port exposed)
+   - `agent-api`: FastAPI server with API + Dashboard (port 8000)
+   - `prometheus`: Metrics collection (port 9090)
+   - `grafana`: Visualization (port 3000)
+   - Use named volumes for data persistence (`agent-data`, `prometheus-data`, `grafana-data`)
+
+5. **Environment Variables**:
+   - Use `.env.example` as template
+   - Key variables: `ANTHROPIC_AUTH_TOKEN`, `LOG_LEVEL`, `LOG_FILE`
+   - Use `${VAR:-default}` syntax for defaults in docker-compose
+
+6. **Volume Mounting for Persistence**:
+   - Mount `.agent/` directory as Docker volume to persist state
+   - Mount `./logs` for log persistence
+
+**Files Created:**
+- `.dockerignore` - Excludes .git, __pycache__, .venv, etc.
+- `Dockerfile` - Multi-stage build with security best practices
+- `docker-compose.yml` - 4-service stack with monitoring
+- `.env.example` - Environment variable template
+- `prometheus.yml` - Prometheus scrape configuration
+- Updated `README.md` with Docker deployment section
+
+---
+
 ## 2026-03-08 - Console & CLI Test Coverage (feature-036)
 
 **任务描述**: 提升console.py测试覆盖率从16%到70%+，并添加CLI端到端测试。
@@ -1401,6 +1449,8 @@ Accumulated experience and lessons learned from task execution.
 
 
 
+
+
 2026-03-08 - 持续改进计划 (feature-028)
 
 **任务描述**: 这是一个meta任务，用于持续改进系统。在完成每个主要功能后，系统应该：1) 自动审查和更新feature_list.json 2) 更新MEMORY.md记录经验 3) 审查和更新CLAUDE.md和README.md 4) 确保测试覆盖新功能。此任务确保系统能够持续自我优化和成长。
@@ -1669,7 +1719,10 @@ The new test file covers:
 
 ---
 
-### 2026-03-08 - 任务依赖系统 (feature-034)
+
+---
+
+2026-03-08 - 任务依赖系统 (feature-034)
 
 **任务描述**: 实现任务间依赖关系管理，使Agent能按正确顺序执行有前置依赖的任务。当前所有任务被视为独立的，仅按priority排序执行，这在实际项目中不够用。具体包括：
 
@@ -1687,12 +1740,58 @@ The new test file covers:
 
 I've successfully implemented the task dependency system for Agent-Loop. Here's what was done:
 
-### 1. Data Model Extension
+
+---
+
+1. Data Model Extension
 - Added `depends_on` field to task structure (string array) in the API models
 
-### 2. Dependency Resolution Engine (`agent/task_selector.py`)
+
+---
+
+2. Dependency Resolution Engine (`agent/task_selector.py`)
 - Implemented **Kahn's algorithm** for topological sorting
 - Created `CircularDependencyError` exception for clear error messages
 - Added new methods:
   - `get_dependencies(task_id)` - Get task's dependencies
   - `is_depen
+
+---
+
+### 2026-03-08 - Console与CLI模块测试覆盖率提升 (feature-036)
+
+**任务描述**: 当前console.py测试覆盖率仅16%，需要全面提升。同时补充main.py CLI命令的端到端测试。具体包括：
+
+1) **Console捕获测试**：使用rich.console.Console(file=io.StringIO())捕获输出，验证：
+   - print_header()输出包含正确标题
+   - print_task_table()表格包含所有任务列且格式正确
+   - print_status_panel()面板包含项目名、分支、错误计数等
+   - print_run_summary()正确显示迭代次数、完成数、错误数
+   - print_success/error/warning/info()使用正确的颜色标记
+   - create_progress()返回有效的Progress对象
+2) **CLI端到端测试**：创建tests/test_cli.py，使用subprocess运行main.py命令并验证输出：
+   - `init`命令创建.agent/目录和所有必要文件
+   - `list`命令正确显示任务列表（含--filter参数测试）
+   - `add`命令成功添加新任务到feature_list.json
+   - `status`命令显示正确的状态信息
+   - `template list/show`命令输出模板信息
+   - `prompt list/set`命令管理提示词预设
+   - 各命令在.agent/不存在时的优雅错误处理
+3) **边界测试**：空任务列表、超长任务名、特殊字符任务名（emoji、中文、换行符）的显示处理。
+
+**关键指令**：使用临时目录隔离测试环境。目标覆盖率：console.py 70%+。
+
+**执行结果**: completed
+**执行消息**: I've successfully completed the task. Here's a summary:
+
+## Summary
+
+### 1. Console Tests (tests/test_console.py)
+- Created 39 unit tests for all console.py functions
+- **Coverage: 99.36%** (was 16% before)
+- Tests cover:
+  - `print_header()` - with custom styles
+  - `print_success/error/warning/info()` - colored output
+  - `print_task_table()` - various task states, counts, missing fields
+  - `print_status_panel()` - project info, git status, error counts
+  - `print_run_summary()` - iterations,
