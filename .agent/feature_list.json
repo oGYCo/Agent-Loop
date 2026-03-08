@@ -506,8 +506,8 @@
       "name": "任务依赖系统",
       "description": "实现任务间依赖关系管理，使Agent能按正确顺序执行有前置依赖的任务。当前所有任务被视为独立的，仅按priority排序执行，这在实际项目中不够用。具体包括：\n\n1) **数据模型扩展**：在feature_list.json的任务结构中添加depends_on字段（字符串数组），记录前置依赖任务的ID列表。\n2) **依赖解析引擎**：在task_selector.py中实现拓扑排序算法，确保dependency-first执行顺序。检测循环依赖并抛出明确错误。\n3) **状态校验**：select_next_task()选择任务前验证所有依赖任务已completed且passes=true，否则跳过或标记为blocked。\n4) **可视化**：在Dashboard中展示任务依赖关系图（使用简单的箭头连线），blocked状态的任务用灰色标记。\n5) **API支持**：扩展POST /tasks端点接受depends_on参数，GET /tasks返回依赖关系信息和resolved execution order。\n6) **CLI支持**：在list命令输出中显示依赖关系（缩进或箭头），添加--tree参数以树形结构展示。\n\n**关键指令**：参考常见的DAG（有向无环图）实现模式。确保向后兼容——没有depends_on字段的任务视为无依赖。添加全面的测试覆盖。",
       "priority": 3,
-      "status": "pending",
-      "passes": false,
+      "status": "completed",
+      "passes": true,
       "context_files": [
         "agent/task_selector.py",
         "agent/state_manager.py",
