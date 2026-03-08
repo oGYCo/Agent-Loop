@@ -10,15 +10,22 @@
 
 <p align="center">
   <a href="https://www.python.org/"><img src="https://img.shields.io/badge/python-3.11+-blue.svg" alt="Python 3.11+" /></a>
+  <a href="https://github.com/oGYCo/agent-loop/actions/workflows/test.yml"><img src="https://github.com/oGYCo/agent-loop/actions/workflows/test.yml/badge.svg" alt="Tests" /></a>
+  <a href="https://codecov.io/gh/oGYCo/agent-loop"><img src="https://codecov.io/gh/oGYCo/agent-loop/branch/main/graph/badge.svg" alt="Coverage" /></a>
   <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-green.svg" alt="License: MIT" /></a>
   <a href="https://github.com/oGYCo/agent-loop/stargazers"><img src="https://img.shields.io/github/stars/oGYCo/agent-loop" alt="Stars" /></a>
+  <a href="https://github.com/oGYCo/agent-loop/releases"><img src="https://img.shields.io/github/v/release/oGYCo/agent-loop?display_name=tag" alt="Version" /></a>
 </p>
 
 <p align="center">
   <a href="#quick-start"><strong>Get Started</strong></a> ·
+  <a href="#features"><strong>Features</strong></a> ·
   <a href="#cli-reference"><strong>CLI Reference</strong></a> ·
   <a href="#docker-deployment"><strong>Docker</strong></a> ·
-  <a href="#configuration"><strong>Configuration</strong></a>
+  <a href="#configuration"><strong>Configuration</strong></a> ·
+  <a href="#api-documentation"><strong>API Docs</strong></a> ·
+  <a href="#faq"><strong>FAQ</strong></a> ·
+  <a href="CONTRIBUTING.md"><strong>Contribute</strong></a>
 </p>
 
 ---
@@ -659,6 +666,116 @@ docker image prune -f
 - Secrets are loaded from `.env` file
 - No credentials are baked into the image
 - Use Docker secrets in production deployments
+
+---
+
+## API Documentation
+
+Agent-Loop provides a RESTful API for programmatic access to agent operations, task management, and monitoring.
+
+### Quick Start
+
+```bash
+# Start the API server
+uv run python api.py
+
+# Access the interactive API documentation
+# Open http://localhost:8000/docs in your browser
+```
+
+### API Endpoints Overview
+
+| Endpoint | Method | Description |
+| -------- | GET | List all tasks |
+| /run | POST | Start agent execution |
+| /tasks | GET/POST | List or create tasks |
+| /tasks/{id} | GET/PATCH/DELETE | Manage individual tasks |
+| /status | GET | Get current agent status |
+| /session/history | GET | Get session history |
+| /metrics | GET | Prometheus metrics endpoint |
+| /health | GET | Health check endpoint |
+
+For complete API documentation with request/response examples, see the [API Reference Guide](docs/api-reference.md).
+
+---
+
+## FAQ
+
+### Frequently Asked Questions
+
+#### Q: How do I get started with Agent-Loop?
+
+A: Follow our [Quick Start](#quick-start) guide:
+1. Clone the repository
+2. Run `uv sync` to install dependencies
+3. Set your API credentials via environment variables
+4. Run `uv run python main.py init` to initialize
+5. Run `uv run python main.py run` to start the agent
+
+#### Q: What API credentials do I need?
+
+A: Agent-Loop requires:
+- `ANTHROPIC_AUTH_TOKEN` - Your API token for authentication
+- `ANTHROPIC_BASE_URL` - API endpoint (defaults to MiniMax API)
+
+#### Q: How do I configure notifications?
+
+A: See the [Notification Setup Guide](docs/notification-setup.md) for detailed instructions on configuring:
+- Email notifications (SMTP)
+- Slack webhooks
+- Custom webhooks
+
+#### Q: Can I run Agent-Loop in Docker?
+
+A: Yes! See the [Docker Deployment](#docker-deployment) section for:
+- Single container deployment
+- Full stack with Docker Compose
+- Integration with Prometheus and Grafana
+
+#### Q: How do I customize the agent prompts?
+
+A: Use the template system:
+```bash
+# Export all templates
+uv run python main.py template scaffold
+
+# Edit templates in .agent/prompt_templates/
+# Reset to default
+uv run python main.py template reset system
+```
+
+See [Prompt Customization](#prompt-customization) for more details.
+
+#### Q: What happens if the agent encounters an error?
+
+A: Agent-Loop has built-in error handling:
+1. Automatic retry with configurable attempts
+2. Session checkpointing for resume capability
+3. Human intervention triggers when error threshold exceeded
+4. Detailed logging for debugging
+
+#### Q: How do I integrate with my existing project?
+
+A: Use the `--project-dir` flag:
+```bash
+uv run python main.py --project-dir /path/to/your/project run
+```
+
+#### Q: Where can I find the API documentation?
+
+A: Start the API server and visit:
+- Swagger UI: http://localhost:8000/docs
+- ReDoc: http://localhost:8000/redoc
+
+---
+
+## Contributing
+
+We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for:
+- Development environment setup
+- Code style guidelines
+- Pull request process
+- Testing requirements
 
 ---
 

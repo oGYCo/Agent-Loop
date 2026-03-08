@@ -10,6 +10,8 @@
 
 <p align="center">
   <a href="https://www.python.org/"><img src="https://img.shields.io/badge/python-3.11+-blue.svg" alt="Python 3.11+" /></a>
+  <a href="https://github.com/oGYCo/agent-loop/actions/workflows/test.yml"><img src="https://github.com/oGYCo/agent-loop/actions/workflows/test.yml/badge.svg" alt="Tests" /></a>
+  <a href="https://codecov.io/gh/oGYCo/agent-loop"><img src="https://codecov.io/gh/oGYCo/agent-loop/branch/main/graph/badge.svg" alt="Coverage" /></a>
   <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-green.svg" alt="License: MIT" /></a>
   <a href="https://github.com/oGYCo/agent-loop/stargazers"><img src="https://img.shields.io/github/stars/oGYCo/agent-loop" alt="Stars" /></a>
   <a href="https://github.com/oGYCo/agent-loop/releases"><img src="https://img.shields.io/github/v/release/oGYCo/agent-loop?display_name=tag" alt="Version" /></a>
@@ -17,8 +19,13 @@
 
 <p align="center">
   <a href="#快速开始"><strong>快速开始</strong></a> ·
+  <a href="#核心特性"><strong>核心特性</strong></a> ·
   <a href="#cli-命令参考"><strong>CLI 参考</strong></a> ·
-  <a href="#配置"><strong>配置</strong></a>
+  <a href="#docker-部署"><strong>Docker</strong></a> ·
+  <a href="#配置"><strong>配置</strong></a> ·
+  <a href="#api-文档"><strong>API 文档</strong></a> ·
+  <a href="#常见问题"><strong>FAQ</strong></a> ·
+  <a href="CONTRIBUTING.md"><strong>贡献指南</strong></a>
 </p>
 
 ---
@@ -504,6 +511,117 @@ agent-loop/
 - [流式输出](https://platform.claude.com/docs/en/agent-sdk/streaming-output)
 - [会话管理](https://platform.claude.com/docs/en/agent-sdk/sessions)
 - [MCP 协议](https://modelcontextprotocol.io/introduction)
+
+---
+
+## API 文档
+
+Agent-Loop 提供 RESTful API 用于程序化访问 Agent 操作、任务管理和监控。
+
+### 快速启动
+
+```bash
+# 启动 API 服务器
+uv run python api.py
+
+# 访问交互式 API 文档
+# 在浏览器中打开 http://localhost:8000/docs
+```
+
+### API 端点概览
+
+| 端点 | 方法 | 描述 |
+| -------- | ------ | ----------- |
+| /tasks | GET | 列出所有任务 |
+| /run | POST | 启动 Agent 执行 |
+| /tasks | GET/POST | 列出或创建任务 |
+| /tasks/{id} | GET/PATCH/DELETE | 管理单个任务 |
+| /status | GET | 获取当前 Agent 状态 |
+| /session/history | GET | 获取会话历史 |
+| /metrics | GET | Prometheus 指标端点 |
+| /health | GET | 健康检查端点 |
+
+完整的 API 文档和请求/响应示例，请参阅 [API 参考指南](docs/api-reference.md)。
+
+---
+
+## 常见问题
+
+### 常见问题解答
+
+#### Q: 如何开始使用 Agent-Loop？
+
+A: 按照我们的 [快速开始](#快速开始) 指南：
+1. 克隆仓库
+2. 运行 `uv sync` 安装依赖
+3. 通过环境变量设置 API 凭证
+4. 运行 `uv run python main.py init` 初始化
+5. 运行 `uv run python main.py run` 启动 Agent
+
+#### Q: 我需要哪些 API 凭证？
+
+A: Agent-Loop 需要：
+- `ANTHROPIC_AUTH_TOKEN` - 用于认证的 API 令牌
+- `ANTHROPIC_BASE_URL` - API 端点（默认为 MiniMax API）
+
+#### Q: 如何配置通知？
+
+A: 请参阅 [通知设置指南](docs/notification-setup.md) 了解配置详情：
+- 邮件通知 (SMTP)
+- Slack Webhook
+- 自定义 Webhook
+
+#### Q: 可以在 Docker 中运行 Agent-Loop 吗？
+
+A: 可以！请参阅 [Docker 部署](#docker-部署) 部分：
+- 单容器部署
+- Docker Compose 完整栈
+- Prometheus 和 Grafana 集成
+
+#### Q: 如何自定义 Agent 提示词？
+
+A: 使用模板系统：
+```bash
+# 导出所有模板
+uv run python main.py template scaffold
+
+# 在 .agent/prompt_templates/ 中编辑模板
+# 重置为默认
+uv run python main.py template reset system
+```
+
+更多详情请参阅 [提示词定制](#提示词定制)。
+
+#### Q: 如果 Agent 遇到错误会发生什么？
+
+A: Agent-Loop 内置错误处理：
+1. 可配置重试次数的自动重试
+2. 用于恢复的会话检查点
+3. 错误阈值超过时触发人工干预
+4. 详细日志用于调试
+
+#### Q: 如何与现有项目集成？
+
+A: 使用 `--project-dir` 标志：
+```bash
+uv run python main.py --project-dir /path/to/your/project run
+```
+
+#### Q: 在哪里可以找到 API 文档？
+
+A: 启动 API 服务器并访问：
+- Swagger UI: http://localhost:8000/docs
+- ReDoc: http://localhost:8000/redoc
+
+---
+
+## 贡献
+
+我们欢迎贡献！请参阅我们的 [贡献指南](CONTRIBUTING.md) 了解：
+- 开发环境设置
+- 代码风格指南
+- Pull Request 流程
+- 测试要求
 
 ---
 
