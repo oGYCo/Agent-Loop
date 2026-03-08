@@ -41,6 +41,7 @@ from agent.model_provider import (
     mask_api_key,
 )
 from agent.console import (
+    agent_output,
     console,
     print_header,
     print_success,
@@ -68,11 +69,10 @@ def _signal_handler(signum: int, frame: Any) -> None:
     """处理 SIGINT/SIGTERM 信号，实现优雅关闭"""
     global _shutdown_requested
     if _shutdown_requested:
-        print("\n🛑 Force exit!")
+        agent_output.render_shutdown_notice(signal.Signals(signum).name, force=True)
         sys.exit(1)
     sig_name = signal.Signals(signum).name
-    print(f"\n⚠️  Received {sig_name}, initiating graceful shutdown...")
-    print("   Finishing current task before exit... (press Ctrl+C again to force quit)")
+    agent_output.render_shutdown_notice(sig_name)
     _shutdown_requested = True
 
 

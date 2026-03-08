@@ -17,6 +17,7 @@ if TYPE_CHECKING:
     from .slack_notifier import SlackNotifier
 
 from .constants import EventTypes
+from .console import agent_output
 from .metrics import get_metrics_collector
 from .model_provider import ModelProviderManager, create_provider_manager
 from .exceptions import (
@@ -223,13 +224,10 @@ async def pre_tool_hook(input_data: Any, tool_use_id: str | None, context: Any) 
     tool_input = input_data.get("tool_input", {})
 
     logger.debug(f"PreToolUse: {tool_name}")
-    # 显示简化后的输入
     input_preview = json.dumps(tool_input, ensure_ascii=False)
     if len(input_preview) > 300:
         input_preview = input_preview[:300] + "..."
-    # Keep print for user feedback
-    print(f"\n[PreToolUse] {tool_name}", flush=True)
-    print(f"  Input: {input_preview}", flush=True)
+    agent_output.render_tool_call(tool_name, tool_input, tool_use_id)
 
     # Push to WebSocket
     await _push_log_async("info", f"[PreToolUse] {tool_name}: {input_preview}", "tool")
@@ -239,31 +237,9 @@ async def pre_tool_hook(input_data: Any, tool_use_id: str | None, context: Any) 
 
 async def post_tool_hook(input_data: Any, tool_use_id: str | None, context: Any) -> AsyncHookJSONOutput:
     """工具执行后调用 - 流式输出结果"""
-    import sys
-
     tool_name = input_data.get("tool_name", "unknown")
     result = input_data.get("tool_response", {})
-
-    # 检查结果是否为文本类型
-    if isinstance(result, str):
-        # 文本结果直接打印（流式）
-        text_content = result
-        if text_content:
-            print(f"\n📤 Result: ", end="", flush=True)
-            # 流式输出每个字符或行
-            print(text_content, end="", flush=True)
-            sys.stdout.flush()
-            print()  # 换行
-    else:
-        # 非文本结果（如文件操作）显示摘要
-        result_preview = str(result)
-        if len(result_preview) > 500:
-            result_preview = result_preview[:500] + "..."
-
-        print(f"\n✅ [PostToolUse] {tool_name}: completed")
-        if result_preview:
-            print(f"  Result: {result_preview[:300]}...")
-        sys.stdout.flush()
+    agent_output.render_tool_result(result, tool_name=tool_name, tool_use_id=tool_use_id)
 
     # Push to WebSocket
     await _push_log_async("info", f"[PostToolUse] {tool_name}: completed", "tool")
@@ -273,11 +249,13 @@ async def post_tool_hook(input_data: Any, tool_use_id: str | None, context: Any)
 
 async def notification_hook(input_data: Any, tool_use_id: str | None, context: Any) -> AsyncHookJSONOutput:
     """处理通知消息"""
-    message = input_data.get("message", "")
-    notification_type = input_data.get("notification_type", "")
+    notification = input_data.get("notification", {}) or {}
+    message = input_data.get("message") or notification.get("message", "")
+    notification_type = input_data.get("notification_type") or notification.get("type", "")
+    details = input_data.get("details") or notification.get("details")
 
     logger.info(f"Notification: {notification_type}: {message[:200]}")
-    print(f"\n[Notification] {notification_type}: {message[:200]}", flush=True)
+    agent_output.render_notification(notification_type, message, details)
 
     # Push to WebSocket
     await _push_log_async("info", f"[Notification] {notification_type}: {message[:200]}", "notification")
@@ -288,8 +266,9 @@ async def notification_hook(input_data: Any, tool_use_id: str | None, context: A
 async def stop_hook(input_data: Any, tool_use_id: str | None, context: Any) -> AsyncHookJSONOutput:
     """处理停止事件"""
     session_id = input_data.get("session_id", "")
+    reason = input_data.get("reason", "")
     logger.info(f"Session {session_id} ended")
-    print(f"\n[Stop] Session {session_id} ended", flush=True)
+    agent_output.render_session_stop(session_id, reason)
 
     # Push to WebSocket
     await _push_log_async("info", f"Session {session_id} ended", "session")
@@ -509,12 +488,116 @@ class AgentCore:
         state["restart_reason"] = "code_changed"
         self.state_manager.save_state(state)
 
-        print("\n" + "=" * 60)
-        print("CODE CHANGES DETECTED")
-        print("=" * 60)
-        print("The agent has modified its own code and needs to restart.")
-        print("Please restart the agent to continue with updated code.")
-        print("=" * 60 + "\n")
+        agent_output.render_restart_required()
+
+    @staticmethod
+    def _normalize_tool_result_content(result_content: Any) -> str:
+        """Normalize SDK tool result payloads into a bounded string."""
+        if isinstance(result_content, list):
+            return " ".join(str(item) for item in result_content)
+        return str(result_content)
+
+    @staticmethod
+    def _remember_tool_result(
+        tool_results: dict[str, str],
+        tool_use_id: str,
+        result_content: Any,
+        max_tool_results: int,
+    ) -> None:
+        """Store recent tool results without unbounded growth."""
+        if not tool_use_id:
+            return
+
+        result_str = AgentCore._normalize_tool_result_content(result_content)
+        if tool_use_id not in tool_results and len(tool_results) >= max_tool_results:
+            oldest_key = next(iter(tool_results))
+            del tool_results[oldest_key]
+        tool_results[tool_use_id] = result_str
+
+    def _handle_stream_event(self, event: Dict[str, Any]) -> None:
+        """Render Claude SDK stream events to the unified console."""
+        event_type = event.get("type", "")
+
+        if event_type == "content_block_delta":
+            delta = event.get("delta", {})
+            delta_type = delta.get("type", "")
+            if delta_type == "text_delta":
+                agent_output.stream_assistant_text(delta.get("text", ""))
+            return
+
+        if event_type == "content_block_stop":
+            agent_output.finish_stream()
+            return
+
+        if event_type == "message_delta":
+            delta = event.get("delta", {})
+            agent_output.render_stop_reason(delta.get("stop_reason", ""))
+
+    def _handle_assistant_message(
+        self,
+        message: AssistantMessage,
+        tool_results: dict[str, str],
+        max_tool_results: int,
+    ) -> None:
+        """Handle assistant message blocks without duplicating tool logs."""
+        content = message.content
+        if not isinstance(content, list):
+            return
+
+        for block in content:
+            block_type = getattr(block, 'type', None)
+            if block_type == "tool_result":
+                tool_use_id = getattr(block, 'tool_use_id', '')
+                result_content = getattr(block, 'content', '')
+                self._remember_tool_result(tool_results, tool_use_id, result_content, max_tool_results)
+            elif block_type == "thinking":
+                thinking = getattr(block, 'thinking', '')
+                if thinking:
+                    agent_output.stream_thinking_text(thinking)
+
+    def _handle_user_message(
+        self,
+        message: UserMessage,
+        tool_results: dict[str, str],
+        max_tool_results: int,
+    ) -> None:
+        """Capture tool results emitted through user messages."""
+        content = message.content
+        if not isinstance(content, list):
+            return
+
+        for block in content:
+            if getattr(block, 'type', None) != "tool_result":
+                continue
+            tool_use_id = getattr(block, 'tool_use_id', '')
+            result_content = getattr(block, 'content', '')
+            self._remember_tool_result(tool_results, tool_use_id, result_content, max_tool_results)
+
+    async def _run_follow_up_query(
+        self,
+        client: ClaudeSDKClient,
+        prompt: str,
+        session_id: str,
+        phase_title: str,
+    ) -> str:
+        """Run self-review or cleanup prompts with the same terminal renderer."""
+        agent_output.render_phase(phase_title)
+        await client.query(prompt, session_id=session_id)
+
+        tool_results: dict[str, str] = {}
+        async for follow_up_msg in client.receive_response():
+            if isinstance(follow_up_msg, StreamEvent):
+                self._handle_stream_event(follow_up_msg.event)
+            elif isinstance(follow_up_msg, AssistantMessage):
+                self._handle_assistant_message(follow_up_msg, tool_results, 10)
+            elif isinstance(follow_up_msg, UserMessage):
+                self._handle_user_message(follow_up_msg, tool_results, 10)
+            elif isinstance(follow_up_msg, ResultMessage):
+                agent_output.finish_stream()
+                return str(follow_up_msg.result or '')
+
+        agent_output.finish_stream()
+        return ""
 
     def read_claude_md(self) -> str:
         """读取 CLAUDE.md 文件内容"""
@@ -1095,10 +1178,10 @@ class AgentCore:
 
         # 使用 SDK 执行任务 - 使用 ClaudeSDKClient 获得更精细的控制
         result_text = ""
-        tool_call_count = 0
         tool_results: dict[str, str] = {}  # tool_use_id -> result (bounded)
         MAX_TOOL_RESULTS = 50  # Limit stored tool results to prevent memory bloat
         session_id = None
+        agent_output.reset_session()
         try:
             async with ClaudeSDKClient(options=options) as client:
                 await client.query(user_prompt)
@@ -1106,129 +1189,19 @@ class AgentCore:
                 async for message in client.receive_response():
                     # 处理流事件 - 实时显示 AI 思考过程和工具调用
                     if isinstance(message, StreamEvent):
-                        event = message.event
-                        event_type = event.get("type", "")
-
-                        if event_type == "content_block_start":
-                            # 工具开始调用
-                            content_block = event.get("content_block", {})
-                            block_type = content_block.get("type", "")
-                            if block_type == "tool_use":
-                                tool_name = content_block.get("name", "unknown")
-                                tool_call_count += 1
-                                print(f"\n🔧 Tool #{tool_call_count}: {tool_name}", flush=True)
-
-                        elif event_type == "content_block_delta":
-                            # 增量内容 - 实时文本或工具输入或工具结果
-                            delta = event.get("delta", {})
-                            delta_type = delta.get("type", "")
-
-                            if delta_type == "text_delta":
-                                # 实时文本输出（AI思考或工具结果）
-                                text = delta.get("text", "")
-                                print(text, end="", flush=True)
-
-                            elif delta_type == "input_json_delta":
-                                # 工具输入增量
-                                partial_json = delta.get("partial_json", "")
-                                if partial_json:
-                                    print(partial_json, end="", flush=True)
-
-                            elif delta_type == "content_block_stop":
-                                print()  # 换行
-
-                        elif event_type == "message_delta":
-                            # 消息级别的更新
-                            delta = event.get("delta", {})
-                            stop_reason = delta.get("stop_reason", "")
-                            if stop_reason:
-                                print(f"\n[Stop Reason: {stop_reason}]")
-
-                        elif event_type == "message_stop":
-                            # 消息流结束
-                            pass
+                        self._handle_stream_event(message.event)
 
                     # 处理 AssistantMessage - 完整消息
                     elif isinstance(message, AssistantMessage):
-                        content = message.content
-                        if isinstance(content, list):
-                            for block in content:
-                                block_type = getattr(block, 'type', None)
-                                if block_type == "tool_use":
-                                    tool_call_count += 1
-                                    tool_name = getattr(block, 'name', 'unknown')
-                                    tool_input = getattr(block, 'input', {})
-                                    tool_id = getattr(block, 'id', '')
-                                    # 简化显示输入内容
-                                    input_str = json.dumps(tool_input, ensure_ascii=False, indent=2)
-                                    if len(input_str) > 500:
-                                        input_str = input_str[:500] + "..."
-                                    print(f"\n🔧 Tool #{tool_call_count}: {tool_name}", flush=True)
-                                    print(f"   Input: {input_str[:300]}...", flush=True)
-                                elif block_type == "tool_result":
-                                    # 工具结果 - 流式输出
-                                    tool_use_id = getattr(block, 'tool_use_id', '')
-                                    result_content = getattr(block, 'content', '')
-                                    is_error = getattr(block, 'is_error', False)
-
-                                    # 流式输出结果
-                                    prefix = "❌" if is_error else "📤"
-                                    print(f"   {prefix} Result:", end=" ", flush=True)
-
-                                    if isinstance(result_content, list):
-                                        for item in result_content:
-                                            print(str(item), end="", flush=True)
-                                    else:
-                                        print(str(result_content), end="", flush=True)
-                                    print()  # 换行
-
-                                    # 保存完整结果
-                                    if isinstance(result_content, list):
-                                        result_str = " ".join([str(item) for item in result_content])
-                                    else:
-                                        result_str = str(result_content)
-                                    # Bound tool_results to prevent memory bloat
-                                    if len(tool_results) >= MAX_TOOL_RESULTS:
-                                        # Remove oldest entry
-                                        oldest_key = next(iter(tool_results))
-                                        del tool_results[oldest_key]
-                                    tool_results[tool_use_id] = result_str
-
-                                elif block_type == "text":
-                                    # 文本内容 - 流式输出
-                                    text = getattr(block, 'text', '')
-                                    if text:
-                                        print(f"\n🤖 {text}", end="", flush=True)
-                                elif block_type == "thinking":
-                                    # 思考过程 - 流式输出
-                                    thinking = getattr(block, 'thinking', '')
-                                    if thinking:
-                                        print(f"\n💭 {thinking[:200]}...", end="", flush=True)
+                        self._handle_assistant_message(message, tool_results, MAX_TOOL_RESULTS)
 
                     # 处理 UserMessage - 工具结果（来自工具执行）
                     elif isinstance(message, UserMessage):
-                        user_content = message.content
-                        if isinstance(user_content, list):
-                            for block in user_content:
-                                block_type = getattr(block, 'type', None)
-                                if block_type == "tool_result":
-                                    tool_use_id = getattr(block, 'tool_use_id', '')
-                                    result_content = getattr(block, 'content', '')
-                                    is_error = getattr(block, 'is_error', False)
-
-                                    # 流式输出工具结果
-                                    prefix = "❌" if is_error else "📤"
-                                    print(f"   {prefix} Result:", end=" ", flush=True)
-
-                                    if isinstance(result_content, list):
-                                        for item in result_content:
-                                            print(str(item), end="", flush=True)
-                                    else:
-                                        print(str(result_content), end="", flush=True)
-                                    print()
+                        self._handle_user_message(message, tool_results, MAX_TOOL_RESULTS)
 
                     # 处理 ResultMessage - 最终结果
                     elif isinstance(message, ResultMessage):
+                        agent_output.finish_stream()
                         result_text = str(message.result or '')
                         is_error = message.is_error
                         num_turns = message.num_turns
@@ -1246,71 +1219,39 @@ class AgentCore:
                             # 1. 任务计划自省
                             logger.info("Starting post-task self-review...")
                             review_prompt = self._build_self_review_prompt(task)
-                            await client.query(review_prompt, session_id=session_id)
-
-                            # 处理自省响应
-                            async for review_msg in client.receive_response():
-                                # 处理自省过程中的流事件和消息
-                                if isinstance(review_msg, StreamEvent):
-                                    event = review_msg.event
-                                    event_type = event.get("type", "")
-                                    if event_type == "content_block_delta":
-                                        delta = event.get("delta", {})
-                                        if delta.get("type") == "text_delta":
-                                            print(delta.get("text", ""), end="", flush=True)
-                                elif isinstance(review_msg, AssistantMessage):
-                                    content = review_msg.content
-                                    if isinstance(content, list):
-                                        for block in content:
-                                            block_type = getattr(block, 'type', None)
-                                            if block_type == "text":
-                                                text = getattr(block, 'text', '')
-                                                if text:
-                                                    print(f"\n🤖 {text}", end="", flush=True)
-                                elif isinstance(review_msg, ResultMessage):
-                                    review_result = str(review_msg.result or '')
-                                    logger.info(f"Self-review completed: {review_result[:300]}...")
-                                    break
+                            review_result = await self._run_follow_up_query(
+                                client,
+                                review_prompt,
+                                session_id,
+                                "Self-review",
+                            )
+                            logger.info(f"Self-review completed: {review_result[:300]}...")
 
                             # 2. MEMORY.md 清理（每5次迭代执行一次）
                             if self._iteration_count > 0 and self._iteration_count % 5 == 0:
                                 memory_prompt = self._build_memory_cleanup_prompt()
                                 if memory_prompt:
                                     logger.info("Starting MEMORY.md cleanup...")
-                                    await client.query(memory_prompt, session_id=session_id)
-
-                                    async for cleanup_msg in client.receive_response():
-                                        if isinstance(cleanup_msg, StreamEvent):
-                                            event = cleanup_msg.event
-                                            event_type = event.get("type", "")
-                                            if event_type == "content_block_delta":
-                                                delta = event.get("delta", {})
-                                                if delta.get("type") == "text_delta":
-                                                    print(delta.get("text", ""), end="", flush=True)
-                                        elif isinstance(cleanup_msg, ResultMessage):
-                                            cleanup_result = str(cleanup_msg.result or '')
-                                            logger.info(f"MEMORY.md cleanup completed: {cleanup_result[:200]}...")
-                                            break
+                                    cleanup_result = await self._run_follow_up_query(
+                                        client,
+                                        memory_prompt,
+                                        session_id,
+                                        "MEMORY.md cleanup",
+                                    )
+                                    logger.info(f"MEMORY.md cleanup completed: {cleanup_result[:200]}...")
 
                             # 3. CLAUDE.md 清理（每10次迭代执行一次）
                             if self._iteration_count > 0 and self._iteration_count % 10 == 0:
                                 claude_prompt = self._build_claude_md_cleanup_prompt()
                                 if claude_prompt:
                                     logger.info("Starting CLAUDE.md cleanup...")
-                                    await client.query(claude_prompt, session_id=session_id)
-
-                                    async for cleanup_msg in client.receive_response():
-                                        if isinstance(cleanup_msg, StreamEvent):
-                                            event = cleanup_msg.event
-                                            event_type = event.get("type", "")
-                                            if event_type == "content_block_delta":
-                                                delta = event.get("delta", {})
-                                                if delta.get("type") == "text_delta":
-                                                    print(delta.get("text", ""), end="", flush=True)
-                                        elif isinstance(cleanup_msg, ResultMessage):
-                                            cleanup_result = str(cleanup_msg.result or '')
-                                            logger.info(f"CLAUDE.md cleanup completed: {cleanup_result[:200]}...")
-                                            break
+                                    cleanup_result = await self._run_follow_up_query(
+                                        client,
+                                        claude_prompt,
+                                        session_id,
+                                        "CLAUDE.md cleanup",
+                                    )
+                                    logger.info(f"CLAUDE.md cleanup completed: {cleanup_result[:200]}...")
 
                     # 处理其他消息类型
                     else:
@@ -1366,6 +1307,8 @@ class AgentCore:
                 "status": "error",
                 "message": error_msg
             }
+        finally:
+            agent_output.finish_stream()
 
         # 如果检测到 API 错误，返回 error 状态以触发重试
         if is_error and result_text and self._is_api_error_in_result(result_text):
@@ -1375,7 +1318,7 @@ class AgentCore:
                 "message": result_text[:500],
                 "is_rate_limit": "rate_limit" in result_text.lower(),
                 "session_id": session_id,
-                "tool_call_count": tool_call_count
+                "tool_call_count": agent_output.tool_count
             }
 
         return {
@@ -1383,7 +1326,7 @@ class AgentCore:
             "status": "completed",
             "message": result_text[:500] if result_text else "Task completed",
             "session_id": session_id,
-            "tool_call_count": tool_call_count
+            "tool_call_count": agent_output.tool_count
         }
 
     @staticmethod

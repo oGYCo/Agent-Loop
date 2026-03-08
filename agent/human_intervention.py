@@ -9,6 +9,7 @@ import logging
 from datetime import datetime
 from typing import Dict, Any, Callable
 
+from .console import agent_output
 from .state_manager import StateManager
 
 logger = logging.getLogger(__name__)
@@ -215,14 +216,7 @@ class HumanIntervention:
         Returns:
             人类是否批准继续
         """
-        print("\n" + "=" * 60)
-        print("Human Intervention Required")
-        print("=" * 60)
-        print(f"Reason: {request.get('reason')}")
-        print(f"Timestamp: {request.get('timestamp')}")
-        if request.get("context"):
-            print(f"Context: {json.dumps(request['context'], indent=2)}")
-        print("=" * 60)
+        agent_output.render_human_intervention(request)
 
         # 写入待处理文件
         pending_file = self.state_manager.agent_dir / "PENDING_INTERVENTION.txt"
@@ -251,7 +245,7 @@ class HumanIntervention:
             return False
         else:
             # 终止
-            print("Agent stopped. Please resolve the issue and restart.")
+            agent_output.render_shutdown_notice("human intervention", force=True)
             exit(1)
 
     async def _async_input(self, prompt: str) -> str:

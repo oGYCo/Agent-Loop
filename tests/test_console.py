@@ -718,6 +718,91 @@ class TestConsoleBoundaryCases:
         assert "9999" in result
 
 
+class TestAgentConsoleRenderer:
+    """Test the unified renderer used for SDK/tool output."""
+
+    @pytest.fixture
+    def renderer_with_console(self):
+        """Create a fresh renderer bound to a captured rich console."""
+        from rich.console import Console
+        from agent.console import AgentConsoleRenderer
+
+        output = io.StringIO()
+        console = Console(file=output, force_terminal=True, width=100)
+        renderer = AgentConsoleRenderer(lambda: console)
+        return output, renderer
+
+    def test_render_tool_call_for_bash(self, renderer_with_console):
+        """Bash tool calls should render command and description cleanly."""
+        output, renderer = renderer_with_console
+
+        renderer.render_tool_call(
+            "Bash",
+            {"command": "git status", "description": "Check working tree state"},
+            "tool-1",
+        )
+
+        result = output.getvalue()
+        assert "Tool" in result
+        assert "Bash" in result
+        assert "git status" in result
+        assert "Check working tree state" in result
+
+    def test_render_tool_call_for_todowrite(self, renderer_with_console):
+        """TodoWrite should render as a readable task table instead of raw JSON."""
+        output, renderer = renderer_with_console
+
+        renderer.render_tool_call(
+            "TodoWrite",
+            {
+                "todos": [
+                    {"content": "Create constants", "status": "completed"},
+                    {"content": "Refactor output renderer", "status": "in_progress"},
+                ]
+            },
+            "tool-2",
+        )
+
+        result = output.getvalue()
+        assert "TodoWrite" in result
+        assert "Create constants" in result
+        assert "Refactor output renderer" in result
+        assert "done" in result or "doing" in result
+
+    def test_render_tool_result_uses_existing_tool_index(self, renderer_with_console):
+        """Tool results should reuse the same tool index when tool_use_id matches."""
+        output, renderer = renderer_with_console
+
+        renderer.render_tool_call("Read", {"file_path": "/tmp/example.py"}, "tool-3")
+        renderer.render_tool_result("file content", tool_use_id="tool-3")
+
+        result = output.getvalue()
+        assert result.count("Tool") >= 2
+        assert "completed" in result
+        assert "file content" in result
+
+    def test_render_stop_reason_skips_internal_tool_use(self, renderer_with_console):
+        """Internal stop reasons should not pollute the terminal."""
+        output, renderer = renderer_with_console
+
+        renderer.render_stop_reason("tool_use")
+
+        assert output.getvalue() == ""
+
+    def test_stream_text_and_notification(self, renderer_with_console):
+        """Streaming text should flush cleanly before a notification panel."""
+        output, renderer = renderer_with_console
+
+        renderer.stream_assistant_text("Working on it")
+        renderer.render_notification("warning", "Resource usage high", {"cpu": 90})
+
+        result = output.getvalue()
+        assert "Agent:" in result
+        assert "Working on it" in result
+        assert "Notification" in result
+        assert "Resource usage high" in result
+
+
 class TestConsoleModuleLevel:
     """Test module-level console instance."""
 
@@ -745,6 +830,7 @@ class TestConsoleModuleLevel:
             print_reload_result,
             print_prompt_list,
             print_template_list,
+            agent_output,
             console,
         )
 
@@ -763,3 +849,4 @@ class TestConsoleModuleLevel:
         assert callable(print_reload_result)
         assert callable(print_prompt_list)
         assert callable(print_template_list)
+        assert agent_output is not None
