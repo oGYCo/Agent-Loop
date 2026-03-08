@@ -403,7 +403,6 @@
       "created_at": "2026-03-08",
       "updated_at": "2026-03-08"
     },
-
     {
       "id": "feature-029",
       "name": "工业级代码安全审计与修复",
@@ -489,8 +488,8 @@
       "name": "API服务生产级加固",
       "description": "将api.py从当前的开发级别提升到生产可部署级别。具体包括：\n\n1) **API版本化**：添加/api/v1/前缀路由，为未来API变更提供平滑升级路径，旧路由重定向到新路径。参考FastAPI路由分组：https://fastapi.tiangolo.com/tutorial/bigger-applications/\n2) **请求/响应日志中间件**：记录每个请求的method、path、status_code、耗时、request_id（UUID），用于调试和审计。\n3) **全局异常处理器**：替换当前通用500错误，实现自定义ExceptionHandler返回结构化错误信息（error_code、message、detail、timestamp）。参考：https://fastapi.tiangolo.com/tutorial/handling-errors/\n4) **分页支持**：为/tasks和/sessions端点添加分页参数（page、per_page、total），当任务数量超过100时防止性能退化。\n5) **任务删除端点**：实现DELETE /tasks/{id}端点，支持软删除（标记为archived）和硬删除。\n6) **批量操作端点**：实现POST /tasks/bulk用于批量创建/更新/删除任务。\n7) **Agent暂停/恢复**：实现POST /agent/pause和POST /agent/resume端点，允许通过API控制Agent执行。\n8) **OpenAPI文档增强**：为所有端点添加完整的description、response_model、tags分组，使自动生成的/docs页面信息完整易用。\n9) **健康检查增强**：/health端点增加依赖检查（文件系统、配置文件存在性），返回详细的健康状态。\n10) **Gzip压缩**：添加GZipMiddleware减少传输大小。\n\n**关键指令**：每个改动必须通过FastAPI TestClient验证。参考FastAPI完整教程：https://fastapi.tiangolo.com/tutorial/ 。确保与现有WebSocket功能兼容。所有新端点都需要测试覆盖。",
       "priority": 2,
-      "status": "pending",
-      "passes": false,
+      "status": "completed",
+      "passes": true,
       "context_files": [
         "api.py",
         "agent/state_manager.py",
@@ -1048,6 +1047,26 @@
         "main.py"
       ],
       "verify_command": "uv run pytest tests/ --cov=agent --cov-report=term-missing -q",
+      "created_at": "2026-03-08",
+      "updated_at": "2026-03-08"
+    },
+    {
+      "id": "task-064",
+      "name": "Bulk Task 1",
+      "description": "",
+      "priority": 5,
+      "status": "pending",
+      "passes": false,
+      "created_at": "2026-03-08",
+      "updated_at": "2026-03-08"
+    },
+    {
+      "id": "task-065",
+      "name": "Bulk Task 2",
+      "description": "",
+      "priority": 10,
+      "status": "pending",
+      "passes": false,
       "created_at": "2026-03-08",
       "updated_at": "2026-03-08"
     }
