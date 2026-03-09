@@ -62,3 +62,4 @@ Thumbs.db
 .agent/
 .playwright-mcp/
 logs/
+TODO.md
