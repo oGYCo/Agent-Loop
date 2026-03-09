@@ -199,9 +199,18 @@ uv run python main.py add "New Feature"
 | `test_runner.py`         | Test execution wrapper                               |
 | `performance_monitor.py` | Performance metrics tracking                         |
 | `config_reloader.py`     | Configuration hot reload                             |
+| `config_model.py`        | Pydantic configuration model with env var support    |
+| `constants.py`           | Centralized constants, enums for config keys/paths   |
+| `exceptions.py`          | Exception hierarchy and error code system            |
+| `model_provider.py`      | Multi-provider support (OpenAI, Anthropic, MiniMax) |
 | `metrics.py`             | Prometheus metrics collection and export             |
+| `logging_.py`           | Structured logging with structlog                    |
+| `console.py`             | Rich console utilities for interactive CLI output    |
 | `webhook.py`             | Webhook notification service                         |
-| `email_notifier.py`      | Email notification service with SMTP support         |
+| `email_notifier.py`      | Email notification service with SMTP support          |
+| `slack_notifier.py`      | Slack notification with Block Kit formatting          |
+| `notification_router.py` | Routes notifications to appropriate channels          |
+| `notification_queue.py` | Async notification queue for batching                |
 | `slack_notifier.py`      | Slack notification with Block Kit formatting         |
 | `logging_.py`            | Structured logging with structlog (JSON/console)     |
 
@@ -474,16 +483,26 @@ agent-loop/
 │   ├── test_runner.py          # Test execution
 │   ├── performance_monitor.py  # Performance tracking
 │   ├── config_reloader.py      # Config hot reload
-│   ├── email_notifier.py       # Email notification service
+│   ├── config_model.py         # Pydantic configuration model
+│   ├── constants.py            # Centralized constants & enums
+│   ├── exceptions.py          # Exception hierarchy
+│   ├── model_provider.py       # Multi-provider support
+│   ├── metrics.py              # Prometheus metrics collection
+│   ├── logging_.py            # Structured logging with structlog
+│   ├── console.py              # Rich console UI
 │   ├── webhook.py              # Webhook notification service
-│   ├── metrics.py              # Metrics collection
-│   └── console.py              # Console UI
+│   ├── email_notifier.py       # Email notification service
+│   ├── slack_notifier.py       # Slack notification service
+│   ├── notification_router.py  # Notification routing
+│   └── notification_queue.py   # Async notification queue
 ├── tests/                      # Unit tests
 │   ├── test_agent_core.py
 │   ├── test_state_manager.py
 │   ├── test_task_selector.py
 │   ├── test_email_notifier.py
 │   ├── test_webhook.py
+│   ├── test_slack_notifier.py
+│   ├── test_notification_router.py
 │   └── ...
 ├── dashboards/                  # Grafana dashboard templates
 │   └── agent-loop-dashboard.json

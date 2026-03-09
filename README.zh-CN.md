@@ -197,6 +197,18 @@ uv run python main.py add "新功能"
 | `test_runner.py`         | 测试执行封装                           |
 | `performance_monitor.py` | 性能指标跟踪                           |
 | `config_reloader.py`     | 配置热重载                             |
+| `config_model.py`        | Pydantic 配置模型，支持环境变量        |
+| `constants.py`           | 集中式常量、配置键/路径的枚举         |
+| `exceptions.py`          | 异常层次结构和错误码系统               |
+| `model_provider.py`      | 多提供商支持 (OpenAI, Anthropic, MiniMax) |
+| `metrics.py`             | Prometheus 指标收集和导出              |
+| `logging_.py`            | structlog 结构化日志                  |
+| `console.py`             | Rich 控制台工具，交互式 CLI 输出      |
+| `webhook.py`             | Webhook 通知服务                      |
+| `email_notifier.py`      | 邮件通知服务 (SMTP)                    |
+| `slack_notifier.py`      | Slack 通知服务 (Block Kit)             |
+| `notification_router.py` | 通知路由到适当渠道                    |
+| `notification_queue.py`  | 异步通知队列，用于批处理              |
 
 ## 使用示例
 
@@ -467,16 +479,26 @@ agent-loop/
 │   ├── test_runner.py          # 测试执行
 │   ├── performance_monitor.py  # 性能跟踪
 │   ├── config_reloader.py      # 配置热重载
-│   ├── email_notifier.py       # 邮件通知服务
-│   ├── webhook.py              # Webhook 通知服务
+│   ├── config_model.py         # Pydantic 配置模型
+│   ├── constants.py            # 集中式常量与枚举
+│   ├── exceptions.py           # 异常层次结构
+│   ├── model_provider.py       # 多提供商支持
 │   ├── metrics.py              # 指标收集
-│   └── console.py              # 控制台 UI
+│   ├── logging_.py            # 结构化日志
+│   ├── console.py              # 控制台 UI
+│   ├── webhook.py              # Webhook 通知服务
+│   ├── email_notifier.py       # 邮件通知服务
+│   ├── slack_notifier.py       # Slack 通知服务
+│   ├── notification_router.py  # 通知路由
+│   └── notification_queue.py   # 异步通知队列
 ├── tests/                      # 单元测试
 │   ├── test_agent_core.py
 │   ├── test_state_manager.py
 │   ├── test_task_selector.py
 │   ├── test_email_notifier.py
 │   ├── test_webhook.py
+│   ├── test_slack_notifier.py
+│   ├── test_notification_router.py
 │   └── ...
 ├── dashboards/                  # Grafana 监控面板模板
 │   └── agent-loop-dashboard.json
