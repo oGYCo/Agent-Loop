@@ -46,8 +46,6 @@ def count_tokens(text: str) -> int:
 
 
 # Configuration constants (can be overridden via config)
-DEFAULT_ARCHIVE_AFTER_DAYS = 30
-DEFAULT_MAX_SESSIONS_BEFORE_ARCHIVE = 100
 DEFAULT_KEEP_RECENT_MESSAGES = 10
 MAX_TOKEN_CACHE_ENTRIES = 500
 
@@ -56,7 +54,6 @@ class SessionManager:
     """会话管理器 - 增强版
 
     Features:
-    - Session archiving: Auto-archive old sessions to .agent/archive/
     - Smart context compression: Preserve important content
     - Incremental token counting: Cache token counts for efficiency
     - Enhanced session resume: Restore task state, git diff, error counts
@@ -69,24 +66,9 @@ class SessionManager:
         self.config = self.state_manager.load_config()
         self.context_limit = self.config.get("context_window_limit", 100000)
 
-        # Archive settings
-        self.archive_after_days = self.config.get(
-            "session_archive_after_days", DEFAULT_ARCHIVE_AFTER_DAYS
-        )
-        self.max_sessions_before_archive = self.config.get(
-            "session_max_before_archive", DEFAULT_MAX_SESSIONS_BEFORE_ARCHIVE
-        )
-
         # Token count cache for incremental counting
         self._token_cache: dict[str, int] = {}
         self._last_total_tokens = 0
-
-        # Archive directory
-        self.archive_dir = self.state_manager.agent_dir / "archive"
-
-    def _ensure_archive_dir(self) -> None:
-        """Ensure archive directory exists"""
-        self.archive_dir.mkdir(parents=True, exist_ok=True)
 
     # ========== Token Counting (Incremental) ==========
 
@@ -275,166 +257,6 @@ class SessionManager:
         """
         # Use smart compression instead of simple summary
         return self._compress_messages_smart(messages, keep_recent)
-
-    # ========== Session Archiving ==========
-
-    def _get_archive_filename(self, date: datetime) -> str:
-        """Get archive filename for a given date.
-
-        Args:
-            date: Date for the archive
-
-        Returns:
-            Archive filename (e.g., "archive_2026-03.json")
-        """
-        return f"archive_{date.strftime('%Y-%m')}.json"
-
-    def _archive_session(self, session: dict[str, Any]) -> None:
-        """Archive a single session to the archive directory.
-
-        Args:
-            session: Session to archive
-        """
-        self._ensure_archive_dir()
-
-        # Get session date or use current date
-        created_at = session.get("created_at", datetime.now().isoformat())
-        try:
-            session_date = datetime.fromisoformat(created_at)
-        except (ValueError, TypeError):
-            session_date = datetime.now()
-
-        archive_file = self.archive_dir / self._get_archive_filename(session_date)
-
-        # Load or create archive file
-        archive_data: dict[str, Any]
-        if archive_file.exists():
-            try:
-                with open(archive_file, "r", encoding="utf-8") as f:
-                    archive_data = json.load(f)
-            except (json.JSONDecodeError, IOError):
-                archive_data = {"sessions": []}
-        else:
-            archive_data = {"sessions": []}
-
-        # Add session to archive
-        archive_data["sessions"].append(session)
-
-        # Save archive file
-        try:
-            with open(archive_file, "w", encoding="utf-8") as f:
-                json.dump(archive_data, f, indent=2, ensure_ascii=False)
-            logger.info(f"Archived session {session.get('id')} to {archive_file}")
-        except IOError as e:
-            logger.error(f"Failed to archive session: {e}")
-
-    def _should_archive_session(self, session: dict[str, Any]) -> bool:
-        """Check if a session should be archived based on age.
-
-        Args:
-            session: Session to check
-
-        Returns:
-            True if session should be archived
-        """
-        created_at = session.get("created_at")
-        if not created_at:
-            return False
-
-        try:
-            session_date = datetime.fromisoformat(created_at)
-            age_days = (datetime.now() - session_date).days
-            return age_days > self.archive_after_days
-        except (ValueError, TypeError):
-            return False
-
-    def archive_old_sessions(self) -> int:
-        """Archive old sessions based on age and count thresholds.
-
-        This method:
-        1. Archives sessions older than archive_after_days
-        2. If total sessions exceed max_sessions_before_archive, archives oldest
-
-        Returns:
-            Number of sessions archived
-        """
-        history = self.state_manager.load_session_history()
-        sessions = history.get("sessions", [])
-
-        if not sessions:
-            return 0
-
-        archived_count = 0
-
-        # Archive by age
-        sessions_to_archive: list[dict[str, Any]] = []
-        remaining_sessions: list[dict[str, Any]] = []
-
-        for session in sessions:
-            if self._should_archive_session(session):
-                sessions_to_archive.append(session)
-            else:
-                remaining_sessions.append(session)
-
-        # Archive by count if still over limit
-        if len(remaining_sessions) > self.max_sessions_before_archive:
-            # Sort by date and archive oldest
-            remaining_sessions.sort(
-                key=lambda s: s.get("created_at", ""), reverse=False
-            )
-            excess = len(remaining_sessions) - self.max_sessions_before_archive
-            for session in remaining_sessions[:excess]:
-                sessions_to_archive.append(session)
-            remaining_sessions = remaining_sessions[excess:]
-
-        # Actually archive sessions
-        for session in sessions_to_archive:
-            self._archive_session(session)
-            archived_count += 1
-
-        # Update history with remaining sessions
-        if archived_count > 0:
-            history["sessions"] = remaining_sessions
-            history["total_sessions"] = len(remaining_sessions)
-            self.state_manager.save_session_history(history)
-            logger.info(f"Archived {archived_count} sessions, {len(remaining_sessions)} remaining")
-
-        return archived_count
-
-    def get_archived_sessions(
-        self, year: int | None = None, month: int | None = None
-    ) -> list[dict[str, Any]]:
-        """Get archived sessions, optionally filtered by year/month.
-
-        Args:
-            year: Optional year filter
-            month: Optional month filter
-
-        Returns:
-            List of archived sessions
-        """
-        self._ensure_archive_dir()
-
-        if year and month:
-            # Single month file
-            archive_file = self.archive_dir / f"archive_{year:04d}-{month:02d}.json"
-            if archive_file.exists():
-                with open(archive_file, "r", encoding="utf-8") as f:
-                    data = json.load(f)
-                    return data.get("sessions", [])
-            return []
-
-        # All archive files
-        all_sessions: list[dict[str, Any]] = []
-        for archive_file in sorted(self.archive_dir.glob("archive_*.json")):
-            try:
-                with open(archive_file, "r", encoding="utf-8") as f:
-                    data = json.load(f)
-                    all_sessions.extend(data.get("sessions", []))
-            except (json.JSONDecodeError, IOError) as e:
-                logger.warning(f"Failed to read archive {archive_file}: {e}")
-
-        return all_sessions
 
     # ========== Session Resume (Enhanced) ==========
 
@@ -654,11 +476,6 @@ class SessionManager:
                 "daily": daily_trend,
                 "weekly": weekly_trend,
             },
-            "archive_info": {
-                "archived_sessions": len(self.get_archived_sessions()),
-                "archive_threshold_days": self.archive_after_days,
-                "max_sessions_before_archive": self.max_sessions_before_archive,
-            },
         }
 
     def _empty_stats(self) -> dict[str, Any]:
@@ -679,11 +496,6 @@ class SessionManager:
             "errors": {},
             "tags": {},
             "trends": {"daily": [], "weekly": []},
-            "archive_info": {
-                "archived_sessions": 0,
-                "archive_threshold_days": self.archive_after_days,
-                "max_sessions_before_archive": self.max_sessions_before_archive,
-            },
         }
 
     def _calculate_durations(self, sessions: list[dict[str, Any]]) -> list[float]:

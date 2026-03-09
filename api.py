@@ -764,7 +764,6 @@ class SessionStatsResponse(BaseModel):
     errors: Dict[str, int]
     tags: Dict[str, int]
     trends: Dict[str, List[Dict[str, Any]]]
-    archive_info: Dict[str, Any]
 
 
 class TaskDeleteResponse(BaseModel):
@@ -772,7 +771,6 @@ class TaskDeleteResponse(BaseModel):
     success: bool
     message: str
     task_id: str
-    deleted_archived: bool = False
 
 
 class BulkTaskOperation(BaseModel):
@@ -1293,8 +1291,7 @@ def delete_task(
             return TaskDeleteResponse(
                 success=True,
                 message=f"Task {task_id} permanently deleted",
-                task_id=task_id,
-                deleted_archived=False
+                task_id=task_id
             )
         else:
             # Soft delete - mark as archived
@@ -1303,8 +1300,7 @@ def delete_task(
                 return TaskDeleteResponse(
                     success=True,
                     message=f"Task {task_id} archived",
-                    task_id=task_id,
-                    deleted_archived=True
+                    task_id=task_id
                 )
             else:
                 raise HTTPException(status_code=500, detail="Failed to archive task")
@@ -1593,9 +1589,6 @@ def get_session_stats(
         state_manager = StateManager()
         session_manager = SessionManager(state_manager)
 
-        # Archive old sessions before getting stats
-        session_manager.archive_old_sessions()
-
         if detailed:
             stats = session_manager.get_detailed_stats()
         else:
@@ -1607,7 +1600,6 @@ def get_session_stats(
             errors=stats.get("errors", {}),
             tags=stats.get("tags", {}),
             trends=stats.get("trends", {}),
-            archive_info=stats.get("archive_info", {}),
         )
     except AgentLoopError as e:
         logger.error(f"Agent error getting session stats: {e}")
